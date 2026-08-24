@@ -637,6 +637,11 @@ public static class TaskUpdater
                     .ToDictionary(r => r.Attribute("id")?.Value ?? string.Empty, r => r.Attribute("status")?.Value ?? string.Empty, StringComparer.Ordinal);
                 foreach (var origin in targetTask.Element("origin")?.Elements("ref") ?? Enumerable.Empty<XElement>())
                 {
+                    if (string.Equals(origin.Attribute("relation")?.Value, "supports", StringComparison.Ordinal) &&
+                        string.Equals(origin.Attribute("target")?.Value, normIterId, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
                     var requirementId = origin.Attribute("target")?.Value ?? string.Empty;
                     if (!requirements.TryGetValue(requirementId, out var requirementStatus) ||
                         !string.Equals(requirementStatus, "approved", StringComparison.Ordinal))

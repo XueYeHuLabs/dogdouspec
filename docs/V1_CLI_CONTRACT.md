@@ -2,6 +2,14 @@
 
 Status: Normative implementation contract
 
+## Quick Task Entry
+
+`task quick` accepts `--title`, repeatable `--scope`, `--done-when`, `--why`, optional repeatable `--origin`, `--depends-on`, and `--term key=value`, plus `--iteration`, `--expected-revision`, `--start`, and `--dry-run`. It auto-selects exactly one active iteration when omitted. Requirement origins are iteration `implements` references; no origin generates exactly one current-iteration `supports` origin for operational work. Operational tasks never satisfy product Requirement coverage, but remain normal non-terminal readiness blockers.
+
+`--start` is one writer transaction and one tasks revision: the stored Task is already `in-progress`, has equal create/update/start timestamps, generated start history, and durable creation receipt. `--dry-run` returns the generated task-add representation and leaves documents, revisions, and transaction temporary state unchanged.
+
+To make a write replayable, supply both `--id` and `--operation-id`; the operation ID must begin with a UTC `YYYYMMDDTHHmmssZ` timestamp, which becomes the generated request time. Dry-run emits canonical XML with `--format xml`; `--format human` emits a stable preview summary and directs callers to XML for the request.
+
 This document defines the first usable repository-local CLI. XML is the
 machine-facing request and result format. The CLI is a secure XML/XPath engine
 with a small set of schema-aware atomic helpers; it is not an autonomous project

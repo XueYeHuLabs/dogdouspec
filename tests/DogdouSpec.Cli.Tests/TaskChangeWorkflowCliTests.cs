@@ -161,6 +161,58 @@ public sealed class TaskChangeWorkflowCliTests
     }
 
     [TestMethod]
+    public void TaskQuick_Cli_PendingDryRunAndAtomicStart_ArePubliclyObservable()
+    {
+        CreateWorkspaceCopy();
+        var iterId = "20260824-cli-quick";
+        var (createCode, _, createError) = RunCli("iteration", "create", "--id", iterId, "--kind", "feature", "--workspace-root", _tempDir);
+        Assert.AreEqual(0, createCode, createError);
+
+        var (dryCode, dryOut, dryErr) = RunCli("task", "quick", "--title", "Preview quick", "--scope", "src/**", "--done-when", "preview works", "--why", "test preview", "--iteration", iterId, "--dry-run", "--id", "20260824-task-cli-quick-preview", "--operation-id", "20260824T121000Z-quick-preview", "--workspace-root", _tempDir, "--format", "xml");
+        Assert.AreEqual(0, dryCode, dryErr);
+        Assert.IsTrue(dryOut.Contains("relation=\"supports\""));
+        var tasksPath = Path.Combine(_tempDir, ".dogdouspec", iterId, "tasks.xml");
+        Assert.AreEqual("1", XDocument.Load(tasksPath).Root!.Attribute("revision")!.Value);
+        var (humanDryCode, humanDryOut, humanDryErr) = RunCli("task", "quick", "--title", "Preview quick", "--scope", "src/**", "--done-when", "preview works", "--why", "test preview", "--iteration", iterId, "--dry-run", "--id", "20260824-task-cli-quick-preview", "--operation-id", "20260824T121000Z-quick-preview", "--workspace-root", _tempDir, "--format", "human");
+        Assert.AreEqual(0, humanDryCode, humanDryErr);
+        Assert.IsTrue(humanDryOut.StartsWith("Quick task preview:", StringComparison.Ordinal));
+        Assert.IsFalse(humanDryOut.Contains("<task-add", StringComparison.Ordinal));
+        var (invalidIterationCode, _, invalidIterationErr) = RunCli("task", "quick", "--title", "Bad iteration", "--scope", "src/**", "--done-when", "no", "--why", "no", "--iteration", "20260824T050002Z-invalid", "--dry-run", "--workspace-root", _tempDir, "--format", "xml");
+        Assert.AreEqual(2, invalidIterationCode);
+        Assert.IsTrue(invalidIterationErr.Contains(DiagnosticCodes.InvalidArgument) || invalidIterationErr.Contains(DiagnosticCodes.InvalidIdGrammar));
+
+        var activation = $"""<iteration-confirmation id="20260824T120959Z-confirm-quick" iteration="{iterId}" action="activate" expected_spec_revision="1" expected_tasks_revision="1" actor="owner" decided_at="2026-08-24T12:09:59Z"><summary>Activate quick test.</summary><requirements><requirement target="20260824-req-cli-quick" decision="approved"/></requirements></iteration-confirmation>""";
+        var (activateCode, _, activateErr) = RunCliWithStdin(activation, "iteration", "confirm", "--stdin", "--workspace-root", _tempDir, "--format", "xml");
+        Assert.AreEqual(0, activateCode, activateErr);
+        var args = new[] { "task", "quick", "--title", "Start quick", "--scope", "src/**", "--done-when", "started work is tracked", "--why", "test atomic start", "--iteration", iterId, "--start", "--id", "20260824-task-cli-quick-start", "--operation-id", "20260824T121001Z-quick-start", "--workspace-root", _tempDir, "--format", "xml" };
+        var (startCode, startOut, startErr) = RunCli(args);
+        Assert.AreEqual(0, startCode, startErr);
+        Assert.IsTrue(startOut.Contains("command=\"task quick\""));
+        var started = XDocument.Load(tasksPath).Root!.Elements("task").Single();
+        Assert.AreEqual("in-progress", started.Attribute("status")!.Value);
+        Assert.AreEqual(started.Attribute("created_at")!.Value, started.Attribute("started_at")!.Value);
+        Assert.IsTrue(started.Element("records")!.Elements("record").Any(r => r.Attribute("kind")!.Value == "start"));
+
+        var (pendingCode, pendingOut, pendingErr) = RunCli("task", "quick", "--title", "Pending quick", "--scope", "src/**", "--done-when", "pending work is tracked", "--why", "test pending", "--iteration", iterId, "--expected-revision", "2", "--id", "20260824-task-cli-quick-pending", "--operation-id", "20260824T121002Z-quick-pending", "--workspace-root", _tempDir, "--format", "xml");
+        Assert.AreEqual(0, pendingCode, pendingErr);
+        Assert.IsTrue(pendingOut.Contains("command=\"task quick\""));
+        var task = XDocument.Load(tasksPath).Root!.Elements("task").Single(t => t.Attribute("id")!.Value == "20260824-task-cli-quick-pending");
+        Assert.AreEqual("pending", task.Attribute("status")!.Value);
+        Assert.AreEqual("supports", task.Element("origin")!.Element("ref")!.Attribute("relation")!.Value);
+
+        var (replayCode, replayOut, replayErr) = RunCli("task", "quick", "--title", "Pending quick", "--scope", "src/**", "--done-when", "pending work is tracked", "--why", "test pending", "--iteration", iterId, "--expected-revision", "2", "--id", "20260824-task-cli-quick-pending", "--operation-id", "20260824T121002Z-quick-pending", "--workspace-root", _tempDir, "--format", "xml");
+        Assert.AreEqual(0, replayCode, replayErr);
+        Assert.IsTrue(replayOut.Contains("already_applied=\"true\""));
+
+        var (explicitCode, explicitOut, explicitErr) = RunCli("task", "quick", "--title", "Requirement quick", "--scope", "src/**", "--done-when", "requirement work is tracked", "--why", "exercise confirmation-bearing write", "--origin", "20260824-req-cli-quick", "--iteration", iterId, "--expected-revision", "3", "--start", "--id", "20260824-task-cli-quick-requirement", "--operation-id", "20260824T121003Z-quick-requirement", "--workspace-root", _tempDir, "--format", "xml");
+        Assert.AreEqual(0, explicitCode, explicitErr);
+        Assert.IsTrue(explicitOut.Contains("command=\"task quick\""));
+        var explicitTask = XDocument.Load(tasksPath).Root!.Elements("task").Single(t => t.Attribute("id")!.Value == "20260824-task-cli-quick-requirement");
+        Assert.AreEqual("in-progress", explicitTask.Attribute("status")!.Value);
+        Assert.AreEqual("4", XDocument.Load(tasksPath).Root!.Attribute("revision")!.Value);
+    }
+
+    [TestMethod]
     public void RequirementPropose_Cli_HappyPath_Succeeds()
     {
         CreateWorkspaceCopy();

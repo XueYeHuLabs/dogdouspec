@@ -89,7 +89,9 @@ Identify objectives, scope includes/excludes, origin requirement, acceptance cri
 When requirements, scope, or architecture need adjustment during an iteration:
 
 - **Elaborating an Active or Pending Task**: Use `dogdouspec task revise` to add constraints, acceptance criteria, or dependencies, and append discussion records without modifying decided product scope. Once a task has started, retain its rationale and only submit an additive scope expansion; record changed reasoning as discussion.
-- **Adding a New Technical Task**: Use `dogdouspec task add` to add a pending task referencing an existing approved requirement.
+- **Adding Bounded Work for Immediate Execution**: Use `dogdouspec task quick --title ... --scope ... --done-when ... --why ... [--start]`. It remains a normal Task; omit `--origin` only for operational maintenance. Deferred work belongs in backlog.
+- **Adding a New Planned Technical Task**: Use `dogdouspec task add` to add a pending task referencing an existing approved requirement.
+- **Deferred or Material Work**: Put work not ready to execute in backlog. If it changes product behavior, architecture, requirements, or owner acceptance boundaries, use `change propose`, not `task quick` or `task revise`.
 - **Splitting a Complex Task**: Use `dogdouspec task split` to mark the parent task `superseded`, `transferred`, or `cancelled` and add 2+ focused pending subtasks atomically.
 - **Proposing a New Requirement**: Use `dogdouspec requirement propose` to add a requirement with `status="proposed"`. (Technical agents cannot self-approve; owner confirmation via `iteration confirm` is required).
 - **Handling Mid-Flight Surprises / Material Scope Gaps**:

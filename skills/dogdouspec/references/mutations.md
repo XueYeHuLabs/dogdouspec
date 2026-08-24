@@ -8,6 +8,7 @@ DogdouSpec enforces single-source-of-truth document integrity through structured
 | :--- | :--- | :--- | :--- |
 | **Task Update** | `dogdouspec task update` | Task state machine transitions (`start`, `verify`, `complete`, etc.), acceptance criteria updates, context snapshots, active record resolution, and appending execution records. | Single-document atomic commit. Persists durable `operation_id` receipts. Replays are deeply verified for idempotent success. Execution transitions fail closed when iteration is `replanning`. |
 | **Task Add** | `dogdouspec task add` | Appending a new pending task referencing an existing requirement in `spec.xml`. | Single-document atomic commit. Revision-checked. Verified origin reference. Durable `operation_id` stamping. |
+| **Task Quick** | `dogdouspec task quick` | Compact bounded work intended to execute now. Inputs expand to a normal Task; no second task type or file exists. | `--start` creates the final in-progress Task, start history, and receipt in exactly one `tasks.xml` revision. `--dry-run` writes nothing. |
 | **Task Revise** | `dogdouspec task revise` | Elaborating constraints, dependencies, acceptance criteria, or scope on active/pending tasks. A started task cannot replace rationale and may only expand scope. Rejects terminal tasks (`TASK_IMMUTABLE`). | Single-document atomic commit. Revision-checked. Durable `operation_id` stamping. |
 | **Task Split** | `dogdouspec task split` | Transitioning a parent task to a terminal disposition (`superseded`/`transferred`/`cancelled`) and atomically adding 2+ pending subtasks. | Single-document atomic commit. Revision-checked. Durable `operation_id` stamping. |
 | **Requirement Propose** | `dogdouspec requirement propose` | Proposing a new requirement with `status="proposed"`. Rejects non-proposed statuses (`OWNER_DECISION_REQUIRED`). | Single-document atomic commit to `spec.xml`. Revision-checked. Durable `operation_id` stamping. |
@@ -34,7 +35,7 @@ Generated operation receipts store a canonical-XML `request-sha256` value and re
 
 ## Time and Input Bounds
 
-The task/change/requirement helper requests are rejected before parsing when their UTF-8 payload exceeds the configured XML document limit; any managed document they read is checked against the same bound before it is opened. A write request cannot backdate a modified task or document: `occurred_at` must be at least its current `updated_at`. New tasks (including split or change successors) are always pending, have `created_at` and `updated_at` exactly equal to request `occurred_at`, and cannot carry `started_at` or `completed_at`.
+The task/change/requirement helper requests are rejected before parsing when their UTF-8 payload exceeds the configured XML document limit; any managed document they read is checked against the same bound before it is opened. A write request cannot backdate a modified task or document: `occurred_at` must be at least its current `updated_at`. New tasks are pending except `task quick --start`, which atomically creates a normal in-progress task with `created_at=updated_at=started_at` and a start record.
 
 ## Document Revisions
 

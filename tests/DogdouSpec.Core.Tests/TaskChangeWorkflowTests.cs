@@ -84,6 +84,88 @@ public sealed class TaskChangeWorkflowTests
     }
 
     [TestMethod]
+    public void TaskQuick_OperationalPendingAndDryRun_UseNormalTaskRepresentation()
+    {
+        var iterId = "20260824-quick-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+        var input = new QuickTaskInput("Quick maintenance", new List<string> { "src/**" }, "maintenance is verified", "bounded operational work",
+            Array.Empty<string>(), Array.Empty<string>(), new List<string> { "component=core" }, iterId, 1, false, false,
+            "20260824-task-quick-maintenance", "20260824T120000Z-quick-maintenance");
+        var (success, result, envelope, diagnostics) = TaskQuick.Create(_workspace, input);
+        Assert.IsTrue(success, string.Join(", ", diagnostics.Select(d => d.Message)));
+        Assert.IsNotNull(envelope);
+        Assert.AreEqual(2, envelope.Documents.Single().Revision);
+        var task = XDocument.Load(Path.Combine(_workspace, iterId, "tasks.xml")).Root!.Elements("task").Single();
+        Assert.AreEqual("pending", (string?)task.Attribute("status"));
+        Assert.AreEqual(iterId, (string?)task.Element("origin")?.Element("ref")?.Attribute("target"));
+        Assert.AreEqual("supports", (string?)task.Element("origin")?.Element("ref")?.Attribute("relation"));
+
+        var before = File.ReadAllBytes(Path.Combine(_workspace, iterId, "tasks.xml"));
+        var dry = input with { DryRun = true, ExpectedRevision = null, TaskId = "20260824-task-quick-preview", OperationId = "20260824T120001Z-quick-preview" };
+        var (drySuccess, dryResult, dryEnvelope, dryDiags) = TaskQuick.Create(_workspace, dry);
+        Assert.IsTrue(drySuccess, string.Join(", ", dryDiags.Select(d => d.Message)));
+        Assert.IsNotNull(dryEnvelope);
+        Assert.IsNotNull(dryResult);
+        CollectionAssert.AreEqual(before, File.ReadAllBytes(Path.Combine(_workspace, iterId, "tasks.xml")));
+
+        var badOperation = input with { DryRun = true, TaskId = "20260824-task-quick-bad-op", OperationId = "20260824-quick-bad-op" };
+        var (badSuccess, _, _, badDiags) = TaskQuick.Create(_workspace, badOperation);
+        Assert.IsFalse(badSuccess);
+        Assert.IsTrue(badDiags.Any(d => d.Code == DiagnosticCodes.InvalidArgument));
+    }
+
+    [TestMethod]
+    public void TaskQuick_DryRunDuplicateTaskMatchesWriteAndLeavesWorkspaceUntouched()
+    {
+        var iterId = "20260824-quick-duplicate";
+        InitWorkspaceWithFeatureIteration(iterId);
+        var first = new QuickTaskInput("First quick", new List<string> { "src/**" }, "done", "reason", Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(), iterId, 1, false, false, "20260824-task-quick-duplicate", "20260824T140000Z-quick-first");
+        Assert.IsTrue(TaskQuick.Create(_workspace, first).Success);
+        var tasksPath = Path.Combine(_workspace, iterId, "tasks.xml");
+        var before = File.ReadAllBytes(tasksPath);
+        var tempPath = Path.Combine(_workspace, "_tmp");
+        var tempBefore = Directory.Exists(tempPath) ? Directory.GetFileSystemEntries(tempPath, "*", SearchOption.AllDirectories).Order().ToArray() : Array.Empty<string>();
+        var conflicting = first with { Title = "Conflicting quick", ExpectedRevision = null, OperationId = "20260824T140001Z-quick-conflict", DryRun = true };
+        var preview = TaskQuick.Create(_workspace, conflicting);
+        Assert.IsFalse(preview.Success);
+        Assert.AreEqual(DiagnosticCodes.DuplicateId, preview.Diagnostics.Single().Code);
+        CollectionAssert.AreEqual(before, File.ReadAllBytes(tasksPath));
+        var tempAfterPreview = Directory.Exists(tempPath) ? Directory.GetFileSystemEntries(tempPath, "*", SearchOption.AllDirectories).Order().ToArray() : Array.Empty<string>();
+        CollectionAssert.AreEqual(tempBefore, tempAfterPreview);
+        var write = TaskQuick.Create(_workspace, conflicting with { DryRun = false });
+        Assert.IsFalse(write.Success);
+        Assert.AreEqual(preview.Diagnostics.Single().Code, write.Diagnostics.Single().Code);
+        CollectionAssert.AreEqual(before, File.ReadAllBytes(tasksPath));
+    }
+
+    [TestMethod]
+    public void ProtectedStateGuard_LowLevelNewInProgressTaskIsRejected()
+    {
+        var before = XDocument.Parse("<tasks id='20260824-guard' iteration='20260824-guard' schema_version='1.0' revision='1'><index><summary>x</summary></index></tasks>");
+        var after = new XDocument(before);
+        after.Root!.Add(new XElement("task", new XAttribute("id", "20260824-task-guard"), new XAttribute("status", "in-progress")));
+        var diagnostic = ProtectedStateGuard.CheckProtectedState("20260824-guard/tasks.xml", before, after);
+        Assert.IsNotNull(diagnostic);
+        Assert.AreEqual(DiagnosticCodes.OwnerDecisionRequired, diagnostic.Code);
+        after.Root!.Element("task")!.SetAttributeValue("status", "pending");
+        Assert.IsNull(ProtectedStateGuard.CheckProtectedState("20260824-guard/tasks.xml", before, after));
+
+        var existingBefore = new XDocument(after);
+        after.Root!.Element("task")!.SetAttributeValue("status", "in-progress");
+        var transition = ProtectedStateGuard.CheckProtectedState("20260824-guard/tasks.xml", existingBefore, after);
+        Assert.IsNotNull(transition);
+        Assert.AreEqual(DiagnosticCodes.TaskTransitionConflict, transition.Code);
+        after.Root!.Element("task")!.SetAttributeValue("status", "pending");
+        after.Root!.Element("task")!.Add(new XElement("records", new XElement("record", new XAttribute("id", "20260824-record-guard"))));
+        Assert.IsNull(ProtectedStateGuard.CheckProtectedState("20260824-guard/tasks.xml", existingBefore, after));
+        var removed = new XDocument(existingBefore);
+        removed.Root!.Element("task")!.Remove();
+        var removal = ProtectedStateGuard.CheckProtectedState("20260824-guard/tasks.xml", existingBefore, removed);
+        Assert.IsNotNull(removal);
+        Assert.AreEqual(DiagnosticCodes.TaskTransitionConflict, removal.Code);
+    }
+
+    [TestMethod]
     public void NewHelpers_RejectOversizedInputAndBackdatedOrUnstampedTasks()
     {
         var iterId = "20260824-test-feature";

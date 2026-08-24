@@ -326,6 +326,25 @@ public static class SemanticValidator
             }
 
             // 3. Relation-specific type checks
+            var isTaskOrigin = r.Element.Parent?.Name.LocalName == "origin" &&
+                               r.Element.Parent?.Parent?.Name.LocalName == "task";
+            if (isTaskOrigin)
+            {
+                var isOperational = string.Equals(r.Relation, "supports", StringComparison.Ordinal) &&
+                                    string.Equals(r.Scope, "iteration", StringComparison.Ordinal) &&
+                                    string.Equals(targetObj.ElementName, "iteration", StringComparison.Ordinal) &&
+                                    string.Equals(targetObj.Id, r.Document.IterationId, StringComparison.Ordinal);
+                var isRequirement = string.Equals(r.Relation, "implements", StringComparison.Ordinal) &&
+                                    string.Equals(r.Scope, "iteration", StringComparison.Ordinal) &&
+                                    string.Equals(targetObj.ElementName, "requirement", StringComparison.Ordinal);
+                if (!isOperational && !isRequirement)
+                {
+                    diagnostics.Add(Diagnostic.Error(
+                        DiagnosticCodes.InvalidReferenceTargetType,
+                        $"Task origin must be an iteration implements reference to a requirement or the owning iteration supports reference; found relation '{r.Relation}' targeting <{targetObj.ElementName}>.",
+                        r.Document.RelativePath, r.LineNumber, r.LinePosition));
+                }
+            }
             // Task dependency: depends-on structurally inside task/dependencies must target a task
             var isTaskDependency = string.Equals(r.Relation, "depends-on", StringComparison.Ordinal) &&
                                    r.Element.Parent?.Name.LocalName == "dependencies" &&
@@ -592,6 +611,18 @@ public static class SemanticValidator
         ProjectSemanticIndex index,
         List<Diagnostic> diagnostics)
     {
+        foreach (var task in index.AllTasks)
+        {
+            var operationalOrigins = task.Origin.Where(o => string.Equals(o.Relation, "supports", StringComparison.Ordinal)).ToList();
+            if (operationalOrigins.Count > 0 && (operationalOrigins.Count != 1 || task.Origin.Count != 1))
+            {
+                diagnostics.Add(Diagnostic.Error(
+                    DiagnosticCodes.InvalidReferenceTargetType,
+                    $"Task '{task.Id}' mixes operational and requirement origins. An operational task must have exactly one supports origin.",
+                    task.Document.RelativePath, task.LineNumber, task.LinePosition));
+            }
+        }
+
         // 1. Build dependency adjacency map across all tasks in the project semantic index
         var taskMap = new Dictionary<string, ParsedTask>(StringComparer.Ordinal);
         foreach (var t in index.AllTasks)

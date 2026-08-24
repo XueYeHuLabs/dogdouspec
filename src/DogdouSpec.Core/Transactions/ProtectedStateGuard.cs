@@ -134,8 +134,40 @@ public static class ProtectedStateGuard
         {
             var taskDiag = CheckTerminalTasks(normalizedDocPath, beforeDoc, afterDoc);
             if (taskDiag != null) return taskDiag;
+            var newTaskDiag = CheckNewTasks(normalizedDocPath, beforeDoc, afterDoc);
+            if (newTaskDiag != null) return newTaskDiag;
         }
 
+        return null;
+    }
+
+    private static Diagnostic? CheckNewTasks(string docPath, XDocument beforeDoc, XDocument afterDoc)
+    {
+        var beforeIds = beforeDoc.Root?.Elements("task").Select(t => t.Attribute("id")?.Value).Where(id => !string.IsNullOrEmpty(id)).Select(id => id!).ToHashSet(StringComparer.Ordinal)
+            ?? new HashSet<string>(StringComparer.Ordinal);
+        var afterIds = afterDoc.Root?.Elements("task").Select(t => t.Attribute("id")?.Value).Where(id => !string.IsNullOrEmpty(id)).Select(id => id!).ToHashSet(StringComparer.Ordinal)
+            ?? new HashSet<string>(StringComparer.Ordinal);
+        if (beforeIds.Any(id => !afterIds.Contains(id)))
+        {
+            return Diagnostic.Error(DiagnosticCodes.TaskTransitionConflict,
+                "Low-level mutations cannot remove existing tasks; use a schema-aware terminal disposition.", docPath);
+        }
+        foreach (var task in afterDoc.Root?.Elements("task") ?? Enumerable.Empty<XElement>())
+        {
+            var id = task.Attribute("id")?.Value;
+            var beforeTask = !string.IsNullOrEmpty(id) ? beforeDoc.Root?.Elements("task").FirstOrDefault(t => string.Equals(t.Attribute("id")?.Value, id, StringComparison.Ordinal)) : null;
+            if (beforeTask != null && !string.Equals(beforeTask.Attribute("status")?.Value, task.Attribute("status")?.Value, StringComparison.Ordinal))
+            {
+                return Diagnostic.Error(DiagnosticCodes.TaskTransitionConflict,
+                    $"Low-level mutations cannot change task '{id}' status; use task update or a schema-aware helper.", docPath);
+            }
+            if (!string.IsNullOrEmpty(id) && !beforeIds.Contains(id) && !string.Equals(task.Attribute("status")?.Value, "pending", StringComparison.Ordinal))
+            {
+                return Diagnostic.Error(DiagnosticCodes.OwnerDecisionRequired,
+                    $"Low-level mutations may only add pending tasks; task '{id}' has status '{task.Attribute("status")?.Value}'.",
+                    docPath);
+            }
+        }
         return null;
     }
 
