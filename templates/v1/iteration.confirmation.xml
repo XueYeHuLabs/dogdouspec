@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This request is used only after explicit owner review. -->
+<iteration-confirmation
+  id="20000101T000000Z-confirmation-replace"
+  iteration="20000101-replace-iteration"
+  action="complete"
+  expected_spec_revision="1"
+  expected_tasks_revision="1"
+  actor="owner"
+  decided_at="2000-01-01T00:00:00Z">
+  <summary>Replace with the product decision and review context.</summary>
+  <acceptance>
+    <criterion target="20000101-accept-replace" decision="accepted"/>
+  </acceptance>
+</iteration-confirmation>

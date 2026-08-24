@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<backlog
+  id="20260823-backlog"
+  schema_version="1.0"
+  revision="1">
+  <index>
+    <summary>Project obligations not owned by an active Iteration.</summary>
+    <term key="scope" value="project"/>
+  </index>
+  <items/>
+</backlog>

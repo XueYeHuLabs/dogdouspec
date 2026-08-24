@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<knowledge
+  id="20260801-knowledge"
+  schema_version="1.0"
+  revision="2">
+  <index>
+    <summary>Verified reusable project knowledge.</summary>
+    <term key="scope" value="project"/>
+  </index>
+  <entry
+    id="20260801-knowledge-xml-authority"
+    status="verified"
+    created_at="2026-08-01T03:00:00Z">
+    <index>
+      <summary>Managed XML is the authoritative structured state.</summary>
+      <term key="topic" value="xml-authority"/>
+    </index>
+    <statement>
+      Filesystem layout provides coarse discovery. XML and XPath provide
+      structured discovery and mutation after an Iteration is selected.
+    </statement>
+  </entry>
+</knowledge>

@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20260823-dogdouspec-v1" schema_version="1.0" revision="3" kind="feature" status="active" created_at="2026-08-23T05:15:42Z" updated_at="2026-08-23T05:30:00Z">
+  <index>
+        <summary>DogdouSpec v1 repository-local iteration-first specification and task system.</summary>
+        <term key="topic" value="dogdouspec-v1" />
+        <term key="kind" value="feature" />
+        <term key="iteration" value="20260823-dogdouspec-v1" />
+        <term key="status" value="active" />
+      </index>
+  <product>
+        <objective>A repository-local, iteration-first specification and task management engine built with C# on .NET 10, using XML and XPath 1.0 as the authoritative store and query mechanism without requiring global catalogs, daemon services, GUI dashboards, or MCP dependencies.</objective>
+        <deliverables>
+          <deliverable id="20260823-deliv-cli-core">
+            <index>
+              <summary>DogdouSpec .NET 10 CLI and Core assemblies.</summary>
+              <term key="kind" value="deliverable" />
+            </index>
+            <description>Portable .NET 10 command-line tool (dogdouspec) and Core engine providing all public management verbs.</description>
+          </deliverable>
+          <deliverable id="20260823-deliv-xml-schemas">
+            <index>
+              <summary>Authoritative XML schemas for iterations, tasks, transactions, and requests.</summary>
+              <term key="kind" value="deliverable" />
+            </index>
+            <description>XSD v1 schemas (spec.xsd, tasks.xsd, transaction.xsd, requests.xsd, workspace.xsd) governing workspace documents.</description>
+          </deliverable>
+          <deliverable id="20260823-deliv-xpath-engine">
+            <index>
+              <summary>Safe XML/XPath 1.0 query, search, and projection engine.</summary>
+              <term key="kind" value="deliverable" />
+            </index>
+            <description>Deterministic XPath 1.0 evaluator supporting variable substitution, ds:filter/filter-out member projections, and strict memory/node bounds.</description>
+          </deliverable>
+          <deliverable id="20260823-deliv-task-automation">
+            <index>
+              <summary>Task state machine, atomic idempotency, verification and completion records.</summary>
+              <term key="kind" value="deliverable" />
+            </index>
+            <description>Task management automation supporting lifecycle transitions, terminal completion predicates, and durable idempotency receipts.</description>
+          </deliverable>
+          <deliverable id="20260823-deliv-iteration-lifecycle">
+            <index>
+              <summary>Read-only readiness assessment and owner-gated confirmation.</summary>
+              <term key="kind" value="deliverable" />
+            </index>
+            <description>Deterministic, read-only readiness evaluation and protected, owner-gated confirmation with live-state drift detection.</description>
+          </deliverable>
+          <deliverable id="20260823-deliv-self-hosting">
+            <index>
+              <summary>Self-hosting root workspace migration, repository Skill instructions, and dogfood correction loop.</summary>
+              <term key="kind" value="deliverable" />
+            </index>
+            <description>Repository-root self-hosting migration, checked-in DogdouSpec Skill, and live dogfooding validation loop.</description>
+          </deliverable>
+        </deliverables>
+        <scope>
+          <included>
+            <item>Authoritative XML schemas and .NET 10 CLI commands.</item>
+            <item>Single and multi-document atomic commits and crash recovery.</item>
+            <item>Safe XPath 1.0 query/search/projection engine with memory limits.</item>
+            <item>Task lifecycle automation, records, and durable idempotency receipts.</item>
+            <item>Deterministic readiness assessment and owner-gated confirmation.</item>
+            <item>Root workspace self-hosting and checked-in DogdouSpec Skill.</item>
+          </included>
+          <excluded>
+            <item>MCP server or MCP tool surface (v1 non-goal).</item>
+            <item>GUI or web dashboard (v1 non-goal).</item>
+            <item>Background daemon or scheduler (v1 non-goal).</item>
+            <item>Cryptographic signature chains or hash-chain consensus (v1 non-goal).</item>
+            <item>Global central project catalog or registry (v1 non-goal).</item>
+            <item>External identity authentication providers (v1 non-goal).</item>
+          </excluded>
+        </scope>
+        <requirements>
+          <requirement id="20260823-req-repo-local-cli" status="approved">
+            <index>
+              <summary>Repository-local .NET CLI with no mandatory MCP or global tool install.</summary>
+              <term key="kind" value="requirement" />
+              <term key="doc-ref" value="v1-cli-contract" />
+            </index>
+            <statement>DogdouSpec must operate as a repository-local CLI executable directly via dotnet or wrapper scripts without requiring global tools, background daemons, or MCP integration (docs/V1_CLI_CONTRACT.md, docs/V1_DESIGN.md).</statement>
+            <rationale>Ensures portable, self-contained development in any CI or paired agent environment.</rationale>
+          </requirement>
+          <requirement id="20260823-req-iteration-layout" status="approved">
+            <index>
+              <summary>Iteration-first date-prefixed directory layout without mandatory project.xml.</summary>
+              <term key="kind" value="requirement" />
+              <term key="doc-ref" value="v1-implementation-plan" />
+            </index>
+            <statement>Workspaces must organize work into date-prefixed iteration directories (YYYYMMDD-name), each containing spec.xml and tasks.xml, eliminating root project.xml bottlenecks (docs/V1_IMPLEMENTATION_PLAN_ITERATION_FIRST.md).</statement>
+            <rationale>Prevents monolithic merge contention and establishes clear temporal work boundaries.</rationale>
+          </requirement>
+          <requirement id="20260823-req-xml-xpath-query" status="approved">
+            <index>
+              <summary>Authoritative XML/XSD data store, XPath 1.0 variable evaluation, index-first search, and projection.</summary>
+              <term key="kind" value="requirement" />
+              <term key="doc-ref" value="v1-xml-schema-contract" />
+            </index>
+            <statement>XML documents must be validated against XSD schemas, and queries must support XPath 1.0 variables, ds:filter/filter-out projections, and strict limits without silent truncation (docs/V1_XML_SCHEMA_CONTRACT.md).</statement>
+            <rationale>Guarantees schema correctness, token efficiency for LLM agent pairs, and prevents context exhaustion.</rationale>
+          </requirement>
+          <requirement id="20260823-req-revision-idempotency" status="approved">
+            <index>
+              <summary>Revision-checked append, task update durable idempotency, and multi-document transaction recovery.</summary>
+              <term key="kind" value="requirement" />
+              <term key="doc-ref" value="v1-design" />
+            </index>
+            <statement>Mutations must check expected revisions, persist durable idempotency receipts, and support atomic multi-document transactions with crash recovery (docs/V1_DESIGN.md).</statement>
+            <rationale>Protects document integrity against concurrent writes, partial failures, and agent retry replay.</rationale>
+          </requirement>
+          <requirement id="20260823-req-product-authority" status="approved">
+            <index>
+              <summary>Product authority boundary: automated task completion never closes requirements/iterations.</summary>
+              <term key="kind" value="requirement" />
+              <term key="doc-ref" value="v1-cli-contract" />
+            </index>
+            <statement>Task automation must never auto-complete product requirements or iterations; readiness must be read-only; confirmation must be an explicit owner-gated protected write (docs/V1_CLI_CONTRACT.md).</statement>
+            <rationale>Maintains a strict boundary between technical task progress and human product acceptance.</rationale>
+          </requirement>
+          <requirement id="20260823-req-self-hosting-skill" status="approved">
+            <index>
+              <summary>Self-hosting workspace migration with checked-in repository Skill and dogfood review loop.</summary>
+              <term key="kind" value="requirement" />
+              <term key="doc-ref" value="v1-skill-workflow" />
+            </index>
+            <statement>The DogdouSpec repository must self-host its own workspace using the public CLI, with a checked-in repository Skill to guide ongoing development (docs/V1_SKILL_WORKFLOW.md).</statement>
+            <rationale>Ensures real-world dogfooding and establishes a complete reference implementation.</rationale>
+          </requirement>
+        </requirements>
+        <acceptance>
+          <criterion id="20260823-accept-local-cli-build" decision="pending">build.cmd builds all projects and runs 541+ tests cleanly with zero warnings and zero failures.</criterion>
+          <criterion id="20260823-accept-schema-conformance" decision="pending">All workspace XML documents strictly conform to authoritative v1 schemas with prospective validation.</criterion>
+          <criterion id="20260823-accept-xpath-projection" decision="pending">XPath query and search commands support variable substitution and projections with enforced size limits.</criterion>
+          <criterion id="20260823-accept-task-idempotency" decision="pending">Task update helper enforces state machine transitions and durable idempotency receipts.</criterion>
+          <criterion id="20260823-accept-gated-lifecycle" decision="pending">Readiness assessment is read-only and deterministic; confirmation acts as the owner authority gate.</criterion>
+          <criterion id="20260823-accept-self-hosting-bootstrap" decision="pending">Root workspace operates natively through CLI with repository Skill providing interactive workflow guidance.</criterion>
+        </acceptance>
+      </product>
+  
+<design>
+        <overview>Architectural principles and design decisions governing DogdouSpec v1.</overview>
+        <boundaries>
+          <boundary id="20260823-boundary-local-first">Repository-local operation without daemons or global catalogs.</boundary>
+          <boundary id="20260823-boundary-xml-truth">Strict XML schema validation and single-source-of-truth document model.</boundary>
+        </boundaries>
+        <decisions>
+          <decision id="20260823-dec-iteration-first" status="accepted">
+            <index>
+              <summary>Iteration-first date-prefixed directory layout.</summary>
+              <term key="kind" value="decision" />
+              <term key="topic" value="architecture" />
+            </index>
+            <rationale>Organizing work by date-prefixed iterations eliminates centralized project.xml contention and isolates task graphs.</rationale>
+          </decision>
+          <decision id="20260823-dec-xml-xpath-limits" status="accepted">
+            <index>
+              <summary>Strict bounds on document size, XPath output, and projected nodes.</summary>
+              <term key="kind" value="decision" />
+              <term key="topic" value="security-limits" />
+            </index>
+            <rationale>Authoritative limits prevent memory exhaustion and context window overflow during LLM agent interactions.</rationale>
+          </decision>
+          <decision id="20260823-dec-durable-idempotency" status="accepted">
+            <index>
+              <summary>Durable idempotency verified against pre-commit revision, timestamp, and live state.</summary>
+              <term key="kind" value="decision" />
+              <term key="topic" value="idempotency" />
+            </index>
+            <rationale>Deep verification ensures replay succeeds when state is unchanged and returns conflict if subsequent mutations have drifted.</rationale>
+          </decision>
+          <decision id="20260823-dec-owner-authority-boundary" status="accepted">
+            <index>
+              <summary>Owner authority boundary enforced at Skill invocation and confirmation level.</summary>
+              <term key="kind" value="decision" />
+              <term key="topic" value="authority" />
+            </index>
+            <rationale>Technical agents cannot auto-confirm product decisions; confirmation provenance is recorded with actor attribution.</rationale>
+          </decision>
+        </decisions>
+      </design><confirmations><confirmation id="20260823T053000Z-confirm-activate" action="activate" decision="accepted" actor="owner-instruction" decided_at="2026-08-23T05:30:00Z"><summary>Explicit owner instruction authorized activating DogdouSpec v1 iteration and approving baseline requirements and architectural decisions for self-hosting migration.</summary><requirements>
+    <requirement target="20260823-req-repo-local-cli" decision="approved" />
+    <requirement target="20260823-req-iteration-layout" decision="approved" />
+    <requirement target="20260823-req-xml-xpath-query" decision="approved" />
+    <requirement target="20260823-req-revision-idempotency" decision="approved" />
+    <requirement target="20260823-req-product-authority" decision="approved" />
+    <requirement target="20260823-req-self-hosting-skill" decision="approved" />
+  </requirements><design>
+    <decision target="20260823-dec-iteration-first" decision="accepted" />
+    <decision target="20260823-dec-xml-xpath-limits" decision="accepted" />
+    <decision target="20260823-dec-durable-idempotency" decision="accepted" />
+    <decision target="20260823-dec-owner-authority-boundary" decision="accepted" />
+  </design></confirmation></confirmations></iteration>
+

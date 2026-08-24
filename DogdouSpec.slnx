@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DogdouSpec.Cli/DogdouSpec.Cli.csproj" />
+    <Project Path="src/DogdouSpec.Core/DogdouSpec.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DogdouSpec.Cli.Tests/DogdouSpec.Cli.Tests.csproj" />
+    <Project Path="tests/DogdouSpec.Core.Tests/DogdouSpec.Core.Tests.csproj" />
+  </Folder>
+</Solution>

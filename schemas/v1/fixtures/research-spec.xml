@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration
+  id="20260823-research-projection-order"
+  schema_version="1.0"
+  revision="1"
+  kind="research"
+  status="draft"
+  created_at="2026-08-23T05:00:00Z"
+  updated_at="2026-08-23T05:00:00Z">
+  <index>
+    <summary>Research deterministic XPath projection order.</summary>
+    <term key="kind" value="research"/>
+    <term key="topic" value="projection-order"/>
+  </index>
+  <research>
+    <objective>
+      Determine which projection representation preserves XPath 1.0 composition
+      and deterministic document order.
+    </objective>
+    <questions>
+      <question id="20260823-question-projection-representation" status="open">
+        <index>
+          <summary>Compare materialized and virtual projection representations.</summary>
+          <term key="topic" value="projection-order"/>
+        </index>
+        <statement>
+          Can one shared materialized tree or a virtual XPathNavigator preserve
+          observable ordering for all supported compositions?
+        </statement>
+        <rationale>
+          Separate temporary documents cannot define a common document order.
+        </rationale>
+      </question>
+    </questions>
+    <method>
+      Build focused conformance fixtures and compare observable XPath results.
+    </method>
+    <boundaries>
+      <item>Do not select the production implementation before tests run.</item>
+    </boundaries>
+    <outputs>
+      <item>Supported answer with limitations and a proposed design decision.</item>
+    </outputs>
+    <acceptance>
+      <criterion id="20260823-accept-research-answer" decision="pending">
+        The question has a supported answer or an explicit unresolved
+        disposition.
+      </criterion>
+    </acceptance>
+  </research>
+  <confirmations/>
+</iteration>

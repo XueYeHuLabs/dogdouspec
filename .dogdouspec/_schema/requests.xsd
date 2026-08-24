@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+  <xs:include schemaLocation="spec.xsd"/>
+
+  <xs:simpleType name="TaskTransitionType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="start"/>
+      <xs:enumeration value="block"/>
+      <xs:enumeration value="resume"/>
+      <xs:enumeration value="verify"/>
+      <xs:enumeration value="complete"/>
+      <xs:enumeration value="transfer"/>
+      <xs:enumeration value="supersede"/>
+      <xs:enumeration value="cancel"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="VariableNameType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[a-z][a-z0-9_]*"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TaskUpdateResultType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="passed"/>
+      <xs:enumeration value="failed"/>
+      <xs:enumeration value="not-applicable"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TaskUpdateAcceptanceType">
+    <xs:sequence>
+      <xs:element name="criterion" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="target" type="TimeFirstIdType" use="required"/>
+          <xs:attribute name="result" type="TaskUpdateResultType" use="required"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ResolveRecordsType">
+    <xs:sequence>
+      <xs:element name="record" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="target" type="TimeFirstIdType" use="required"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TaskContextUpdateType">
+    <xs:sequence>
+      <xs:element name="summary" type="xs:string" minOccurs="0"/>
+      <xs:element name="design_snapshot" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TaskUpdateRecordsType">
+    <xs:sequence>
+      <xs:element name="record" type="RecordType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TaskUpdateType">
+    <xs:sequence>
+      <xs:element name="acceptance" type="TaskUpdateAcceptanceType" minOccurs="0"/>
+      <xs:element name="resolve-records" type="ResolveRecordsType" minOccurs="0"/>
+      <xs:element name="context_update" type="TaskContextUpdateType" minOccurs="0"/>
+      <xs:element name="records" type="TaskUpdateRecordsType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="transition" type="TaskTransitionType" use="optional"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="occurred_at" type="xs:dateTime" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="IterationConfirmationRequestType">
+    <xs:sequence>
+      <xs:element name="summary" type="xs:string"/>
+      <xs:element name="new_design_decision" type="DesignDecisionType" minOccurs="0"/>
+      <xs:element name="requirements" type="ConfirmationTargetsType" minOccurs="0"/>
+      <xs:element name="questions" type="ConfirmationTargetsType" minOccurs="0"/>
+      <xs:element name="design" type="ConfirmationTargetsType" minOccurs="0"/>
+      <xs:element name="acceptance" type="ConfirmationTargetsType" minOccurs="0"/>
+      <xs:element name="rationale" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="iteration" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="action" type="ConfirmationActionType" use="required"/>
+    <xs:attribute name="expected_spec_revision" type="xs:positiveInteger" use="required"/>
+    <xs:attribute name="expected_tasks_revision" type="xs:positiveInteger" use="optional"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="decided_at" type="xs:dateTime" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="VariableType" mixed="true">
+    <xs:attribute name="name" type="VariableNameType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="VariablesType">
+    <xs:sequence>
+      <xs:element name="variable" type="VariableType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="AssertOperationType">
+    <xs:attribute name="test" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="NodeOperationType">
+    <xs:sequence>
+      <xs:any processContents="lax"/>
+    </xs:sequence>
+    <xs:attribute name="select" type="xs:string" use="required"/>
+    <xs:attribute name="expect" type="xs:nonNegativeInteger" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="SetAttributeOperationType">
+    <xs:attribute name="select" type="xs:string" use="required"/>
+    <xs:attribute name="expect" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="name" type="xs:NCName" use="required"/>
+    <xs:attribute name="value" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="RemoveNodeOperationType">
+    <xs:attribute name="select" type="xs:string" use="required"/>
+    <xs:attribute name="expect" type="xs:nonNegativeInteger" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TransactionDocumentType">
+    <xs:choice minOccurs="1" maxOccurs="unbounded">
+      <xs:element name="assert" type="AssertOperationType"/>
+      <xs:element name="append-child" type="NodeOperationType"/>
+      <xs:element name="replace-node" type="NodeOperationType"/>
+      <xs:element name="set-attribute" type="SetAttributeOperationType"/>
+      <xs:element name="remove-node" type="RemoveNodeOperationType"/>
+    </xs:choice>
+    <xs:attribute name="path" type="xs:string" use="required"/>
+    <xs:attribute name="expected_revision" type="xs:positiveInteger" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TransactionType">
+    <xs:sequence>
+      <xs:element name="variables" type="VariablesType" minOccurs="0"/>
+      <xs:element name="document" type="TransactionDocumentType" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="operation_id" type="TimeFirstIdType" use="required"/>
+  </xs:complexType>
+
+  <xs:element name="task-update" type="TaskUpdateType"/>
+  <xs:element name="iteration-confirmation" type="IterationConfirmationRequestType"/>
+  <xs:element name="transaction" type="TransactionType"/>
+</xs:schema>

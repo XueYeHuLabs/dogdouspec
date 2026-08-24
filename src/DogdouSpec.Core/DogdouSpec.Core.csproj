@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>DogdouSpec.Core</RootNamespace>
+    <AssemblyName>DogdouSpec.Core</AssemblyName>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\schemas\v1\*.xsd" LinkBase="Schemas\v1" LogicalName="schemas.v1.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\templates\v1\*.xml" LinkBase="Templates\v1" LogicalName="templates.v1.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<knowledge
+  id="20260823-knowledge"
+  schema_version="1.0"
+  revision="1">
+  <index>
+    <summary>Verified reusable project knowledge.</summary>
+    <term key="scope" value="project"/>
+  </index>
+</knowledge>
