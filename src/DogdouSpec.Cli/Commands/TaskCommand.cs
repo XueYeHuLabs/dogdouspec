@@ -16,10 +16,54 @@ public static class TaskCommand
 
         taskCmd.Add(BuildUpdateCommand());
         taskCmd.Add(BuildAddCommand());
+        taskCmd.Add(BuildQuickCommand());
         taskCmd.Add(BuildReviseCommand());
         taskCmd.Add(BuildSplitCommand());
 
         return taskCmd;
+    }
+
+    private static Command BuildQuickCommand()
+    {
+        var cmd = new Command("quick", "Create a compact normal task; --start creates it in-progress atomically (mutating unless --dry-run)");
+        var title = new Option<string>("--title") { Required = true, Description = "Task title" };
+        var scope = new Option<string[]>("--scope") { Required = true, AllowMultipleArgumentsPerToken = true, Description = "Repeatable repository include path" };
+        var done = new Option<string>("--done-when") { Required = true, Description = "Single observable completion condition" };
+        var why = new Option<string>("--why") { Required = true, Description = "Reason for this bounded work" };
+        var origin = new Option<string[]>("--origin") { AllowMultipleArgumentsPerToken = true, Description = "Repeatable approved requirement ID; omitted means operational supports origin" };
+        var depends = new Option<string[]>("--depends-on") { AllowMultipleArgumentsPerToken = true, Description = "Repeatable prerequisite task ID" };
+        var term = new Option<string[]>("--term") { AllowMultipleArgumentsPerToken = true, Description = "Repeatable index key=value" };
+        var iteration = new Option<string?>("--iteration") { Description = "Iteration ID; omitted auto-discovers exactly one active iteration" };
+        var revision = new Option<int?>("--expected-revision") { Description = "Exact tasks.xml revision; omitted resolves the current revision" };
+        var start = new Option<bool>("--start") { Description = "Atomically create the final in-progress task with start history" };
+        var dryRun = new Option<bool>("--dry-run") { Description = "Validate without writing; XML prints request and human prints summary" };
+        var id = new Option<string?>("--id") { Description = "Replayable task ID; must be supplied with --operation-id" };
+        var operationId = new Option<string?>("--operation-id") { Description = "Replayable ID with UTC timestamp prefix; must be supplied with --id" };
+        var workspace = new Option<string?>("--workspace-root");
+        var formatOption = new Option<string?>("--format"); formatOption.AcceptOnlyFromAmong("xml", "human");
+        foreach (var option in new Option[] { title, scope, done, why, origin, depends, term, iteration, revision, start, dryRun, id, operationId, workspace, formatOption }) cmd.Add(option);
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, findError) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspace), Environment.CurrentDirectory);
+            if (!found || findError != null) { Console.Error.Write(new DiagnosticsEnvelope("task quick", findError!).Format(format)); return 2; }
+            var input = new QuickTaskInput(parse.GetValue(title)!, parse.GetValue(scope) ?? Array.Empty<string>(), parse.GetValue(done)!, parse.GetValue(why)!,
+                parse.GetValue(origin) ?? Array.Empty<string>(), parse.GetValue(depends) ?? Array.Empty<string>(), parse.GetValue(term) ?? Array.Empty<string>(),
+                parse.GetValue(iteration), parse.GetValue(revision), parse.GetValue(start), parse.GetValue(dryRun), parse.GetValue(id), parse.GetValue(operationId));
+            var (success, result, envelope, diagnostics) = TaskQuick.Create(root, input);
+            if (!success || diagnostics.Count > 0) { var d = new DiagnosticsEnvelope("task quick", diagnostics); Console.Error.Write(d.Format(format)); return d.GetExitCode(); }
+            if (input.DryRun && result != null)
+            {
+                if (format == OutputFormat.Human)
+                    Console.Out.WriteLine($"Quick task preview: iteration={result.IterationId}, expected_revision={result.ExpectedRevision}, task={result.Task.Attribute("id")?.Value}, status={result.Task.Attribute("status")?.Value}. Use --format xml to view the canonical request.");
+                else
+                    Console.Out.Write(result.RequestXml);
+                return 0;
+            }
+            if (envelope != null) Console.Out.Write(envelope.Format(format));
+            return 0;
+        });
+        return cmd;
     }
 
     private static Command BuildAddCommand()

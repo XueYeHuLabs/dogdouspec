@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<tasks id="20260823-tasks-dogdouspec-v1" iteration="20260823-dogdouspec-v1" schema_version="1.0" revision="25">
+<tasks id="20260823-tasks-dogdouspec-v1" iteration="20260823-dogdouspec-v1" schema_version="1.0" revision="29">
   <index>
     <summary>Tasks for iteration 20260823-dogdouspec-v1.</summary>
     <term key="iteration" value="20260823-dogdouspec-v1" />
@@ -502,4 +502,93 @@
         <ref scope="document" target="20260824-taskaccept-change-docs" relation="covers" />
       </covers>
     </record></records>
-</task></tasks>
+</task><task id="20260824-task-quick-entry" status="done" created_at="2026-08-24T03:22:18Z" updated_at="2026-08-24T04:04:00Z" started_at="2026-08-24T03:22:42Z" completed_at="2026-08-24T04:04:00Z">
+    <index>
+      <summary>Add a low-friction Quick Task entry point while preserving the normal Task model, traceability, and authority boundaries.</summary>
+      <term key="component" value="task-quick" />
+      <term key="topic" value="operational-task" />
+      <term key="kind" value="implementation" />
+    </index>
+    <title>Add the Quick Task workflow</title>
+    <objective>Implement task quick as a compact CLI helper for bounded ad hoc work, including operational iteration origins, optional atomic create-and-start, dry-run preview, deterministic metadata, and normal XPath resumption.</objective>
+    <rationale>The formal task.add XML flow is unnecessarily expensive for medium-sized temporary technical work, but bypassing Task state, acceptance, history, and owner authority would create untracked execution.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="schemas/v1/**" />
+        <include path="templates/v1/**" />
+        <include path="src/DogdouSpec.Core/**" />
+        <include path="src/DogdouSpec.Cli/**" />
+        <include path="tests/**" />
+        <include path="skills/dogdouspec/**" />
+        <include path="docs/**" />
+        <include path="README.md" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260823-req-repo-local-cli" relation="implements" />
+      <ref scope="iteration" target="20260823-req-product-authority" relation="implements" />
+      <ref scope="iteration" target="20260823-req-self-hosting-skill" relation="implements" />
+    </origin>
+    <constraints>
+      <constraint id="20260824-constraint-quick-normal-task">Quick is an input convenience only; persisted work remains a normal Task in the iteration tasks.xml document and uses the existing lifecycle.</constraint>
+      <constraint id="20260824-constraint-quick-authority">Operational Quick Tasks cannot satisfy product Requirement coverage or modify owner-controlled product state.</constraint>
+      <constraint id="20260824-constraint-quick-atomic-start">The start option must publish create-and-start as one tasks.xml revision with complete generated history, never as a hidden partially successful two-command sequence.</constraint>
+      <constraint id="20260824-constraint-quick-compatible">Existing task add/update/split/revise commands, schemas, workspaces, and two-phase XPath selection remain compatible.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260824-taskaccept-quick-cli" status="passed">The public task quick command accepts compact title, scope, done-when, why, origin, dependency, index-term, iteration, revision, start, and dry-run inputs; it auto-discovers the unique active iteration when omitted and fails explicitly on ambiguity.</criterion>
+      <criterion id="20260824-taskaccept-quick-origin" status="passed">A Quick Task either implements explicitly selected existing requirements or, when no requirement is supplied, has exactly one current-iteration supports origin; mixed or external iteration origins are rejected.</criterion>
+      <criterion id="20260824-taskaccept-quick-operational" status="passed">Iteration-origin operational Tasks can execute in an active iteration and block technical iteration readiness while non-terminal, but never count as Requirement implementation coverage or product acceptance.</criterion>
+      <criterion id="20260824-taskaccept-quick-start" status="passed">Without start the command atomically creates one pending Task; with start it atomically creates one in-progress Task with created_at, updated_at, started_at, start history, and one revision increment.</criterion>
+      <criterion id="20260824-taskaccept-quick-safety" status="passed">Quick Task writes enforce writer locking, exact or safely auto-resolved revision preconditions, monotonic UTC timestamps, document and request limits, prospective validation, durable idempotency receipts, and deterministic machine output.</criterion>
+      <criterion id="20260824-taskaccept-quick-preview" status="passed">Dry-run returns the complete generated Task/request representation without modifying any managed document, revision, or temporary transaction state.</criterion>
+      <criterion id="20260824-taskaccept-quick-workflow" status="passed">Skill, README, CLI contract, help, templates or examples, and public-CLI end-to-end tests teach when to use revise, quick, change propose, or backlog and prove XPath resume behavior.</criterion>
+    </acceptance>
+    <context>
+      <summary>Implemented and independently reviewed the normal-Task Quick entry path, atomic start, operational origin, shared dry-run preflight, and low-level transition guards.</summary>
+      <key_points>
+        <point id="20260824-point-quick-now">Use Quick Task only for bounded work intended to execute now; deferred work belongs in backlog.</point>
+        <point id="20260824-point-quick-escalate">If execution crosses product, architecture, policy, or acceptance boundaries, stop and use change propose rather than rewriting the Quick Task.</point>
+        <point id="20260824-point-quick-no-pointer">Started Quick Tasks are discovered by the existing in-progress XPath query; no global current-task pointer is introduced.</point>
+      </key_points>
+    </context>
+    <records>
+      <record id="20260824T032218Z-record-quick-entry-create" kind="discussion" status="informational" created_at="2026-08-24T03:22:18Z" actor="primary-agent" operation_id="20260824T032218Z-taskadd-quick-entry">
+        <summary>Defined the bounded Quick Task contract from the owner-requested workflow supplement.</summary>
+      </record>
+    <record id="20260824T032218Z-taskadd-quick-entry-receipt" kind="discussion" status="informational" created_at="2026-08-24T03:22:18Z" actor="primary-agent" operation_id="20260824T032218Z-taskadd-quick-entry"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="a91df3baf6c3314aa71a41e8df1754f73d8d094fcf456a8278bee531788c128f" /></index><summary>Task addition receipt.</summary></record><record id="20260824T032242Z-record-quick-entry-start" kind="start" status="informational" created_at="2026-08-24T03:22:42Z" actor="primary-agent" operation_id="20260824T032242Z-update-quick-entry-start">
+      <summary>Started implementation of the Quick Task entry point using Terra High for the primary bounded implementation pass.</summary>
+    </record><record id="20260824T040300Z-record-quick-entry-verification" kind="verification" status="informational" created_at="2026-08-24T04:03:00Z" actor="primary-agent" operation_id="20260824T040300Z-update-quick-entry-verify">
+      <index>
+        <summary>Quick Task implementation verification.</summary>
+        <term key="result" value="passed" />
+        <term key="tests" value="563" />
+        <term key="review" value="terra-high" />
+      </index>
+      <summary>Full build passed with 414 Core and 149 CLI tests, zero warnings and errors; workspace validation, XML/human dry-run, duplicate rejection, replay grammar, no-write identity, explicit-origin atomic start, and low-level transition guards were verified. Independent Terra High review found no remaining P0, P1, or P2 issues.</summary>
+      <covers>
+        <ref scope="document" target="20260824-taskaccept-quick-cli" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-origin" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-operational" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-start" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-safety" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-preview" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-workflow" relation="covers" />
+      </covers>
+    </record><record id="20260824T040400Z-record-quick-entry-completion" kind="completion" status="informational" created_at="2026-08-24T04:04:00Z" actor="primary-agent" operation_id="20260824T040400Z-update-quick-entry-complete">
+      <index>
+        <summary>Quick Task workflow completed.</summary>
+        <term key="result" value="done" />
+      </index>
+      <summary>Delivered the compact Quick Task CLI as a normal Task workflow, closed the authority and dry-run review findings, documented its use, and passed the full verification suite.</summary>
+      <covers>
+        <ref scope="document" target="20260824-taskaccept-quick-cli" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-origin" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-operational" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-start" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-safety" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-preview" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-quick-workflow" relation="covers" />
+      </covers>
+    </record></records>
+  </task></tasks>

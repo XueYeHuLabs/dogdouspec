@@ -108,14 +108,16 @@ dogdouspec.cmd <command> [options]
     ```
     Atomically appends a complete schema-valid element with a project-unique time-first ID to a managed document under a single selected parent element. Enforces protected-state authority rules, prospective whole-workspace validation, deterministic root revision increment, and identity-based idempotency.
 
-13. **Task Operations (`task update`, `task add`, `task revise`, `task split`)**
+13. **Task Operations (`task update`, `task add`, `task quick`, `task revise`, `task split`)**
     ```cmd
     dogdouspec.cmd task update --iteration ID --task TASK_ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
     dogdouspec.cmd task add --iteration ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
+    dogdouspec.cmd task quick --title TEXT --scope PATH --done-when TEXT --why TEXT [--origin REQUIREMENT ...] [--depends-on TASK ...] [--term key=value ...] [--iteration ID] [--expected-revision N] [--start] [--dry-run] [--id TASK_ID] [--operation-id ID] [--workspace-root PATH] [--format xml|human]
     dogdouspec.cmd task revise --iteration ID --task TASK_ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
     dogdouspec.cmd task split --iteration ID --task TASK_ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
     ```
     High-level schema-aware task mutations. Enforces legal task state transitions, terminal task immutability, replanning execution freezes, origin requirement verification, durable record stamping, and revision concurrency.
+    `task quick` is only a compact input helper: it persists a normal Task. Without `--origin` it creates one operational `supports` origin to the current active iteration; with origins it creates `implements` edges to Requirements. `--start` writes the final in-progress task, start record, and receipt in one tasks.xml revision. `--dry-run` prints the generated request without writing.
 
 14. **Requirement Proposal (`requirement propose`)**
     ```cmd

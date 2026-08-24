@@ -935,6 +935,11 @@ public static class IterationConfirmer
                     var originRefs = task.Element("origin")?.Elements("ref").ToList() ?? new List<XElement>();
                     foreach (var oRef in originRefs)
                     {
+                        if (string.Equals(oRef.Attribute("relation")?.Value, "supports", StringComparison.Ordinal) &&
+                            string.Equals(oRef.Attribute("target")?.Value, normIterId, StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
                         var targetReqId = oRef.Attribute("target")?.Value ?? string.Empty;
                         if (!specReqStatuses.TryGetValue(targetReqId, out var reqStatus) ||
                             !string.Equals(reqStatus, "approved", StringComparison.Ordinal))

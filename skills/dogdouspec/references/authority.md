@@ -21,7 +21,7 @@ The core engine enforces protected state rules during all low-level mutations (`
 - Attempting to modify decided requirements, design decisions, research questions, or acceptance criteria returns `OWNER_DECISION_REQUIRED`.
 - Generic mutations cannot append confirmation records.
 - Tasks in terminal status (`done`, `transferred`, `superseded`, `cancelled`) are immutable; metadata edits or non-informational appends return `TASK_IMMUTABLE` (exit code `4`).
-- Execution transitions (`start`, `resume`, `verify`, `complete`) require every task origin requirement to exist and be `approved`. Planning may still add pending tasks for proposed requirements during replanning.
+- Execution transitions (`start`, `resume`, `verify`, `complete`) require every requirement origin to exist and be `approved`. An operational Task instead has exactly one current-iteration `supports` origin; it may execute only while active, never satisfies Requirement coverage, and remains a normal non-terminal readiness blocker.
 
 ## Surprise, Change, & Replanning Protocol
 

@@ -28,7 +28,17 @@ public static class TaskAdder
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0") => AddInternal(workspaceRoot, iterationId, expectedRevision, requestXml, false, false, "task add", clock, faultInjector, version);
+
+    /// <summary>Creates a normal task from the compact quick-task request.  The start form is one write, not add then update.</summary>
+    public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) AddQuick(
+        string workspaceRoot, string iterationId, int expectedRevision, string requestXml, bool start, bool dryRun = false,
+        IClock? clock = null, IFaultInjector? faultInjector = null, string version = "1.0") =>
+        AddInternal(workspaceRoot, iterationId, expectedRevision, requestXml, start, dryRun, "task quick", clock, faultInjector, version);
+
+    private static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) AddInternal(
+        string workspaceRoot, string iterationId, int expectedRevision, string requestXml, bool start, bool dryRun,
+        string commandName, IClock? clock, IFaultInjector? faultInjector, string version)
     {
         if (string.IsNullOrWhiteSpace(workspaceRoot))
         {
@@ -40,10 +50,10 @@ public static class TaskAdder
             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Iteration ID must be specified.") });
         }
 
-        var normIterId = iterationId.Trim().Replace('\\', '/').Trim('/');
-        if (!ProjectSemanticIndex.IsValidTimeFirstId(normIterId))
+        var (iterationValid, normIterId, iterationError) = PathSecurity.ValidateIterationId(iterationId);
+        if (!iterationValid || iterationError != null)
         {
-            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidIdGrammar, $"Iteration ID '{iterationId}' does not conform to the time-first ID grammar.") });
+            return (false, null, new[] { iterationError ?? Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Iteration ID '{iterationId}' is invalid.") });
         }
 
         if (expectedRevision <= 0)
@@ -175,15 +185,18 @@ public static class TaskAdder
         }
 
         var taskStatus = taskElem.Attribute("status")?.Value;
-        if (!string.Equals(taskStatus, "pending", StringComparison.Ordinal))
+        var expectedStatus = start ? "in-progress" : "pending";
+        if (!string.Equals(taskStatus, expectedStatus, StringComparison.Ordinal))
         {
-            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Newly added task '{taskId}' must have status='pending'. Found status='{taskStatus}'.", normTasksDocPath) });
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"New task '{taskId}' must have status='{expectedStatus}'. Found status='{taskStatus}'.", normTasksDocPath) });
         }
         if (!string.Equals(taskElem.Attribute("created_at")?.Value, occurredAt, StringComparison.Ordinal) ||
             !string.Equals(taskElem.Attribute("updated_at")?.Value, occurredAt, StringComparison.Ordinal) ||
-            taskElem.Attribute("started_at") != null || taskElem.Attribute("completed_at") != null)
+            (!start && taskElem.Attribute("started_at") != null) ||
+            (start && !string.Equals(taskElem.Attribute("started_at")?.Value, occurredAt, StringComparison.Ordinal)) ||
+            taskElem.Attribute("completed_at") != null)
         {
-            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"New task '{taskId}' must stamp created_at and updated_at exactly to task-add/@occurred_at and must not carry started_at or completed_at.", normTasksDocPath) });
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"New task '{taskId}' must stamp created_at and updated_at to the request time; quick --start must also stamp started_at, and completed_at is forbidden.", normTasksDocPath) });
         }
 
         // Stamp operation_id on records in task
@@ -212,7 +225,18 @@ public static class TaskAdder
             recordsElem = new XElement("records");
             taskElem.Add(recordsElem);
         }
-        recordsElem.Add(CreateReceipt(addId, actor, occurredAt, requestFingerprint, "Task addition receipt."));
+        if (start)
+        {
+            var startRecord = recordsElem.Elements("record").SingleOrDefault(r => string.Equals(r.Attribute("kind")?.Value, "start", StringComparison.Ordinal));
+            if (startRecord == null ||
+                !string.Equals(startRecord.Attribute("status")?.Value, "informational", StringComparison.Ordinal) ||
+                !string.Equals(startRecord.Attribute("created_at")?.Value, occurredAt, StringComparison.Ordinal) ||
+                string.IsNullOrWhiteSpace(startRecord.Attribute("actor")?.Value))
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Quick --start requires exactly one informational start record stamped at occurred_at with an actor.", normTasksDocPath) });
+            }
+        }
+        recordsElem.Add(CreateReceipt(addId, actor, occurredAt, requestFingerprint, start ? "Quick task creation-and-start receipt." : "Task addition receipt."));
 
         // 2. Read tasks.xml and spec.xml
         if (!File.Exists(fullTasksDocPath))
@@ -268,21 +292,55 @@ public static class TaskAdder
         {
             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to read '{normSpecDocPath}': {ex.Message}", normSpecDocPath) });
         }
+        if (start && !string.Equals(specDoc.Root?.Attribute("status")?.Value, "active", StringComparison.Ordinal))
+        {
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IterationReplanningExecutionFrozen, $"Quick --start requires iteration '{normIterId}' to be active.", normSpecDocPath) });
+        }
 
-        // Validate origin requirement targets exist in spec.xml
+        // A normal task implements one or more requirements.  Quick operational work
+        // instead has exactly one supports edge to the owning iteration.
         var originRefs = taskElem.Element("origin")?.Elements("ref").ToList() ?? new List<XElement>();
         if (originRefs.Count == 0)
         {
             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.SemanticContextIncomplete, $"Task '{taskId}' must have at least one <origin> reference.", normTasksDocPath) });
         }
 
-        var specReqIds = specDoc.Descendants("requirement").Select(r => (string?)r.Attribute("id")).Where(id => id != null).ToHashSet(StringComparer.Ordinal);
-        foreach (var oRef in originRefs)
+        var requirementDefinitions = specDoc.Root?.Element("product")?.Element("requirements")?.Elements("requirement")
+            .Where(r => !string.IsNullOrWhiteSpace(r.Attribute("id")?.Value)).ToList() ?? new List<XElement>();
+        if (requirementDefinitions.GroupBy(r => r.Attribute("id")!.Value, StringComparer.Ordinal).Any(g => g.Count() != 1))
         {
-            var target = oRef.Attribute("target")?.Value;
-            if (!string.IsNullOrEmpty(target) && !specReqIds.Contains(target))
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DuplicateId, "Iteration contains duplicate requirement IDs.", normSpecDocPath) });
+        }
+        var specReqIds = requirementDefinitions.Select(r => r.Attribute("id")!.Value).ToHashSet(StringComparer.Ordinal);
+        var operational = originRefs.Any(r => string.Equals(r.Attribute("relation")?.Value, "supports", StringComparison.Ordinal));
+        if (operational)
+        {
+            if (!string.Equals(commandName, "task quick", StringComparison.Ordinal) ||
+                originRefs.Count != 1 ||
+                !string.Equals(originRefs[0].Attribute("scope")?.Value, "iteration", StringComparison.Ordinal) ||
+                !string.Equals(originRefs[0].Attribute("relation")?.Value, "supports", StringComparison.Ordinal) ||
+                !string.Equals(originRefs[0].Attribute("target")?.Value, normIterId, StringComparison.Ordinal))
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DanglingReference, $"Origin target requirement '{target}' does not exist in '{normSpecDocPath}'.", normTasksDocPath) });
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidReferenceTargetType, $"Operational origin for task '{taskId}' must be exactly one iteration supports reference to '{normIterId}'.", normTasksDocPath) });
+            }
+        }
+        else
+        {
+            foreach (var oRef in originRefs)
+            {
+                var target = oRef.Attribute("target")?.Value;
+                if (!string.Equals(oRef.Attribute("scope")?.Value, "iteration", StringComparison.Ordinal) ||
+                    !string.Equals(oRef.Attribute("relation")?.Value, "implements", StringComparison.Ordinal) ||
+                    string.IsNullOrEmpty(target) || !specReqIds.Contains(target))
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DanglingReference, $"Origin target requirement '{target}' does not exist or is not an iteration implements reference in '{normSpecDocPath}'.", normTasksDocPath) });
+                }
+            }
+            if (start)
+            {
+                var statuses = requirementDefinitions.ToDictionary(r => r.Attribute("id")!.Value, r => r.Attribute("status")?.Value ?? string.Empty, StringComparer.Ordinal);
+                if (originRefs.Any(r => !statuses.TryGetValue(r.Attribute("target")?.Value ?? string.Empty, out var status) || !string.Equals(status, "approved", StringComparison.Ordinal)))
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.OwnerDecisionRequired, "Quick --start requires every origin requirement to be approved.", normTasksDocPath) });
             }
         }
 
@@ -320,7 +378,7 @@ public static class TaskAdder
                 }
 
                 var alreadyAppliedEnv = new MutationEnvelope(
-                    "task add",
+                    commandName,
                     new[] { new MutatedDocument(normTasksDocPath, actualRevision) },
                     alreadyApplied: true);
                 return (true, alreadyAppliedEnv, Array.Empty<Diagnostic>());
@@ -394,9 +452,25 @@ public static class TaskAdder
             actualRevision,
             newRevision);
 
+        if (dryRun)
+        {
+            // This is intentionally the same prospective whole-workspace validation
+            // used by the committer, but does not acquire a writer lock or create
+            // transaction staging/recovery state.
+            var previewValidation = SchemaValidator.ValidateProspective(
+                workspaceRoot,
+                new[] { new ProspectiveDocument(normTasksDocPath, replacementContent, IsNew: false, ExpectedRevision: actualRevision) },
+                version);
+            if (!previewValidation.IsValid)
+            {
+                return (false, null, previewValidation.Diagnostics);
+            }
+            return (true, new MutationEnvelope(commandName, new[] { new MutatedDocument(normTasksDocPath, newRevision, actualRevision) }), Array.Empty<Diagnostic>());
+        }
+
         return WorkspaceTransactionCommitter.Commit(
             workspaceRoot,
-            "task add",
+            commandName,
             new[] { operation },
             clock,
             faultInjector,

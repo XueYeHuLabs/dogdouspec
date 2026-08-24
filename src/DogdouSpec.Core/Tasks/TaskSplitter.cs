@@ -326,6 +326,12 @@ public static class TaskSplitter
                     foreach (var oRef in originRefs)
                     {
                         var target = oRef.Attribute("target")?.Value;
+                        if (string.Equals(oRef.Attribute("relation")?.Value, "supports", StringComparison.Ordinal) &&
+                            string.Equals(oRef.Attribute("scope")?.Value, "iteration", StringComparison.Ordinal) &&
+                            string.Equals(target, normIterId, StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
                         if (!string.IsNullOrEmpty(target) && !specReqIds.Contains(target))
                         {
                             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DanglingReference, $"Subtask origin target '{target}' does not exist in '{normSpecDocPath}'.", normTasksDocPath) });
