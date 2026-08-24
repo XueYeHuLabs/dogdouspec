@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<tasks id="20260823-tasks-dogdouspec-v1" iteration="20260823-dogdouspec-v1" schema_version="1.0" revision="17">
+<tasks id="20260823-tasks-dogdouspec-v1" iteration="20260823-dogdouspec-v1" schema_version="1.0" revision="25">
   <index>
     <summary>Tasks for iteration 20260823-dogdouspec-v1.</summary>
     <term key="iteration" value="20260823-dogdouspec-v1" />
@@ -366,6 +366,140 @@
       <covers>
         <ref scope="document" target="20260823-task-crit-iteration-action-coverage" relation="covers" />
         <ref scope="document" target="20260823-task-crit-tx-visibility-semantics" relation="covers" />
+      </covers>
+    </record></records>
+</task><task id="20260823-task-other-repo-install-guide" status="done" created_at="2026-08-23T06:37:00Z" updated_at="2026-08-23T07:00:00Z" started_at="2026-08-23T06:38:00Z" completed_at="2026-08-23T07:00:00Z">
+  <index>
+    <summary>Document a verified agent-executable installation procedure for deploying DogdouSpec from this repository into another repository.</summary>
+    <term key="component" value="installation" />
+    <term key="topic" value="other-repository" />
+    <term key="audience" value="coding-agent" />
+  </index>
+  <title>Create the other-repository installation guide</title>
+  <objective>Provide an installation and deployment guide that an Agent can follow from the committed DogdouSpec source repository without guessing paths, prerequisites, managed-state rules, or verification gates.</objective>
+  <rationale>The first usable CLI must be transferable to real repositories through an explicit, reproducible, and non-destructive repository-local procedure.</rationale>
+  <scope>
+    <repository path=".">
+      <include path="docs/INSTALL_IN_OTHER_REPOSITORY.md" />
+      <include path="README.md" />
+    </repository>
+  </scope>
+  <origin>
+    <ref scope="iteration" target="20260823-req-repo-local-cli" relation="implements" />
+    <ref scope="iteration" target="20260823-req-self-hosting-skill" relation="implements" />
+  </origin>
+  <constraints>
+    <constraint id="20260823-constraint-install-guide-current-capability">Document only deployment paths proven by the current repository; do not claim an unpublished binary package or global installation contract.</constraint>
+    <constraint id="20260823-constraint-install-guide-preserve-target">The procedure must preserve existing target-repository files, AGENTS.md guidance, and Git work.</constraint>
+  </constraints>
+  <acceptance>
+    <criterion id="20260823-taskaccept-install-guide-complete" status="passed">The guide defines prerequisites, exact source and target layout, installation commands, workspace initialization, Skill and AGENTS.md integration, validation, upgrade, rollback, and failure handling.</criterion>
+    <criterion id="20260823-taskaccept-install-guide-smoke" status="passed">A clean temporary target repository can execute the documented procedure and pass CLI version, workspace discovery, initialization, and validation smoke checks.</criterion>
+    <criterion id="20260823-taskaccept-install-guide-agent-review" status="passed">An independent Agy audit confirms that the guide is executable by an Agent without hidden assumptions or destructive defaults.</criterion>
+  </acceptance>
+  <context>
+    <summary>Use the committed 50c40cc v1 baseline as the installation source and explicitly separate tool deployment from DogdouSpec workspace initialization and project-policy integration.</summary>
+    <key_points>
+      <point id="20260823-point-install-source-pin">Pin installation to a committed source revision.</point>
+      <point id="20260823-point-install-no-direct-xml">Never copy or hand-edit another project's managed XML state.</point>
+      <point id="20260823-point-install-no-overwrite">Merge repository guidance instead of overwriting target AGENTS.md.</point>
+    </key_points>
+  </context>
+  <records><record id="20260823T063800Z-record-install-guide-start" kind="start" status="informational" created_at="2026-08-23T06:38:00Z" actor="primary-agent" operation_id="20260823T063800Z-update-install-guide-start">
+      <summary>Started installation-guide design and verification against the committed 50c40cc v1 baseline.</summary>
+    </record><record id="20260823T065900Z-record-install-guide-verify" kind="verification" status="informational" created_at="2026-08-23T06:59:00Z" actor="primary-agent" operation_id="20260823T065900Z-update-install-guide-verify">
+      <summary>Verified the external-repository installation guide against commit 50c40cc. All 15 PowerShell blocks parse, the independent clean-worktree win-x64 self-contained deployment smoke passed version and SHA256 checks, preserved existing AGENTS.md and unrelated tools, initialized and discovered the workspace from a nested directory, and passed schema/semantic validation. Full build passed 541 tests with zero warnings. A fresh read-only Agy audit returned PASS with no P0, P1, or P2 findings.</summary>
+      <covers>
+        <ref scope="document" target="20260823-taskaccept-install-guide-complete" relation="covers" />
+        <ref scope="document" target="20260823-taskaccept-install-guide-smoke" relation="covers" />
+        <ref scope="document" target="20260823-taskaccept-install-guide-agent-review" relation="covers" />
+      </covers>
+    </record><record id="20260823T070000Z-record-install-guide-complete" kind="completion" status="informational" created_at="2026-08-23T07:00:00Z" actor="primary-agent" operation_id="20260823T070000Z-update-install-guide-complete">
+      <summary>Completed the other-repository installation guide with a fail-closed repository-local deployment procedure, independent end-to-end smoke evidence, and independent Agy audit acceptance.</summary>
+      <covers>
+        <ref scope="document" target="20260823-taskaccept-install-guide-complete" relation="covers" />
+        <ref scope="document" target="20260823-taskaccept-install-guide-smoke" relation="covers" />
+        <ref scope="document" target="20260823-taskaccept-install-guide-agent-review" relation="covers" />
+      </covers>
+    </record></records>
+</task><task id="20260824-task-change-workflow-closure" status="done" created_at="2026-08-24T00:07:00Z" updated_at="2026-08-24T01:33:56Z" started_at="2026-08-24T00:08:00Z" completed_at="2026-08-24T01:33:56Z">
+  <index>
+    <summary>Close the active-iteration requirement and task change workflow with high-level atomic helpers and enforced replanning invariants.</summary>
+    <term key="component" value="change-workflow" />
+    <term key="topic" value="replanning" />
+    <term key="kind" value="implementation" />
+  </index>
+  <title>Close the active-iteration change and replanning workflow</title>
+  <objective>Implement a complete, agent-usable workflow for technical elaboration, task addition/revision/splitting, requirement proposal/replacement planning, material-change capture, replanning freezes, atomic task graph reconciliation, and owner-gated continuation without direct managed XML editing.</objective>
+  <rationale>The current v1 authority model is sound, but active-iteration changes still require low-level transaction composition and rely on Skill-only rules for frozen execution and immutable completed work.</rationale>
+  <scope>
+    <repository path=".">
+      <include path="schemas/v1/**" />
+      <include path="templates/v1/**" />
+      <include path="src/DogdouSpec.Core/**" />
+      <include path="src/DogdouSpec.Cli/**" />
+      <include path="tests/**" />
+      <include path="skills/dogdouspec/**" />
+      <include path="docs/**" />
+      <include path="README.md" />
+    </repository>
+  </scope>
+  <origin>
+    <ref scope="iteration" target="20260823-req-revision-idempotency" relation="implements" />
+    <ref scope="iteration" target="20260823-req-product-authority" relation="implements" />
+    <ref scope="iteration" target="20260823-req-self-hosting-skill" relation="implements" />
+  </origin>
+  <dependencies>
+    <ref scope="document" target="20260823-task-readiness-confirm" relation="depends-on" />
+    <ref scope="document" target="20260823-task-task-updater" relation="depends-on" />
+    <ref scope="document" target="20260823-task-transactions" relation="depends-on" />
+  </dependencies>
+  <constraints>
+    <constraint id="20260824-constraint-change-owner-boundary">No high-level helper may approve, supersede, withdraw, accept, reject, waive, or complete product state without iteration confirm and current-interaction owner instruction.</constraint>
+    <constraint id="20260824-constraint-change-history">Approved requirements and completed tasks remain immutable historical objects; corrections use successor objects and explicit provenance.</constraint>
+    <constraint id="20260824-constraint-change-atomicity">Each technical business action either commits its full spec/tasks effect with revision checks or leaves both documents unchanged.</constraint>
+    <constraint id="20260824-constraint-change-compatibility">Existing public v1 commands and valid workspaces remain compatible.</constraint>
+  </constraints>
+  <acceptance>
+    <criterion id="20260824-taskaccept-change-helpers" status="passed">Public schema-aware helpers cover task add, task revise, task split, requirement propose, material change propose, and replanning change apply without callers composing low-level XPath transactions.</criterion>
+    <criterion id="20260824-taskaccept-change-freeze" status="passed">When an iteration is replanning, Core rejects technical execution progress while allowing explicit planning reconciliation and terminal dispositions needed to form the new plan.</criterion>
+    <criterion id="20260824-taskaccept-change-immutability" status="passed">Core rejects low-level or high-level metadata/content rewrites of done, transferred, superseded, and cancelled tasks, while still allowing append-only historical records where explicitly permitted.</criterion>
+    <criterion id="20260824-taskaccept-change-replacement" status="passed">Requirement replacement preserves the old approved requirement, adds a proposed successor with provenance, requires owner dispositions, and validates task impact mapping before continuation.</criterion>
+    <criterion id="20260824-taskaccept-change-atomic" status="passed">Material change propose/apply actions use expected spec/tasks revisions, deterministic output, durable idempotency, whole-workspace prospective validation, one writer lock, and recovery-backed multi-document commits.</criterion>
+    <criterion id="20260824-taskaccept-change-e2e" status="passed">A public-CLI end-to-end scenario proves active implementation, unexpected finding, frozen replanning, requirement replacement, task split/reconciliation, owner continuation, resumed execution, and unchanged state for negative cases.</criterion>
+    <criterion id="20260824-taskaccept-change-docs" status="passed">Skill, templates, CLI help, README, and normative docs teach the exact change decision tree, authority stops, XPath resume behavior, and retry semantics.</criterion>
+  </acceptance>
+  <context>
+    <summary>Build the missing high-level change control layer on top of existing XML authority guards, revisioned transactions, task state machine, and owner confirmation engine.</summary>
+    <key_points>
+      <point id="20260824-point-change-two-stage">Separate technical change preparation/application from owner replan/continue confirmation.</point>
+      <point id="20260824-point-change-derived-resume">Do not introduce a global current-task pointer; resumed work remains XPath-derived from task states.</point>
+      <point id="20260824-point-change-no-rewrite">Use successor requirements/tasks and provenance instead of rewriting decided or terminal historical objects.</point>
+    </key_points>
+  </context>
+  <records><record id="20260824T000800Z-record-change-workflow-start" kind="start" status="informational" created_at="2026-08-24T00:08:00Z" actor="primary-agent" operation_id="20260824T000800Z-update-change-workflow-start">
+      <summary>Started high-level active-iteration change workflow closure after a clean 541-test baseline.</summary>
+    </record><record id="20260824T013332Z-record-change-workflow-verification" kind="verification" status="informational" created_at="2026-08-24T01:33:32Z" actor="primary-agent" operation_id="20260824T013332Z-update-change-workflow-verify">
+      <summary>Verified the active-iteration change workflow after independent audit and corrective closure: build.cmd passed 411 Core and 148 CLI tests with zero warnings or errors; the focused public-CLI material-change lifecycle passed; all request templates validate; git diff check and whole-workspace schema and semantic validation passed.</summary>
+      <covers>
+        <ref scope="document" target="20260824-taskaccept-change-helpers" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-freeze" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-immutability" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-replacement" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-atomic" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-e2e" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-docs" relation="covers" />
+      </covers>
+    </record><record id="20260824T013356Z-record-change-workflow-complete" kind="completion" status="informational" created_at="2026-08-24T01:33:56Z" actor="primary-agent" operation_id="20260824T013356Z-update-change-workflow-complete">
+      <summary>Completed the technical change-workflow closure. Active iterations now support bounded task elaboration, owner-gated requirement replacement, frozen material-change replanning, atomic reconciliation, durable retry receipts, and XPath-derived resumption without rewriting decided product state.</summary>
+      <covers>
+        <ref scope="document" target="20260824-taskaccept-change-helpers" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-freeze" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-immutability" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-replacement" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-atomic" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-e2e" relation="covers" />
+        <ref scope="document" target="20260824-taskaccept-change-docs" relation="covers" />
       </covers>
     </record></records>
 </task></tasks>

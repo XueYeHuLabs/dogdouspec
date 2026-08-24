@@ -87,6 +87,7 @@
       <xs:element name="statement" type="xs:string"/>
       <xs:element name="rationale" type="xs:string"/>
       <xs:element name="key_points" type="KeyPointsType" minOccurs="0"/>
+      <xs:element name="sources" type="RefListType" minOccurs="0"/>
       <xs:element name="records" type="RecordsType" minOccurs="0"/>
     </xs:sequence>
     <xs:attribute name="id" type="TimeFirstIdType" use="required"/>

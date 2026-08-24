@@ -32,7 +32,7 @@ The repository-local wrapper `dogdouspec.cmd` runs the CLI adapter directly:
 dogdouspec.cmd <command> [options]
 ```
 
-### Implemented Commands (First Vertical Slice)
+### Implemented Commands
 
 1. **Workspace Discovery**
    ```cmd
@@ -65,44 +65,72 @@ dogdouspec.cmd <command> [options]
    ```
    Atomically creates a new feature or research iteration directory with valid `spec.xml` and `tasks.xml` draft structures, project-unique deterministic time-first IDs, schema version 1.0, and revision 1. Employs workspace writer locking, startup recovery, prospective whole-workspace validation, and same-volume atomic publication.
 
-6. **Template Display**
+6. **Iteration Readiness**
+   ```cmd
+   dogdouspec.cmd iteration readiness --iteration ID --phase activation|completion [--workspace-root PATH] [--format xml|human]
+   ```
+   Deterministically evaluates and reports technical gating conditions and pending product decisions for activation or completion review without mutating document state.
+
+7. **Iteration Confirmation**
+   ```cmd
+   dogdouspec.cmd iteration confirm (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
+   ```
+   Authoritatively applies owner-instructed iteration lifecycle transitions and product requirement/design/acceptance decisions (`activate`, `accept-design-change`, `replan`, `continue`, `complete`, `cancel`, `supersede`) to `spec.xml`.
+
+8. **Template Display**
    ```cmd
    dogdouspec.cmd template show --name <NAME> [--version 1.0]
    ```
    Outputs exact template XML to standard output for inspection or redirection.
-   Available templates: `record.discussion`, `record.finding`, `record.verification`, `task.update`, `transaction.apply`, `iteration.confirmation`, `knowledge.entry`, `backlog.item`.
+   Available templates: `record.discussion`, `record.finding`, `record.verification`, `task.update`, `task.add`, `task.revise`, `task.split`, `requirement.propose`, `change.propose`, `change.apply`, `transaction.apply`, `iteration.confirmation`, `knowledge.entry`, `backlog.item`.
 
-7. **Validation**
+9. **Validation**
    ```cmd
    dogdouspec.cmd validate [--workspace-root PATH] [--iteration ID] [--document RELATIVE_PATH] [--format xml|human]
    ```
    Validates managed XML documents securely against embedded authoritative XSD schemas and semantic rules (project-wide ID uniqueness, time-first grammar, document ownership, forward reference scoping and narrowest scope, task dependency acyclicity, task done predicates, and confirmation provenance). Supports whole workspace, iteration, and single document scopes.
 
-8. **XPath Query**
-   ```cmd
-   dogdouspec.cmd query --document REF --xpath EXPR [--var name=value ...] [--workspace-root PATH] [--format xml|human]
-   ```
-   Evaluates an XPath 1.0 expression against a single managed document with support for string variables (`--var name=value`) and projection extension functions (`ds:filter`, `ds:filter-out`).
+10. **XPath Query**
+    ```cmd
+    dogdouspec.cmd query --document REF --xpath EXPR [--var name=value ...] [--workspace-root PATH] [--format xml|human]
+    ```
+    Evaluates an XPath 1.0 expression against a single managed document with support for string variables (`--var name=value`) and projection extension functions (`ds:filter`, `ds:filter-out`).
 
-9. **Scoped Search**
+11. **Scoped Search**
     ```cmd
     dogdouspec.cmd search --scope project|iteration [--iteration ID] --xpath EXPR [--var name=value ...] [--workspace-root PATH] [--format xml|human]
     ```
     Evaluates an XPath 1.0 expression independently across all managed documents in a scope in deterministic normalized relative-path order.
 
-10. **Generic Append**
+12. **Generic Append**
     ```cmd
     dogdouspec.cmd append --document REF --parent-xpath EXPR [--var name=value ...] --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
     ```
     Atomically appends a complete schema-valid element with a project-unique time-first ID to a managed document under a single selected parent element. Enforces protected-state authority rules, prospective whole-workspace validation, deterministic root revision increment, and identity-based idempotency.
 
-11. **Task Update**
+13. **Task Operations (`task update`, `task add`, `task revise`, `task split`)**
     ```cmd
     dogdouspec.cmd task update --iteration ID --task TASK_ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
+    dogdouspec.cmd task add --iteration ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
+    dogdouspec.cmd task revise --iteration ID --task TASK_ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
+    dogdouspec.cmd task split --iteration ID --task TASK_ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
     ```
-    Atomically executes Task state transitions, acceptance criterion result updates, active Task-local record resolutions, context replacement/updates, and appends structured records stamped with `operation_id`. Enforces legal Task transitions, prospective completion terminal predicates, durable record-based idempotency, and revision concurrency.
+    High-level schema-aware task mutations. Enforces legal task state transitions, terminal task immutability, replanning execution freezes, origin requirement verification, durable record stamping, and revision concurrency.
 
-12. **Low-level Transaction Apply**
+14. **Requirement Proposal (`requirement propose`)**
+    ```cmd
+    dogdouspec.cmd requirement propose --iteration ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
+    ```
+    Appends a new proposed requirement (`status="proposed"`) to `spec.xml`. Non-proposed statuses fail with `OWNER_DECISION_REQUIRED`.
+
+15. **Mid-flight Change Operations (`change propose`, `change apply`)**
+    ```cmd
+    dogdouspec.cmd change propose --iteration ID --expected-spec-revision N --expected-tasks-revision M (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
+    dogdouspec.cmd change apply --iteration ID --expected-spec-revision N --expected-tasks-revision M (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
+    ```
+    Multi-document atomic mutations across `spec.xml` and `tasks.xml`. `change propose` attaches active finding records, freezes target tasks to `blocked`, and proposes new requirements. `change apply` runs during `status="replanning"` to resolve active findings, apply terminal task dispositions, and add successor tasks.
+
+16. **Low-level Transaction Apply**
     ```cmd
     dogdouspec.cmd transaction apply (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
     ```
@@ -142,7 +170,12 @@ When invoking `dogdouspec.cmd` from PowerShell:
 | 6 | Filesystem commit or recovery failure |
 | 7 | Input, query, projection, or output limit exceeded |
 
-## 5. Next Slice Scope
+## 5. Installation in Other Repositories
 
-The subsequent vertical slice will implement iteration readiness and product
-confirmation (`iteration readiness`, `iteration confirm`).
+To deploy and use DogdouSpec in an existing Windows Git repository, follow the verified step-by-step procedure in [docs/INSTALL_IN_OTHER_REPOSITORY.md](docs/INSTALL_IN_OTHER_REPOSITORY.md).
+
+## 6. Architectural Boundaries & Workflow
+
+- **Repository-Local State**: Authoritative specification and task state is stored entirely within `.dogdouspec/` XML documents and validated against embedded XSD v1 schemas.
+- **Authority Boundaries**: Technical agents manage task lifecycles, execution records, and code changes autonomously. Product requirements, design decisions, and iteration completions require explicit human owner confirmation via `iteration confirm`.
+- **Coding Agent Workflow**: See [`AGENTS.md`](AGENTS.md) and [`skills/dogdouspec/SKILL.md`](skills/dogdouspec/SKILL.md) for workflow integration rules and compact two-phase query patterns.

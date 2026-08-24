@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The command line supplies iteration, expected spec revision, and expected tasks revision. -->
+<change-apply
+  id="20000101T000000Z-changeapply-replace"
+  actor="replace-actor"
+  occurred_at="2000-01-01T00:00:00Z">
+  <summary>Apply replanned task dispositions and successor tasks following owner confirmation.</summary>
+  <resolve_findings>
+    <finding task="20000101-task-target" target="20000101T000000Z-rec-finding-active"/>
+  </resolve_findings>
+  <task_dispositions>
+    <task target="20000101-task-target" transition="supersede" rationale="Superseded by replanned task 20000101-task-successor.">
+      <record
+        id="20000101T000000Z-rec-disp"
+        kind="discussion"
+        status="informational"
+        created_at="2000-01-01T00:00:00Z"
+        actor="replace-actor">
+        <summary>Task superseded during replanning.</summary>
+      </record>
+    </task>
+  </task_dispositions>
+  <add_tasks>
+    <task
+      id="20000101-task-successor"
+      status="pending"
+      created_at="2000-01-01T00:00:00Z"
+      updated_at="2000-01-01T00:00:00Z">
+      <index>
+        <summary>Successor task summary.</summary>
+      </index>
+      <title>Successor task title</title>
+      <objective>Successor task objective</objective>
+      <rationale>Successor task implementing approved replanned requirement</rationale>
+      <scope>
+        <repository path="src/example.txt"/>
+      </scope>
+      <origin>
+        <ref scope="iteration" target="20000101-req-new-approved" relation="implements"/>
+      </origin>
+      <constraints/>
+      <acceptance>
+        <criterion id="20000101-crit-successor" status="pending">
+          Acceptance criterion for successor task
+        </criterion>
+      </acceptance>
+      <context>
+        <summary>Technical context for successor task.</summary>
+      </context>
+      <records/>
+    </task>
+  </add_tasks>
+  <!-- The command persists each disposition rationale plus one deterministic receipt
+       containing request-sha256. The hash is an idempotency token, not a signature. -->
+</change-apply>

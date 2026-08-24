@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The command line supplies iteration, expected spec revision, and expected tasks revision. -->
+<change-propose
+  id="20000101T000000Z-changeprop-replace"
+  actor="replace-actor"
+  occurred_at="2000-01-01T00:00:00Z">
+  <summary>Replace with description of why a mid-flight change is proposed.</summary>
+  <finding_record task="20000101-task-target">
+    <record
+      id="20000101T000000Z-rec-finding-active"
+      kind="finding"
+      status="active"
+      created_at="2000-01-01T00:00:00Z"
+      actor="replace-actor">
+      <summary>Discovery requiring requirement or scope replanning.</summary>
+    </record>
+  </finding_record>
+  <freeze_tasks>
+    <task target="20000101-task-target" reason="Blocked pending product replanning decision."/>
+  </freeze_tasks>
+  <!-- The command persists each freeze reason as an informational task record and
+       adds one receipt with request-sha256. The hash is an idempotency token, not a signature. -->
+  <proposed_requirements>
+    <requirement id="20000101-req-new-proposed" status="proposed">
+      <index>
+        <summary>New proposed requirement summary.</summary>
+      </index>
+      <statement>Requirement statement</statement>
+      <rationale>Rationale discovered during task execution</rationale>
+      <!-- A replacement requirement names every requirement it replaces. Same-spec targets use scope="document". -->
+      <sources>
+        <ref scope="document" target="20000101-req-old-approved" relation="supersedes"/>
+      </sources>
+    </requirement>
+  </proposed_requirements>
+</change-propose>

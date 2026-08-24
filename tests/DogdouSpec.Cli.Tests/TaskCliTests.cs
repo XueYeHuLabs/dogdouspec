@@ -383,6 +383,19 @@ public sealed class TaskCliTests
             "--workspace-root", e2eDir);
         Assert.AreEqual(0, createCode, $"Create iteration failed: {createErr}");
 
+        // Product authority approves the baseline requirement before any task
+        // may enter execution. The task itself is still added separately.
+        var activationTime = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture);
+        var activateReq = $"""
+<iteration-confirmation id="20260824T000100Z-confirm-e2e-activate" iteration="20260824-e2e-feature" action="activate" expected_spec_revision="1" expected_tasks_revision="1" actor="owner" decided_at="{activationTime}">
+  <summary>Owner approves the baseline E2E requirement.</summary>
+  <requirements><requirement target="20260824-req-e2e-feature" decision="approved"/></requirements>
+  <acceptance><criterion target="20260824-crit-e2e-feature" decision="accepted"/></acceptance>
+</iteration-confirmation>
+""";
+        var (activateCode, _, activateErr) = RunCliWithStdin(activateReq, "iteration", "confirm", "--stdin", "--workspace-root", e2eDir);
+        Assert.AreEqual(0, activateCode, $"Activation failed: {activateErr}");
+
         // 3. Append a task into tasks.xml
         var taskFragment = """
 <task

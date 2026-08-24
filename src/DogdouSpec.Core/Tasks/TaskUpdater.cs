@@ -248,6 +248,8 @@ public static class TaskUpdater
             }
         }
 
+        var reqContextUpdate = reqRoot.Element("context_update");
+
         // 6. Read target document
         XDocument targetDoc;
         try
@@ -437,8 +439,11 @@ public static class TaskUpdater
                 }
             }
 
-            // Check timestamps
-            if (!string.Equals(targetTask.Attribute("updated_at")?.Value, occurredAt, StringComparison.Ordinal))
+            // Informational annotations on terminal tasks deliberately preserve
+            // historical metadata. All other updates set updated_at to occurred_at.
+            var replayStatus = targetTask.Attribute("status")?.Value;
+            var replayIsTerminal = replayStatus is "done" or "transferred" or "superseded" or "cancelled";
+            if (!replayIsTerminal && !string.Equals(targetTask.Attribute("updated_at")?.Value, occurredAt, StringComparison.Ordinal))
             {
                 return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Task updated_at '{targetTask.Attribute("updated_at")?.Value}' does not match occurred_at '{occurredAt}' for operation '{updateId}'.", normDocPath) });
             }
@@ -521,8 +526,89 @@ public static class TaskUpdater
             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"task-update @occurred_at '{occurredAt}' cannot be earlier than current task updated_at '{taskUpdatedAtStr}'.", normDocPath) });
         }
 
-        // 9. Validate Transition
+        // 9. Validate Transition and Immutability
         var currentStatus = targetTask.Attribute("status")?.Value ?? "pending";
+        var isTerminal = string.Equals(currentStatus, "done", StringComparison.Ordinal) ||
+                         string.Equals(currentStatus, "transferred", StringComparison.Ordinal) ||
+                         string.Equals(currentStatus, "superseded", StringComparison.Ordinal) ||
+                         string.Equals(currentStatus, "cancelled", StringComparison.Ordinal);
+
+        if (isTerminal)
+        {
+            if (!string.IsNullOrEmpty(transition))
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.TaskImmutable, $"Cannot transition task '{taskId}': task is in terminal status '{currentStatus}' and is immutable.", normDocPath) });
+            }
+            if (reqAcceptance != null)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.TaskImmutable, $"Cannot modify acceptance criteria for task '{taskId}': task is in terminal status '{currentStatus}' and is immutable.", normDocPath) });
+            }
+            if (reqResolve != null)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.TaskImmutable, $"Cannot resolve records on task '{taskId}': task is in terminal status '{currentStatus}' and is immutable.", normDocPath) });
+            }
+            if (reqContextUpdate != null)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.TaskImmutable, $"Cannot update context for task '{taskId}': task is in terminal status '{currentStatus}' and is immutable.", normDocPath) });
+            }
+            foreach (var rec in requestedRecords)
+            {
+                var kind = rec.Attribute("kind")?.Value;
+                var status = rec.Attribute("status")?.Value;
+                if (!string.Equals(status, "informational", StringComparison.Ordinal) ||
+                    (!string.Equals(kind, "discussion", StringComparison.Ordinal) &&
+                     !string.Equals(kind, "finding", StringComparison.Ordinal) &&
+                     !string.Equals(kind, "handoff", StringComparison.Ordinal)))
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.TaskImmutable, $"Terminal task '{taskId}' only accepts informational discussion, finding, or handoff records; received kind='{kind}', status='{status}'.", normDocPath) });
+                }
+            }
+        }
+
+        // Check if owning iteration is in status replanning
+        var specDocPath = Path.Combine(workspaceRoot, normIterId, "spec.xml");
+        if (!File.Exists(specDocPath))
+        {
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DocumentNotFound, $"Iteration spec document '{normIterId}/spec.xml' is required to evaluate the execution freeze.", $"{normIterId}/spec.xml") });
+        }
+
+        try
+        {
+            using var fs = File.OpenRead(specDocPath);
+            using var r = SecureXmlReaderFactory.CreateReader(fs);
+            var specDoc = XDocument.Load(r);
+            if (specDoc.Root == null || !string.Equals(specDoc.Root.Name.LocalName, "iteration", StringComparison.Ordinal))
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Iteration spec document '{normIterId}/spec.xml' has a missing or invalid root element; execution freeze cannot be evaluated.", $"{normIterId}/spec.xml") });
+            }
+
+            var iterStatus = specDoc.Root.Attribute("status")?.Value;
+            if (string.Equals(iterStatus, "replanning", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.Equals(transition, "start", StringComparison.Ordinal) ||
+                    string.Equals(transition, "resume", StringComparison.Ordinal) ||
+                    string.Equals(transition, "verify", StringComparison.Ordinal) ||
+                    string.Equals(transition, "complete", StringComparison.Ordinal))
+                {
+                    return (false, null, new[]
+                    {
+                        Diagnostic.Error(
+                            DiagnosticCodes.IterationReplanningExecutionFrozen,
+                            $"Cannot execute transition '{transition}' on task '{taskId}': iteration '{normIterId}' is currently in status 'replanning'. Execution transitions (start, resume, verify, complete) are frozen during replanning.",
+                            normDocPath)
+                    });
+                }
+            }
+        }
+        catch (XmlException ex)
+        {
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Unable to parse iteration spec document '{normIterId}/spec.xml' while evaluating execution freeze: {ex.Message}", $"{normIterId}/spec.xml", ex.LineNumber, ex.LinePosition) });
+        }
+        catch (Exception ex)
+        {
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Unable to read iteration spec document '{normIterId}/spec.xml' while evaluating execution freeze: {ex.Message}", $"{normIterId}/spec.xml") });
+        }
+
         string? targetStatus = null;
         if (!string.IsNullOrEmpty(transition))
         {
@@ -538,6 +624,35 @@ public static class TaskUpdater
             }
 
             targetStatus = resolvedStatus;
+        }
+
+        if (transition is "start" or "resume" or "verify" or "complete")
+        {
+            try
+            {
+                using var fs = File.OpenRead(specDocPath);
+                using var reader = SecureXmlReaderFactory.CreateReader(fs);
+                var specDoc = XDocument.Load(reader);
+                var requirements = (specDoc.Root?.Element("product")?.Element("requirements")?.Elements("requirement") ?? Enumerable.Empty<XElement>())
+                    .ToDictionary(r => r.Attribute("id")?.Value ?? string.Empty, r => r.Attribute("status")?.Value ?? string.Empty, StringComparer.Ordinal);
+                foreach (var origin in targetTask.Element("origin")?.Elements("ref") ?? Enumerable.Empty<XElement>())
+                {
+                    var requirementId = origin.Attribute("target")?.Value ?? string.Empty;
+                    if (!requirements.TryGetValue(requirementId, out var requirementStatus) ||
+                        !string.Equals(requirementStatus, "approved", StringComparison.Ordinal))
+                    {
+                        return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.OwnerDecisionRequired, $"Cannot execute transition '{transition}' for task '{taskId}': origin requirement '{requirementId}' is missing or not approved.", normDocPath) });
+                    }
+                }
+            }
+            catch (XmlException ex)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Unable to parse iteration spec document '{normIterId}/spec.xml' while checking approved task origins: {ex.Message}", $"{normIterId}/spec.xml", ex.LineNumber, ex.LinePosition) });
+            }
+            catch (Exception ex)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Unable to read iteration spec document '{normIterId}/spec.xml' while checking approved task origins: {ex.Message}", $"{normIterId}/spec.xml") });
+            }
         }
 
         // 10. Pre-validate Acceptance targets
@@ -620,7 +735,6 @@ public static class TaskUpdater
         }
 
         // 12. Apply Context update
-        var reqContextUpdate = reqRoot.Element("context_update");
         if (reqContextUpdate != null)
         {
             var taskContext = targetTask.Element("context");
@@ -681,7 +795,12 @@ public static class TaskUpdater
         }
 
         // 14. Update Timestamps & Revision
-        targetTask.SetAttributeValue("updated_at", occurredAt);
+        // Terminal tasks are historical facts. Informational records are append-only
+        // annotations and must not rewrite any task metadata, including updated_at.
+        if (!isTerminal)
+        {
+            targetTask.SetAttributeValue("updated_at", occurredAt);
+        }
         if (string.Equals(transition, "start", StringComparison.Ordinal))
         {
             targetTask.SetAttributeValue("started_at", occurredAt);

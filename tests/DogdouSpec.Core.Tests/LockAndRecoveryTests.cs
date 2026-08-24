@@ -358,6 +358,37 @@ public sealed class LockAndRecoveryTests
     }
 
     [TestMethod]
+    public void Commit_ReadOnlyRevisionPrecondition_RejectsDocumentChangedAfterCommandRead()
+    {
+        var workspace = CreateWorkspaceCopy();
+        const string tasksRelativePath = "20260823-xpath-core/tasks.xml";
+        const string specRelativePath = "20260823-xpath-core/spec.xml";
+        var tasksPath = Path.Combine(workspace, tasksRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var specPath = Path.Combine(workspace, specRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var tasksText = File.ReadAllText(tasksPath);
+        var tasksRevision = int.Parse(XDocument.Load(tasksPath).Root!.Attribute("revision")!.Value, CultureInfo.InvariantCulture);
+        var spec = XDocument.Load(specPath);
+        var originallyReadSpecRevision = int.Parse(spec.Root!.Attribute("revision")!.Value, CultureInfo.InvariantCulture);
+
+        // Simulate a writer changing the read-only dependency after the
+        // high-level command read it and before it reaches commit.
+        spec.Root.SetAttributeValue("revision", (originallyReadSpecRevision + 1).ToString(CultureInfo.InvariantCulture));
+        spec.Save(specPath);
+
+        var replacement = tasksText.Replace($"revision=\"{tasksRevision}\"", $"revision=\"{tasksRevision + 1}\"", StringComparison.Ordinal);
+        var (success, envelope, diagnostics) = WorkspaceTransactionCommitter.Commit(
+            workspace,
+            "readset test",
+            new[] { new TransactionDocumentOperation(tasksRelativePath, replacement, tasksRevision, tasksRevision + 1) },
+            readPreconditions: new[] { new TransactionReadPrecondition(specRelativePath, originallyReadSpecRevision) });
+
+        Assert.IsFalse(success);
+        Assert.IsNull(envelope);
+        Assert.IsTrue(diagnostics.Any(d => d.Code == DiagnosticCodes.RevisionConflict && d.Document == specRelativePath));
+        Assert.AreEqual(tasksRevision, int.Parse(XDocument.Load(tasksPath).Root!.Attribute("revision")!.Value, CultureInfo.InvariantCulture));
+    }
+
+    [TestMethod]
     public void Commit_MalformedExistingRevision_FailsWithXmlParseError()
     {
         var workspace = CreateWorkspaceCopy();

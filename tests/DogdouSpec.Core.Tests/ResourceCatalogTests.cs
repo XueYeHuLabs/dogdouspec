@@ -1,4 +1,6 @@
 using DogdouSpec.Core.Resources;
+using System.Xml.Linq;
+using System.Xml.Schema;
 
 namespace DogdouSpec.Core.Tests;
 
@@ -111,5 +113,23 @@ public sealed class ResourceCatalogTests
 
         Assert.IsTrue(tasksSet.GlobalElements.Contains(new System.Xml.XmlQualifiedName("tasks", "")));
         Assert.IsFalse(tasksSet.GlobalElements.Contains(new System.Xml.XmlQualifiedName("iteration", "")));
+    }
+
+    [TestMethod]
+    public void AllShippedRequestTemplates_ValidateAgainstRequestsSchema()
+    {
+        var schemas = EmbeddedResources.GetCompiledSchemaSet("requests", "1.0");
+        var requestTemplateNames = new[]
+        {
+            "change.apply", "change.propose", "iteration.confirmation", "requirement.propose",
+            "task.add", "task.revise", "task.split", "task.update", "transaction.apply"
+        };
+        foreach (var templateName in requestTemplateNames)
+        {
+            var document = XDocument.Parse(EmbeddedResources.GetTemplateText(templateName, "1.0")!);
+            var errors = new List<string>();
+            document.Validate(schemas, (_, eventArgs) => errors.Add(eventArgs.Message));
+            Assert.AreEqual(0, errors.Count, $"Template '{templateName}' is not valid against requests.xsd: {string.Join(" | ", errors)}");
+        }
     }
 }

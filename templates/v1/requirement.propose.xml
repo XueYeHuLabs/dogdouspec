@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The command line supplies iteration and expected spec.xml revision. -->
+<requirement-propose
+  id="20000101T000000Z-reqprop-replace"
+  actor="replace-actor"
+  occurred_at="2000-01-01T00:00:00Z">
+  <requirement id="20000101-req-replace" status="proposed">
+    <index>
+      <summary>Replace with short summary.</summary>
+    </index>
+    <statement>Replace with requirement statement</statement>
+    <rationale>Replace with rationale for the proposed requirement</rationale>
+  </requirement>
+</requirement-propose>

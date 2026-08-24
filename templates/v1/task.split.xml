@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The command line supplies iteration, parent task ID, and expected tasks.xml revision. -->
+<task-split
+  id="20000101T000000Z-tasksplit-replace"
+  actor="replace-actor"
+  occurred_at="2000-01-01T00:00:00Z">
+  <parent_disposition
+    transition="supersede"
+    rationale="Splitting complex task into two focused subtasks.">
+    <record
+      id="20000101T000000Z-rec-replace-split-parent"
+      kind="discussion"
+      status="informational"
+      created_at="2000-01-01T00:00:00Z"
+      actor="replace-actor">
+      <summary>Task superseded by subtasks 20000101-task-sub-a and 20000101-task-sub-b.</summary>
+    </record>
+  </parent_disposition>
+  <!-- The command persists this rationale in its generated split receipt (with a request-sha256 idempotency token). -->
+  <subtasks>
+    <task
+      id="20000101-task-sub-a"
+      status="pending"
+      created_at="2000-01-01T00:00:00Z"
+      updated_at="2000-01-01T00:00:00Z">
+      <index>
+        <summary>Subtask A summary.</summary>
+      </index>
+      <title>Replace with subtask A title</title>
+      <objective>Objective for subtask A</objective>
+      <rationale>Part A of split task</rationale>
+      <scope>
+        <repository path="src/part_a.txt"/>
+      </scope>
+      <origin>
+        <ref scope="iteration" target="20000101-req-replace" relation="implements"/>
+      </origin>
+      <constraints/>
+      <acceptance>
+        <criterion id="20000101-crit-sub-a" status="pending">
+          Criterion for subtask A
+        </criterion>
+      </acceptance>
+      <context>
+        <summary>Context for subtask A.</summary>
+      </context>
+      <records/>
+    </task>
+    <task
+      id="20000101-task-sub-b"
+      status="pending"
+      created_at="2000-01-01T00:00:00Z"
+      updated_at="2000-01-01T00:00:00Z">
+      <index>
+        <summary>Subtask B summary.</summary>
+      </index>
+      <title>Replace with subtask B title</title>
+      <objective>Objective for subtask B</objective>
+      <rationale>Part B of split task</rationale>
+      <scope>
+        <repository path="src/part_b.txt"/>
+      </scope>
+      <origin>
+        <ref scope="iteration" target="20000101-req-replace" relation="implements"/>
+      </origin>
+      <constraints/>
+      <acceptance>
+        <criterion id="20000101-crit-sub-b" status="pending">
+          Criterion for subtask B
+        </criterion>
+      </acceptance>
+      <context>
+        <summary>Context for subtask B.</summary>
+      </context>
+      <records/>
+    </task>
+  </subtasks>
+</task-split>
