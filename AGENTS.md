@@ -40,3 +40,27 @@ Welcome! This repository uses **DogdouSpec** to manage iterations, specification
    - Only execute `iteration confirm` when explicitly instructed by the human owner in the current interaction.
 8. **Preserve User Work**:
    - Do not commit or push to git unless explicitly requested by the user.
+
+## Git Commit Guidelines
+
+Before committing code, agents MUST run `git diff --check` to ensure that the commit not contains whitespace errors. All whitespace errors MUST be fixed before committing.
+
+All git commit messages MUST be written entirely in English and strictly follow the `Title[ + blank line + details]` format:
+
+```
+Title
+
+1. somethings 1.
+2. somethings 2.
+```
+
+* **Title (Mandatory):**
+  * Imperative mood describing the theme (e.g. `Add ...`, `Update ...`, `Remove ...`, `Standardize ...`).
+  * First letter capitalized.
+  * No conventional prefixes (do NOT use `feat:`, `fix:`, `chore:`, `feat/`, `fix(scope):`, etc.).
+* **Details (Optional):**
+  * Separated from the title by a blank line.
+  * Numbered list starting with `1. `, `2. `, etc.
+  * Each line MUST be in all lowercase (except technical proper nouns, contains the first letter of a sentence).
+  * Each line MUST end with a period (`.`).
+  * Describes the detailed changes and rationale.

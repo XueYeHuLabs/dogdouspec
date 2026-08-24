@@ -6,6 +6,7 @@ using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Validation;
+using DogdouSpec.Core.XPath;
 
 namespace DogdouSpec.Core.Transactions;
 
@@ -17,6 +18,9 @@ public sealed record TransactionDocumentOperation(
     string ReplacementContent,
     int ExpectedRevision,
     int NewRevision);
+
+/// <summary>Revision precondition for a document read by, but not replaced by, a transaction.</summary>
+public sealed record TransactionReadPrecondition(string RelativePath, int ExpectedRevision);
 
 /// <summary>
 /// General atomic transaction engine for multi-document existing-file commits.
@@ -33,7 +37,8 @@ public static class WorkspaceTransactionCommitter
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
         string version = "1.0",
-        string? correlationId = null)
+        string? correlationId = null,
+        IReadOnlyList<TransactionReadPrecondition>? readPreconditions = null)
     {
         clock ??= SystemClock.Instance;
 
@@ -70,6 +75,58 @@ public static class WorkspaceTransactionCommitter
                 return (false, null, new[] { recError! });
             }
 
+            // Read-only documents can influence a high-level command's
+            // decision. Recheck their revisions while holding the writer lock
+            // so a read-then-write command cannot commit against stale input.
+            var readPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var read in readPreconditions ?? Array.Empty<TransactionReadPrecondition>())
+            {
+                var (isRelValid, normPath, relErr) = PathSecurity.ValidateRelativeDocumentPath(read.RelativePath);
+                if (!isRelValid || relErr != null)
+                {
+                    return (false, null, new[] { relErr ?? Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid read-precondition document path '{read.RelativePath}'.") });
+                }
+                if (!readPaths.Add(normPath) || read.ExpectedRevision <= 0)
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Read precondition for '{normPath}' must be unique and use a positive expected revision.", normPath) });
+                }
+
+                var fullReadPath = Path.Combine(workspaceRoot, normPath.Replace('/', Path.DirectorySeparatorChar));
+                var (isContained, contErr) = PathSecurity.CheckContainmentAndReparsePoints(workspaceRoot, fullReadPath);
+                if (!isContained || contErr != null)
+                {
+                    return (false, null, new[] { contErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, $"Read-precondition path escapes workspace: '{normPath}'.") });
+                }
+                if (!File.Exists(fullReadPath))
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DocumentNotFound, $"Read-precondition document '{normPath}' does not exist in workspace.", normPath) });
+                }
+
+                try
+                {
+                    using var stream = File.OpenRead(fullReadPath);
+                    using var reader = SecureXmlReaderFactory.CreateReader(stream);
+                    var document = XDocument.Load(reader);
+                    var revisionText = document.Root?.Attribute("revision")?.Value;
+                    if (!int.TryParse(revisionText, CultureInfo.InvariantCulture, out var actualRevision) || actualRevision <= 0)
+                    {
+                        return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Document '{normPath}' root revision attribute is missing, non-positive, or malformed.", normPath) });
+                    }
+                    if (actualRevision != read.ExpectedRevision)
+                    {
+                        return (false, null, new[] { new Diagnostic(DiagnosticCodes.RevisionConflict, "error", $"Expected read revision {read.ExpectedRevision} does not match actual revision {actualRevision} for document '{normPath}'.", normPath, ExpectedRevision: read.ExpectedRevision, ActualRevision: actualRevision) });
+                    }
+                }
+                catch (XmlException xmlEx)
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to parse read-precondition document '{normPath}': {xmlEx.Message}", normPath) });
+                }
+                catch (Exception ex)
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to read read-precondition document '{normPath}': {ex.Message}", normPath) });
+                }
+            }
+
             // 4. Operation preconditions validation before any target read/stage/backup
             var seenTargetPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var normalizedOps = new List<(string NormalizedPath, string FullTarget, TransactionDocumentOperation Op)>();
@@ -87,6 +144,11 @@ public static class WorkspaceTransactionCommitter
                 if (!seenTargetPaths.Add(normPath))
                 {
                     return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Duplicate operation target path '{normPath}' in transaction.") });
+                }
+
+                if (Encoding.UTF8.GetByteCount(op.ReplacementContent) > XPathQueryLimits.MaxDocumentBytes)
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.LimitExceeded, $"Replacement XML for '{normPath}' exceeds maximum allowed size of {XPathQueryLimits.MaxDocumentBytes} bytes.", normPath) });
                 }
 
                 // Verify containment and reparse points before opening target

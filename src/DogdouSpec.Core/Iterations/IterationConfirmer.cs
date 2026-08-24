@@ -853,6 +853,129 @@ public static class IterationConfirmer
             }
         }
 
+        if (action == "continue")
+        {
+            var tasks = tasksRoot.Descendants("task").ToList();
+            foreach (var task in tasks)
+            {
+                var records = task.Element("records")?.Elements("record") ?? Enumerable.Empty<XElement>();
+                var activeFinding = records.FirstOrDefault(r =>
+                    string.Equals(r.Attribute("kind")?.Value, "finding", StringComparison.Ordinal) &&
+                    string.Equals(r.Attribute("status")?.Value, "active", StringComparison.Ordinal));
+                if (activeFinding != null)
+                {
+                    return (false, null, new[] { Diagnostic.Error(
+                        DiagnosticCodes.IterationCompletionPredicateFailed,
+                        $"Iteration cannot continue while active change findings remain in task '{task.Attribute("id")?.Value}'. Active findings must be resolved or superseded before continuing.",
+                        normTasksDocPath) });
+                }
+            }
+
+            var requirements = (specRoot.Element("product")?.Element("requirements")?.Elements("requirement") ?? Enumerable.Empty<XElement>()).ToList();
+            var specReqStatuses = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var req in requirements)
+            {
+                var reqId = req.Attribute("id")?.Value ?? string.Empty;
+                var finalStatus = reqDecisions.TryGetValue(reqId, out var dec) ? dec : (req.Attribute("status")?.Value ?? "proposed");
+                specReqStatuses[reqId] = finalStatus;
+            }
+
+            // A replacement is explicit provenance, not an inference from
+            // similarly worded requirements. Each superseded requirement needs
+            // a finally approved successor and every supersedes edge must point
+            // to an extant requirement that is itself finally superseded.
+            foreach (var requirement in requirements)
+            {
+                var requirementId = requirement.Attribute("id")?.Value ?? string.Empty;
+                var finalStatus = specReqStatuses[requirementId];
+                var successorRefs = requirement.Element("sources")?.Elements("ref")
+                    .Where(r => string.Equals(r.Attribute("relation")?.Value, "supersedes", StringComparison.Ordinal))
+                    .ToList() ?? new List<XElement>();
+
+                foreach (var source in successorRefs)
+                {
+                    var oldId = source.Attribute("target")?.Value ?? string.Empty;
+                    if (!specReqStatuses.TryGetValue(oldId, out var oldFinalStatus) ||
+                        !string.Equals(oldFinalStatus, "superseded", StringComparison.Ordinal))
+                    {
+                        return (false, null, new[] { Diagnostic.Error(
+                            DiagnosticCodes.RequirementSuccessorMissing,
+                            $"Requirement '{requirementId}' declares supersedes provenance for '{oldId}', but that target does not exist or is not finally superseded.",
+                            normSpecDocPath) });
+                    }
+                }
+
+                if (string.Equals(finalStatus, "superseded", StringComparison.Ordinal))
+                {
+                    var hasApprovedSuccessor = requirements.Any(candidate =>
+                        string.Equals(specReqStatuses[candidate.Attribute("id")?.Value ?? string.Empty], "approved", StringComparison.Ordinal) &&
+                        (candidate.Element("sources")?.Elements("ref") ?? Enumerable.Empty<XElement>()).Any(r =>
+                            string.Equals(r.Attribute("relation")?.Value, "supersedes", StringComparison.Ordinal) &&
+                            string.Equals(r.Attribute("target")?.Value, requirementId, StringComparison.Ordinal)));
+                    if (!hasApprovedSuccessor)
+                    {
+                        return (false, null, new[] { Diagnostic.Error(
+                            DiagnosticCodes.RequirementSuccessorMissing,
+                            $"Superseded requirement '{requirementId}' has no finally approved successor requirement with sources/ref relation='supersedes'.",
+                            normSpecDocPath) });
+                    }
+                }
+            }
+
+            foreach (var task in tasks)
+            {
+                var taskStatus = task.Attribute("status")?.Value ?? "pending";
+                var isTerminal = string.Equals(taskStatus, "done", StringComparison.Ordinal) ||
+                                 string.Equals(taskStatus, "transferred", StringComparison.Ordinal) ||
+                                 string.Equals(taskStatus, "superseded", StringComparison.Ordinal) ||
+                                 string.Equals(taskStatus, "cancelled", StringComparison.Ordinal);
+
+                if (!isTerminal)
+                {
+                    var originRefs = task.Element("origin")?.Elements("ref").ToList() ?? new List<XElement>();
+                    foreach (var oRef in originRefs)
+                    {
+                        var targetReqId = oRef.Attribute("target")?.Value ?? string.Empty;
+                        if (!specReqStatuses.TryGetValue(targetReqId, out var reqStatus) ||
+                            !string.Equals(reqStatus, "approved", StringComparison.Ordinal))
+                        {
+                            return (false, null, new[] { Diagnostic.Error(
+                                DiagnosticCodes.RequirementSuccessorMissing,
+                                $"Non-terminal task '{task.Attribute("id")?.Value}' has origin '{targetReqId}' which is not finally approved. Every origin must be approved before continuing iteration.",
+                                normTasksDocPath) });
+                        }
+                    }
+                }
+            }
+
+            // A newly approved successor created from a proposal needs a live
+            // implementation path before the owner resumes execution.
+            foreach (var requirement in requirements)
+            {
+                var requirementId = requirement.Attribute("id")?.Value ?? string.Empty;
+                var isApproved = string.Equals(specReqStatuses[requirementId], "approved", StringComparison.Ordinal);
+                var isSuccessor = (requirement.Element("sources")?.Elements("ref") ?? Enumerable.Empty<XElement>())
+                    .Any(r => string.Equals(r.Attribute("relation")?.Value, "supersedes", StringComparison.Ordinal));
+                if (isApproved && isSuccessor)
+                {
+                    var covered = tasks.Any(task =>
+                    {
+                        var status = task.Attribute("status")?.Value ?? "pending";
+                        var terminal = status is "done" or "transferred" or "superseded" or "cancelled";
+                        return !terminal && (task.Element("origin")?.Elements("ref") ?? Enumerable.Empty<XElement>())
+                            .Any(r => string.Equals(r.Attribute("target")?.Value, requirementId, StringComparison.Ordinal));
+                    });
+                    if (!covered)
+                    {
+                        return (false, null, new[] { Diagnostic.Error(
+                            DiagnosticCodes.RequirementSuccessorMissing,
+                            $"Approved successor requirement '{requirementId}' has no non-terminal implementation task coverage.",
+                            normTasksDocPath) });
+                    }
+                }
+            }
+        }
+
         // 9.8 Completion Gate Constraints
         if (action == "complete")
         {
@@ -1180,7 +1303,10 @@ public static class IterationConfirmer
             clock: clock,
             faultInjector: faultInjector,
             version: version,
-            correlationId: id);
+            correlationId: id,
+            readPreconditions: action == "continue"
+                ? new[] { new TransactionReadPrecondition(normTasksDocPath, actualTasksRev) }
+                : null);
     }
 
     private static bool AreTargetDecisionElementsMatching(IEnumerable<XElement> list1, IEnumerable<XElement> list2)

@@ -30,11 +30,17 @@ public static class EmbeddedResources
     public static readonly IReadOnlyList<string> TemplateNames = new[]
     {
         "backlog.item",
+        "change.apply",
+        "change.propose",
         "iteration.confirmation",
         "knowledge.entry",
         "record.discussion",
         "record.finding",
         "record.verification",
+        "requirement.propose",
+        "task.add",
+        "task.revise",
+        "task.split",
         "task.update",
         "transaction.apply"
     };

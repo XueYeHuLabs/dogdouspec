@@ -128,10 +128,15 @@ public sealed class DiagnosticsEnvelope
             DiagnosticCodes.CardinalityConflict => 4,
             DiagnosticCodes.IdempotencyConflict => 4,
             DiagnosticCodes.TaskTransitionConflict => 4,
+            DiagnosticCodes.TaskImmutable => 4,
+            DiagnosticCodes.TaskRevisionNotAllowed => 4,
+            DiagnosticCodes.RequirementSuccessorMissing => 4,
+            DiagnosticCodes.ChangeApplicationInvalid => 4,
             DiagnosticCodes.IterationAlreadyExists => 4,
             DiagnosticCodes.ManagedStateExists => 4,
 
             DiagnosticCodes.OwnerDecisionRequired => 5,
+            DiagnosticCodes.IterationReplanningExecutionFrozen => 5,
 
             DiagnosticCodes.FilesystemError => 6,
             DiagnosticCodes.RecoveryFailed => 6,

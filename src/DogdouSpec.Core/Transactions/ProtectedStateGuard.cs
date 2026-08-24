@@ -127,6 +127,15 @@ public static class ProtectedStateGuard
             if (backlogDiag != null) return backlogDiag;
         }
 
+        // 4. Tasks in tasks.xml
+        if (string.Equals(rootName, "tasks", StringComparison.Ordinal) ||
+            normalizedDocPath.EndsWith("/tasks.xml", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedDocPath, "tasks.xml", StringComparison.OrdinalIgnoreCase))
+        {
+            var taskDiag = CheckTerminalTasks(normalizedDocPath, beforeDoc, afterDoc);
+            if (taskDiag != null) return taskDiag;
+        }
+
         return null;
     }
 
@@ -562,6 +571,100 @@ public static class ProtectedStateGuard
     {
         var beforeClone = new XElement(before);
         var afterClone = new XElement(after);
+        beforeClone.Elements("records").Remove();
+        afterClone.Elements("records").Remove();
+        return GenericAppender.AreElementsCanonicallyEqual(beforeClone, afterClone);
+    }
+
+    private static Diagnostic? CheckTerminalTasks(string docPath, XDocument beforeDoc, XDocument afterDoc)
+    {
+        var beforeTasks = IndexById(beforeDoc, "task");
+        var afterTasks = IndexById(afterDoc, "task");
+
+        var terminalStatuses = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "done", "transferred", "superseded", "cancelled"
+        };
+
+        foreach (var (id, beforeTask) in beforeTasks)
+        {
+            var beforeStatus = beforeTask.Attribute("status")?.Value ?? string.Empty;
+            if (terminalStatuses.Contains(beforeStatus))
+            {
+                if (!afterTasks.TryGetValue(id, out var afterTask))
+                {
+                    return Diagnostic.Error(
+                        DiagnosticCodes.TaskImmutable,
+                        $"Terminal task '{id}' ({beforeStatus}) cannot be removed.",
+                        docPath);
+                }
+
+                var afterStatus = afterTask.Attribute("status")?.Value ?? string.Empty;
+                if (!string.Equals(beforeStatus, afterStatus, StringComparison.Ordinal))
+                {
+                    return Diagnostic.Error(
+                        DiagnosticCodes.TaskImmutable,
+                        $"Changing status of terminal task '{id}' from '{beforeStatus}' to '{afterStatus}' is prohibited. Terminal tasks are immutable.",
+                        docPath);
+                }
+
+                if (!AreProtectedTaskContentEqual(beforeTask, afterTask))
+                {
+                    return Diagnostic.Error(
+                        DiagnosticCodes.TaskImmutable,
+                        $"Modifying core content, scope, criteria, origin, or constraints of terminal task '{id}' is prohibited. Terminal tasks are immutable.",
+                        docPath);
+                }
+
+                var beforeRecords = beforeTask.Element("records")?.Elements("record").ToList() ?? new List<XElement>();
+                var afterRecords = afterTask.Element("records")?.Elements("record").ToList() ?? new List<XElement>();
+
+                if (afterRecords.Count < beforeRecords.Count)
+                {
+                    return Diagnostic.Error(
+                        DiagnosticCodes.TaskImmutable,
+                        $"Removing records from terminal task '{id}' is prohibited.",
+                        docPath);
+                }
+
+                for (int i = 0; i < beforeRecords.Count; i++)
+                {
+                    if (!GenericAppender.AreElementsCanonicallyEqual(beforeRecords[i], afterRecords[i]))
+                    {
+                        return Diagnostic.Error(
+                            DiagnosticCodes.TaskImmutable,
+                            $"Modifying existing records of terminal task '{id}' is prohibited.",
+                            docPath);
+                    }
+                }
+
+                for (int i = beforeRecords.Count; i < afterRecords.Count; i++)
+                {
+                    var newRec = afterRecords[i];
+                    var kind = newRec.Attribute("kind")?.Value ?? string.Empty;
+                    var status = newRec.Attribute("status")?.Value ?? string.Empty;
+
+                    if (!string.Equals(status, "informational", StringComparison.Ordinal) ||
+                        (!string.Equals(kind, "discussion", StringComparison.Ordinal) &&
+                         !string.Equals(kind, "finding", StringComparison.Ordinal) &&
+                         !string.Equals(kind, "handoff", StringComparison.Ordinal)))
+                    {
+                        return Diagnostic.Error(
+                            DiagnosticCodes.TaskImmutable,
+                            $"Terminal task '{id}' only accepts informational discussion, finding, or handoff records; received kind='{kind}', status='{status}'.",
+                            docPath);
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool AreProtectedTaskContentEqual(XElement beforeTask, XElement afterTask)
+    {
+        var beforeClone = new XElement(beforeTask);
+        var afterClone = new XElement(afterTask);
         beforeClone.Elements("records").Remove();
         afterClone.Elements("records").Remove();
         return GenericAppender.AreElementsCanonicallyEqual(beforeClone, afterClone);

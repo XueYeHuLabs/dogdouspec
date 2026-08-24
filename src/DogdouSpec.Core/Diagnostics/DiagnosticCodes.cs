@@ -56,6 +56,9 @@ public static class DiagnosticCodes
     public const string TaskNonDoneHasCompletedAt = "TASK_NON_DONE_HAS_COMPLETED_AT";
     public const string TaskPendingHasStartedAt = "TASK_PENDING_HAS_STARTED_AT";
     public const string TaskTransitionConflict = "TASK_TRANSITION_CONFLICT";
+    public const string TaskImmutable = "TASK_IMMUTABLE";
+    public const string TaskRevisionNotAllowed = "TASK_REVISION_NOT_ALLOWED";
+    public const string IterationReplanningExecutionFrozen = "ITERATION_REPLANNING_EXECUTION_FROZEN";
 
     // Protected product state provenance and completion
     public const string MissingConfirmationProvenance = "MISSING_CONFIRMATION_PROVENANCE";
@@ -63,6 +66,8 @@ public static class DiagnosticCodes
     public const string IterationCompletedAtMissing = "ITERATION_COMPLETED_AT_MISSING";
     public const string WaiverRationaleMissing = "WAIVER_RATIONALE_MISSING";
     public const string OwnerDecisionRequired = "OWNER_DECISION_REQUIRED";
+    public const string RequirementSuccessorMissing = "REQUIREMENT_SUCCESSOR_MISSING";
+    public const string ChangeApplicationInvalid = "CHANGE_APPLICATION_INVALID";
 
     // Atomic write, locking, and recovery
     public const string LockConflict = "LOCK_CONFLICT";

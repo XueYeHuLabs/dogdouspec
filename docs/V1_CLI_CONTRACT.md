@@ -52,11 +52,17 @@ dogdouspec schema show
 dogdouspec template show
 dogdouspec append --stdin|--file
 dogdouspec task update --stdin|--file
+dogdouspec task add --stdin|--file
+dogdouspec task revise --stdin|--file
+dogdouspec task split --stdin|--file
+dogdouspec requirement propose --stdin|--file
+dogdouspec change propose --stdin|--file
+dogdouspec change apply --stdin|--file
 dogdouspec transaction apply --stdin|--file
 ```
 
 `transaction apply` is the low-level escape hatch. The Skill normally uses
-templates, `append`, `task update`, and `iteration confirm`.
+templates, `task add/revise/split`, `requirement propose`, `change propose/apply`, `append`, `task update`, and `iteration confirm`.
 
 Every mutating command identifies itself as mutating in help output and requires
 an expected revision for each existing document it may change.
@@ -429,6 +435,67 @@ Rules:
    - Root revision of `tasks.xml` is incremented exactly once per successful commit.
    - Whole-project prospective validation enforces all schema constraints, time-first grammar, ID uniqueness, and completion predicates before live file replacement.
    - `task update` mutates only `tasks.xml` under the target iteration and never mutates `spec.xml` or product decision state.
+   - Terminal tasks (`done`, `transferred`, `superseded`, `cancelled`) are immutable; metadata changes, transitions, and non-informational record appends fail with `TASK_IMMUTABLE` (exit 4).
+   - When iteration `status="replanning"`, execution transitions (`start`, `resume`, `verify`, `complete`) fail closed with `ITERATION_REPLANNING_EXECUTION_FROZEN` (exit 5).
+
+## 8.1 Task addition, revision, and splitting
+
+```powershell
+dogdouspec task add `
+  --iteration 20260823-xpath-core `
+  --expected-revision 12 `
+  (--stdin | --file PATH)
+
+dogdouspec task revise `
+  --iteration 20260823-xpath-core `
+  --task 20260823-task-xpath-projection `
+  --expected-revision 12 `
+  (--stdin | --file PATH)
+
+dogdouspec task split `
+  --iteration 20260823-xpath-core `
+  --task 20260823-task-xpath-projection `
+  --expected-revision 12 `
+  (--stdin | --file PATH)
+```
+
+1. `task add`: Appends a pending task to `tasks.xml`. Requires `<origin>` referencing an existing requirement in `spec.xml`. Newly added task must have `status="pending"`.
+2. `task revise`: Elaborates `rationale`, `scope`, `add_dependencies`, `add_constraints`, `add_acceptance`, and appends discussion records on active/pending tasks. Fails with `TASK_IMMUTABLE` if target task is in terminal status.
+3. `task split`: Sets a parent task terminal disposition (`superseded`, `transferred`, `cancelled`) with rationale and records, and atomically appends 2 or more pending subtasks.
+
+These helper requests are bounded by the normal XML document-size limit before parsing or reading any managed input. Their `occurred_at` must not precede the `updated_at` of every task or document they modify. A newly added successor/task must be pending, stamped with `created_at` and `updated_at` exactly equal to request `occurred_at`, and must not supply `started_at` or `completed_at`.
+
+## 8.2 Requirement proposal
+
+```powershell
+dogdouspec requirement propose `
+  --iteration 20260823-xpath-core `
+  --expected-revision 5 `
+  (--stdin | --file PATH)
+```
+
+Appends a new requirement to `spec.xml` under `<product><requirements>`. Requires `status="proposed"`. Attempting to supply non-proposed statuses fails with `OWNER_DECISION_REQUIRED` (exit 5).
+
+## 8.3 Mid-flight change proposal and application
+
+```powershell
+dogdouspec change propose `
+  --iteration 20260823-xpath-core `
+  --expected-spec-revision 5 `
+  --expected-tasks-revision 12 `
+  (--stdin | --file PATH)
+
+dogdouspec change apply `
+  --iteration 20260823-xpath-core `
+  --expected-spec-revision 6 `
+  --expected-tasks-revision 13 `
+  (--stdin | --file PATH)
+```
+
+1. `change propose`: A recovery-backed multi-document mutation across `spec.xml` and `tasks.xml`, valid only while the iteration is `active`. It requires at least one active `finding` record, freezes target tasks to `blocked`, persists each freeze reason, and adds proposed requirements to `spec.xml`. The first finding task receives a deterministic receipt containing the change summary and a canonical-request `request-sha256` fingerprint. An identical immediate replay returns `already_applied`; any semantic payload difference or later revision drift fails.
+2. `change apply`: Applied during iteration `status="replanning"`. It must resolve a finding, dispose a task, or add a successor (no-op requests fail); it resolves active finding records, persists every disposition rationale, sets terminal task dispositions (`superseded`/`transferred`/`cancelled`), adds successor tasks, and appends one deterministic receipt with the canonical-request fingerprint. Fails with `CHANGE_APPLICATION_INVALID` (exit 4) if iteration status is not `replanning`.
+
+`request-sha256` is an idempotency fingerprint over canonical request XML. It does not provide a signature, authenticity guarantee, or evidence integrity claim.
 
 ## 9. Readiness and product confirmation
 

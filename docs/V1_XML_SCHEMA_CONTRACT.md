@@ -327,6 +327,11 @@ check. For already decided objects, the protected comparison covers both their
 decision state and authoritative narrative; appending structured history under
 an allowed `records` container does not rewrite the prior decision.
 
+In addition, the core engine enforces:
+- **Terminal Task Immutability**: Tasks in `done`, `transferred`, `superseded`, or `cancelled` statuses represent immutable historical facts. All task metadata (including `updated_at`) remains stable; only append-only `status="informational"` records with kind `discussion`, `finding`, or `handoff` are permitted. Every other mutation fails with `TASK_IMMUTABLE`.
+- **Replanning Execution Freeze**: During iteration `status="replanning"`, execution transitions (`start`, `resume`, `verify`, `complete`) fail closed with `ITERATION_REPLANNING_EXECUTION_FROZEN`.
+- **Continuation Gate**: Owner confirmation with `action="continue"` requires all requirements to be decided, all active findings resolved, explicit `sources/ref relation="supersedes"` provenance from each finally approved replacement to every finally superseded requirement, approved task coverage for a proposed successor, and finally approved origins for every non-terminal task.
+
 `iteration readiness` is read-only. `iteration confirm` is the dedicated
 revision-checked write path. The Skill must stop and wait for explicit owner
 instruction before invoking it.

@@ -5,6 +5,7 @@
   attributeFormDefault="unqualified">
 
   <xs:include schemaLocation="spec.xsd"/>
+  <xs:include schemaLocation="tasks.xsd"/>
 
   <xs:simpleType name="TaskTransitionType">
     <xs:restriction base="xs:string">
@@ -76,6 +77,142 @@
     </xs:sequence>
     <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
     <xs:attribute name="transition" type="TaskTransitionType" use="optional"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="occurred_at" type="xs:dateTime" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TaskAddType">
+    <xs:sequence>
+      <xs:element name="task" type="TaskType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="occurred_at" type="xs:dateTime" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TaskReviseType">
+    <xs:sequence>
+      <xs:element name="rationale" type="xs:string" minOccurs="0"/>
+      <xs:element name="scope" type="TaskScopeType" minOccurs="0"/>
+      <xs:element name="add_dependencies" type="RefListType" minOccurs="0"/>
+      <xs:element name="add_constraints" type="ConstraintsType" minOccurs="0"/>
+      <xs:element name="add_acceptance" type="TaskAcceptanceType" minOccurs="0"/>
+      <xs:element name="records" type="TaskUpdateRecordsType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="occurred_at" type="xs:dateTime" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TaskSplitParentDispositionType">
+    <xs:sequence>
+      <xs:element name="record" type="RecordType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="transition" type="TaskTransitionType" use="required"/>
+    <xs:attribute name="rationale" type="xs:string" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="TaskSplitSubtasksType">
+    <xs:sequence>
+      <xs:element name="task" type="TaskType" minOccurs="2" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TaskSplitType">
+    <xs:sequence>
+      <xs:element name="parent_disposition" type="TaskSplitParentDispositionType"/>
+      <xs:element name="subtasks" type="TaskSplitSubtasksType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="occurred_at" type="xs:dateTime" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="RequirementProposeType">
+    <xs:sequence>
+      <xs:element name="requirement" type="RequirementType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="occurred_at" type="xs:dateTime" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="ChangeFindingRecordType">
+    <xs:sequence>
+      <xs:element name="record" type="RecordType"/>
+    </xs:sequence>
+    <xs:attribute name="task" type="TimeFirstIdType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="FreezeTaskType">
+    <xs:attribute name="target" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="reason" type="xs:string" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="FreezeTasksType">
+    <xs:sequence>
+      <xs:element name="task" type="FreezeTaskType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ProposedRequirementsType">
+    <xs:sequence>
+      <xs:element name="requirement" type="RequirementType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ChangeProposeType">
+    <xs:sequence>
+      <xs:element name="summary" type="xs:string"/>
+      <xs:element name="finding_record" type="ChangeFindingRecordType" minOccurs="1" maxOccurs="unbounded"/>
+      <xs:element name="freeze_tasks" type="FreezeTasksType" minOccurs="0"/>
+      <xs:element name="proposed_requirements" type="ProposedRequirementsType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="occurred_at" type="xs:dateTime" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="ResolveFindingTargetType">
+    <xs:attribute name="task" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="target" type="TimeFirstIdType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="ResolveFindingsType">
+    <xs:sequence>
+      <xs:element name="finding" type="ResolveFindingTargetType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TaskDispositionType">
+    <xs:sequence>
+      <xs:element name="record" type="RecordType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="target" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="transition" type="TaskTransitionType" use="required"/>
+    <xs:attribute name="rationale" type="xs:string" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="TaskDispositionsType">
+    <xs:sequence>
+      <xs:element name="task" type="TaskDispositionType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="AddTasksType">
+    <xs:sequence>
+      <xs:element name="task" type="TaskType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ChangeApplyType">
+    <xs:sequence>
+      <xs:element name="summary" type="xs:string"/>
+      <xs:element name="resolve_findings" type="ResolveFindingsType" minOccurs="0"/>
+      <xs:element name="task_dispositions" type="TaskDispositionsType" minOccurs="0"/>
+      <xs:element name="add_tasks" type="AddTasksType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
     <xs:attribute name="actor" type="TokenValueType" use="required"/>
     <xs:attribute name="occurred_at" type="xs:dateTime" use="required"/>
   </xs:complexType>
@@ -154,6 +291,12 @@
   </xs:complexType>
 
   <xs:element name="task-update" type="TaskUpdateType"/>
+  <xs:element name="task-add" type="TaskAddType"/>
+  <xs:element name="task-revise" type="TaskReviseType"/>
+  <xs:element name="task-split" type="TaskSplitType"/>
+  <xs:element name="requirement-propose" type="RequirementProposeType"/>
+  <xs:element name="change-propose" type="ChangeProposeType"/>
+  <xs:element name="change-apply" type="ChangeApplyType"/>
   <xs:element name="iteration-confirmation" type="IterationConfirmationRequestType"/>
   <xs:element name="transaction" type="TransactionType"/>
 </xs:schema>
