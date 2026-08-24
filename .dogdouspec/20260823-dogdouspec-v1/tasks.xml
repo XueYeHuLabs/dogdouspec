@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20260823-tasks-dogdouspec-v1" iteration="20260823-dogdouspec-v1" schema_version="1.0" revision="17">
+  <index>
+    <summary>Tasks for iteration 20260823-dogdouspec-v1.</summary>
+    <term key="iteration" value="20260823-dogdouspec-v1" />
+  </index>
+<task id="20260823-task-domain-schemas" status="done" created_at="2026-08-23T01:00:00Z" started_at="2026-08-23T01:00:00Z" completed_at="2026-08-23T01:30:00Z" updated_at="2026-08-23T01:30:00Z" agent="lead-developer">
+        <index>
+          <summary>Define authoritative v1 XML schemas for iterations, tasks, transactions, and requests.</summary>
+          <term key="component" value="schemas" />
+        </index>
+        <title>Define authoritative v1 XML schemas</title>
+        <objective>Establish authoritative XSD definitions in schemas/v1.</objective>
+        <rationale>Provides formal validation and schema contracts for all managed XML documents.</rationale>
+        <scope>
+          <repository path=".">
+            <include path="schemas/v1/**" />
+          </repository>
+        </scope>
+        <origin>
+          <ref scope="iteration" target="20260823-req-xml-xpath-query" relation="implements" />
+        </origin>
+        <constraints />
+        <acceptance>
+          <criterion id="20260823-task-crit-schemas-v1" status="passed">All XML schemas compile and validate sample documents.</criterion>
+        </acceptance>
+        <context>
+          <summary>Authored spec.xsd, tasks.xsd, common.xsd, requests.xsd, and workspace.xsd.</summary>
+        </context>
+        <records>
+          <record id="20260823T013000Z-rec-schemas-comp" kind="completion" status="informational" created_at="2026-08-23T01:30:00Z" actor="lead-developer">
+            <summary>Migrated historical evidence: Schema definitions verified by compiled schema sets and core test suite.</summary>
+            <covers>
+              <ref scope="document" target="20260823-task-crit-schemas-v1" relation="covers" />
+            </covers>
+          </record>
+        </records>
+      </task><task id="20260823-task-workspace-xpath" status="done" created_at="2026-08-23T01:30:00Z" started_at="2026-08-23T01:30:00Z" completed_at="2026-08-23T02:30:00Z" updated_at="2026-08-23T02:30:00Z" agent="lead-developer">
+        <index>
+          <summary>Implement workspace discovery/init, path security, schema validation, and XPath query/search/projection engine.</summary>
+          <term key="component" value="core-xpath" />
+        </index>
+        <title>Implement workspace discovery, path security, and XPath engine</title>
+        <objective>Implement core XML reader factory, path security, schema validator, and XPath projection evaluator.</objective>
+        <rationale>Enables safe, sandboxed document access and flexible queries without external tools.</rationale>
+        <scope>
+          <repository path=".">
+            <include path="src/DogdouSpec.Core/XPath/**" />
+            <include path="src/DogdouSpec.Core/Security/**" />
+            <include path="src/DogdouSpec.Core/Workspace/**" />
+          </repository>
+        </scope>
+        <origin>
+          <ref scope="iteration" target="20260823-req-iteration-layout" relation="implements" />
+          <ref scope="iteration" target="20260823-req-xml-xpath-query" relation="implements" />
+        </origin>
+        <constraints />
+        <acceptance>
+          <criterion id="20260823-task-crit-xpath-query" status="passed">XPath engine supports variable substitution, ds:filter/filter-out projection, and memory limits.</criterion>
+        </acceptance>
+        <context>
+          <summary>Implemented XPath query engine, workspace discovery, and path security.</summary>
+        </context>
+        <records>
+          <record id="20260823T023000Z-rec-xpath-comp" kind="completion" status="informational" created_at="2026-08-23T02:30:00Z" actor="lead-developer">
+            <summary>Migrated historical evidence: XPath 1.0 engine and limits verified with 0 failures across unit tests.</summary>
+            <covers>
+              <ref scope="document" target="20260823-task-crit-xpath-query" relation="covers" />
+            </covers>
+          </record>
+        </records>
+      </task><task id="20260823-task-generic-append" status="done" created_at="2026-08-23T02:30:00Z" started_at="2026-08-23T02:30:00Z" completed_at="2026-08-23T03:00:00Z" updated_at="2026-08-23T03:00:00Z" agent="lead-developer">
+        <index>
+          <summary>Implement revision-checked element append helper with authority guards.</summary>
+          <term key="component" value="append" />
+        </index>
+        <title>Implement revision-checked generic element append helper</title>
+        <objective>Implement GenericAppender and dogdouspec append CLI command.</objective>
+        <rationale>Allows safe, schema-checked element append operations to managed documents.</rationale>
+        <scope>
+          <repository path=".">
+            <include path="src/DogdouSpec.Core/Append/**" />
+            <include path="src/DogdouSpec.Cli/Commands/AppendCommand.cs" />
+          </repository>
+        </scope>
+        <origin>
+          <ref scope="iteration" target="20260823-req-revision-idempotency" relation="implements" />
+        </origin>
+        <constraints />
+        <acceptance>
+          <criterion id="20260823-task-crit-append-helper" status="passed">Generic append validates container schemas, increments revision, and guards protected state.</criterion>
+        </acceptance>
+        <context>
+          <summary>Implemented GenericAppender with container validation and atomic commit.</summary>
+        </context>
+        <records>
+          <record id="20260823T030000Z-rec-append-comp" kind="completion" status="informational" created_at="2026-08-23T03:00:00Z" actor="lead-developer">
+            <summary>Migrated historical evidence: Generic append verified with single-document atomicity.</summary>
+            <covers>
+              <ref scope="document" target="20260823-task-crit-append-helper" relation="covers" />
+            </covers>
+          </record>
+        </records>
+      </task><task id="20260823-task-task-updater" status="done" created_at="2026-08-23T03:00:00Z" started_at="2026-08-23T03:00:00Z" completed_at="2026-08-23T03:45:00Z" updated_at="2026-08-23T03:45:00Z" agent="lead-developer">
+        <index>
+          <summary>Implement high-level task update command, state machine, and durable idempotency receipts.</summary>
+          <term key="component" value="tasks" />
+        </index>
+        <title>Implement task update helper and lifecycle state machine</title>
+        <objective>Implement TaskUpdater and dogdouspec task update CLI command.</objective>
+        <rationale>Provides structured task lifecycle management with atomic commit and idempotency.</rationale>
+        <scope>
+          <repository path=".">
+            <include path="src/DogdouSpec.Core/Tasks/**" />
+            <include path="src/DogdouSpec.Cli/Commands/TaskCommand.cs" />
+          </repository>
+        </scope>
+        <origin>
+          <ref scope="iteration" target="20260823-req-revision-idempotency" relation="implements" />
+          <ref scope="iteration" target="20260823-req-product-authority" relation="implements" />
+        </origin>
+        <constraints />
+        <acceptance>
+          <criterion id="20260823-task-crit-task-updater" status="passed">Task updater enforces lifecycle transitions, terminal record predicates, and idempotency receipts.</criterion>
+        </acceptance>
+        <context>
+          <summary>Implemented TaskUpdater with state machine transitions and receipt tracking.</summary>
+        </context>
+        <records>
+          <record id="20260823T034500Z-rec-task-updater-comp" kind="completion" status="informational" created_at="2026-08-23T03:45:00Z" actor="lead-developer">
+            <summary>Migrated historical evidence: Task updater verified with lifecycle state machine and idempotency tests.</summary>
+            <covers>
+              <ref scope="document" target="20260823-task-crit-task-updater" relation="covers" />
+            </covers>
+          </record>
+        </records>
+      </task><task id="20260823-task-transactions" status="done" created_at="2026-08-23T03:45:00Z" started_at="2026-08-23T03:45:00Z" completed_at="2026-08-23T04:15:00Z" updated_at="2026-08-23T04:15:00Z" agent="lead-developer">
+        <index>
+          <summary>Implement low-level multi-document XML transaction engine with staging and crash recovery.</summary>
+          <term key="component" value="transactions" />
+        </index>
+        <title>Implement multi-document transaction engine and crash recovery</title>
+        <objective>Implement TransactionApplier, WorkspaceTransactionCommitter, StartupRecovery, and ProtectedStateGuard.</objective>
+        <rationale>Ensures all-or-nothing multi-document commits with automatic crash recovery.</rationale>
+        <scope>
+          <repository path=".">
+            <include path="src/DogdouSpec.Core/Transactions/**" />
+            <include path="src/DogdouSpec.Cli/Commands/TransactionCommand.cs" />
+          </repository>
+        </scope>
+        <origin>
+          <ref scope="iteration" target="20260823-req-revision-idempotency" relation="implements" />
+        </origin>
+        <constraints />
+        <acceptance>
+          <criterion id="20260823-task-crit-transactions-recovery" status="passed">Transaction applier stages mutations, performs prospective validation, and recovers on fault injection.</criterion>
+        </acceptance>
+        <context>
+          <summary>Implemented TransactionApplier, WorkspaceTransactionCommitter, and recovery mechanisms.</summary>
+        </context>
+        <records>
+          <record id="20260823T041500Z-rec-trans-comp" kind="completion" status="informational" created_at="2026-08-23T04:15:00Z" actor="lead-developer">
+            <summary>Migrated historical evidence: Transaction committer and recovery verified with fault injection.</summary>
+            <covers>
+              <ref scope="document" target="20260823-task-crit-transactions-recovery" relation="covers" />
+            </covers>
+          </record>
+        </records>
+      </task><task id="20260823-task-readiness-confirm" status="done" created_at="2026-08-23T04:15:00Z" started_at="2026-08-23T04:15:00Z" completed_at="2026-08-23T05:00:00Z" updated_at="2026-08-23T05:00:00Z" agent="lead-developer">
+        <index>
+          <summary>Implement iteration readiness assessment, confirmation engine, and audit follow-up drift protections.</summary>
+          <term key="component" value="iterations" />
+        </index>
+        <title>Implement iteration readiness and confirmation engine</title>
+        <objective>Implement IterationReadiness, IterationConfirmer, and dogdouspec iteration readiness/confirm commands.</objective>
+        <rationale>Provides deterministic readiness assessment and owner authority confirmation boundaries.</rationale>
+        <scope>
+          <repository path=".">
+            <include path="src/DogdouSpec.Core/Iterations/**" />
+            <include path="src/DogdouSpec.Cli/Commands/IterationCommand.cs" />
+          </repository>
+        </scope>
+        <origin>
+          <ref scope="iteration" target="20260823-req-product-authority" relation="implements" />
+        </origin>
+        <constraints />
+        <acceptance>
+          <criterion id="20260823-task-crit-readiness-confirm" status="passed">Readiness is deterministic and read-only; confirm enforces owner authority and deep idempotent state verification.</criterion>
+        </acceptance>
+        <context>
+          <summary>Implemented IterationReadiness and IterationConfirmer with live-state drift detection.</summary>
+        </context>
+        <records>
+          <record id="20260823T050000Z-rec-confirm-comp" kind="completion" status="informational" created_at="2026-08-23T05:00:00Z" actor="lead-developer">
+            <summary>Migrated historical evidence: Readiness and confirm verified against all 541 Core and CLI tests with zero failures.</summary>
+            <covers>
+              <ref scope="document" target="20260823-task-crit-readiness-confirm" relation="covers" />
+            </covers>
+          </record>
+        </records>
+      </task><task id="20260823-task-self-hosting-migration" status="done" created_at="2026-08-23T05:00:00Z" updated_at="2026-08-23T05:50:00Z" agent="lead-developer" started_at="2026-08-23T05:40:00Z" completed_at="2026-08-23T05:50:00Z">
+        <index>
+          <summary>Perform repository-root self-hosting migration for DogdouSpec v1.</summary>
+          <term key="component" value="migration" />
+        </index>
+        <title>Perform repository-root self-hosting migration</title>
+        <objective>Initialize repository-root .dogdouspec workspace, migrate v1 specification and tasks, activate iteration, and verify CLI operations.</objective>
+        <rationale>Establishes the repository's own DogdouSpec workspace as the single source of truth for ongoing development.</rationale>
+        <scope>
+          <repository path=".">
+            <include path=".dogdouspec/**" />
+          </repository>
+        </scope>
+        <origin>
+          <ref scope="iteration" target="20260823-req-self-hosting-skill" relation="implements" />
+        </origin>
+        <constraints />
+        <acceptance>
+          <criterion id="20260823-task-crit-root-workspace-init" status="passed">Initialize root .dogdouspec workspace and validate via CLI.</criterion>
+          <criterion id="20260823-task-crit-history-migration" status="passed">Migrate truthful v1 specification, deliverables, and completed tasks.</criterion>
+          <criterion id="20260823-task-crit-validation-clean" status="passed">Validate whole workspace cleanly without errors or schema escapes.</criterion>
+        </acceptance>
+        <context>
+          <summary>Migrating v1 implementation history and establishing root workspace.</summary>
+        </context>
+        <records><record id="20260823T054000Z-rec-migration-start" kind="start" status="informational" created_at="2026-08-23T05:40:00Z" actor="primary-agent" operation_id="20260823T054000Z-update-migration-start">
+      <summary>Started repository-root self-hosting migration for DogdouSpec v1.</summary>
+    </record><record id="20260823T054500Z-rec-migration-verify" kind="verification" status="informational" created_at="2026-08-23T05:45:00Z" actor="primary-agent" operation_id="20260823T054500Z-update-migration-verify">
+      <summary>Verified root workspace initialization, truthful v1 migration, and clean validation with dogdouspec validate.</summary>
+      <covers>
+        <ref scope="document" target="20260823-task-crit-root-workspace-init" relation="covers" />
+        <ref scope="document" target="20260823-task-crit-history-migration" relation="covers" />
+        <ref scope="document" target="20260823-task-crit-validation-clean" relation="covers" />
+      </covers>
+    </record><record id="20260823T055000Z-rec-migration-complete" kind="completion" status="informational" created_at="2026-08-23T05:50:00Z" actor="primary-agent" operation_id="20260823T055000Z-update-migration-complete">
+      <summary>Completed repository-root self-hosting migration. Root .dogdouspec workspace is active, validated, and all migration criteria passed.</summary>
+      <covers>
+        <ref scope="document" target="20260823-task-crit-root-workspace-init" relation="covers" />
+        <ref scope="document" target="20260823-task-crit-history-migration" relation="covers" />
+        <ref scope="document" target="20260823-task-crit-validation-clean" relation="covers" />
+      </covers>
+    </record></records>
+      </task><task id="20260823-task-repo-skill" status="done" created_at="2026-08-23T05:00:00Z" updated_at="2026-08-23T05:45:00Z" agent="lead-developer" started_at="2026-08-23T05:30:00Z" completed_at="2026-08-23T05:45:00Z">
+        <index>
+          <summary>Author checked-in repository DogdouSpec Skill and bootstrap workflow documentation.</summary>
+          <term key="component" value="skill" />
+        </index>
+        <title>Author checked-in repository DogdouSpec Skill</title>
+        <objective>Create checked-in repository Skill for paired AI agent workflows and bootstrap guidance.</objective>
+        <rationale>Equips AI paired programming assistants with exact DogdouSpec workflow instructions and schema constraints.</rationale>
+        <scope>
+          <repository path=".">
+            <include path="skills/dogdouspec/**" />
+            <include path="docs/V1_SKILL_WORKFLOW.md" />
+          <include path="AGENTS.md" /></repository>
+        </scope>
+        <origin>
+          <ref scope="iteration" target="20260823-req-self-hosting-skill" relation="implements" />
+        </origin>
+        <constraints />
+        <acceptance>
+          <criterion id="20260823-task-crit-repo-skill" status="passed">Repository contains complete, tested skill guidance for agent paired programming.</criterion>
+        </acceptance>
+        <context>
+          <summary>Creating repository DogdouSpec Skill in skills/dogdouspec, root AGENTS.md bootstrap instructions, and updating docs/V1_SKILL_WORKFLOW.md pointers.</summary>
+        </context>
+        <records><record id="20260823T053000Z-rec-repo-skill-start" kind="start" status="informational" created_at="2026-08-23T05:30:00Z" actor="primary-agent" operation_id="20260823T053000Z-update-repo-skill-start">
+      <summary>Started repository DogdouSpec Skill authoring and bootstrap documentation task.</summary>
+    </record><record id="20260823T053000Z-rec-repo-skill-scope-discussion" kind="discussion" status="informational" created_at="2026-08-23T05:30:00Z" actor="primary-agent" operation_id="20260823T053000Z-update-repo-skill-start">
+      <summary>Planning elaboration: Appended AGENTS.md to repository scope. AGENTS.md is necessary as the primary entry point for coding agents to discover the repo-local CLI, load the repository skill, and follow DogdouSpec workflow rules without modifying .dogdouspec directly.</summary>
+    </record><record id="20260823T054000Z-rec-repo-skill-verify" kind="verification" status="informational" created_at="2026-08-23T05:40:00Z" actor="primary-agent" operation_id="20260823T054000Z-update-repo-skill-verify">
+      <summary>Verified repository skill at skills/dogdouspec/SKILL.md, references (xpath.md, mutations.md, authority.md), root AGENTS.md, and docs pointer. Skill passed quick_validate.py and two-phase XPath selection verified against live root workspace.</summary>
+      <covers>
+        <ref scope="document" target="20260823-task-crit-repo-skill" relation="covers" />
+      </covers>
+    </record><record id="20260823T054500Z-rec-repo-skill-complete" kind="completion" status="informational" created_at="2026-08-23T05:45:00Z" actor="primary-agent" operation_id="20260823T054500Z-update-repo-skill-complete">
+      <summary>Completed repository DogdouSpec Skill authoring, reference documentation, and root AGENTS.md bootstrap guidelines. All criteria passed and verified.</summary>
+      <covers>
+        <ref scope="document" target="20260823-task-crit-repo-skill" relation="covers" />
+      </covers>
+    </record></records>
+      </task><task id="20260823-task-dogfood-review" status="done" created_at="2026-08-23T05:00:00Z" updated_at="2026-08-23T05:50:00Z" agent="lead-developer" started_at="2026-08-23T05:40:00Z" completed_at="2026-08-23T05:50:00Z">
+        <index>
+          <summary>Run live dogfooding iteration, execution review, and process correction.</summary>
+          <term key="component" value="dogfood" />
+        </index>
+        <title>Execute dogfooding review and workflow verification</title>
+        <objective>Execute real dogfooding workflow on the live self-hosted workspace to verify CLI ergonomics and accuracy.</objective>
+        <rationale>Validates that the self-hosted workflow functions smoothly end-to-end for real agent tasks.</rationale>
+        <scope>
+          <repository path=".">
+            <include path=".dogdouspec/**" />
+          <include path="skills/dogdouspec/**" /><include path="AGENTS.md" /><include path="docs/V1_SKILL_WORKFLOW.md" /></repository>
+        </scope>
+        <origin>
+          <ref scope="iteration" target="20260823-req-self-hosting-skill" relation="implements" />
+        </origin>
+        <dependencies>
+          <ref scope="document" target="20260823-task-repo-skill" relation="depends-on" />
+        </dependencies>
+        <constraints />
+        <acceptance>
+          <criterion id="20260823-task-crit-dogfood-review" status="passed">Dogfooding verification confirms end-to-end usability and workflow compliance.</criterion>
+        </acceptance>
+        <context>
+          <summary>Auditing and fixing confirmed Skill contract drift across skills/dogdouspec/**, AGENTS.md, and documentation.</summary>
+        </context>
+        <records><record id="20260823T054000Z-rec-dogfood-start" kind="start" status="informational" created_at="2026-08-23T05:40:00Z" actor="primary-agent" operation_id="20260823T054000Z-update-dogfood-start">
+      <summary>Started live dogfooding iteration, execution review, and process correction task.</summary>
+    </record><record id="20260823T054000Z-rec-dogfood-scope-discussion" kind="discussion" status="informational" created_at="2026-08-23T05:40:00Z" actor="primary-agent" operation_id="20260823T054000Z-update-dogfood-start">
+      <summary>Planning elaboration: Expanded task scope to include skills/dogdouspec/**, AGENTS.md, and docs/V1_SKILL_WORKFLOW.md to authoritatively audit and fix contract drift discovered during dogfooding.</summary>
+    </record><record id="20260823T054000Z-rec-skill-drift-finding" kind="finding" status="resolved" created_at="2026-08-23T05:40:00Z" actor="primary-agent" operation_id="20260823T054000Z-update-dogfood-start">
+      <summary>Confirmed Skill contract drift to audit and fix: (1) xpath.md lists incorrect limits 1024/1MB vs actual 10,000 nodes/16 MiB; (2) mutations.md names nonexistent templates append.element.xml/iteration.confirm.xml; (3) authority.md requirement dispositions list approved/rejected/waived instead of proposed/approved/superseded/withdrawn; (4) mutations.md mislabels iteration confirm as multi-document write when tasks.xml is read-only checked; (5) selection XPath omits verification resume priority and dependency gating; (6) xpath code blocks contain comments and lack --var parameterization; (7) retry guidance fails to distinguish durable task update from identity append and non-durable transaction apply.</summary>
+    </record><record id="20260823T054500Z-rec-dogfood-verify" kind="verification" status="informational" created_at="2026-08-23T05:45:00Z" actor="primary-agent" operation_id="20260823T054500Z-update-dogfood-verify">
+      <summary>Verified dogfooding audit and all 7 contract drift fixes: (1) quick_validate.py passed; (2) all 8 templates resolved via template show; (3) two-phase XPath selection verified with resume priority and dependency gating; (4) whole root workspace validation passed (4 documents); (5) build.cmd passed all 541 tests (396 Core + 145 CLI).</summary>
+      <covers>
+        <ref scope="document" target="20260823-task-crit-dogfood-review" relation="covers" />
+      </covers>
+    </record><record id="20260823T055000Z-rec-dogfood-complete" kind="completion" status="informational" created_at="2026-08-23T05:50:00Z" actor="primary-agent" operation_id="20260823T055000Z-update-dogfood-complete">
+      <summary>Completed live dogfooding review and process correction. All 7 contract drift findings resolved and verified against validator, live CLI commands, and test suites.</summary>
+      <covers>
+        <ref scope="document" target="20260823-task-crit-dogfood-review" relation="covers" />
+      </covers>
+    </record></records>
+      </task><task id="20260823-task-skill-contract-convergence" status="done" created_at="2026-08-23T06:00:00Z" updated_at="2026-08-23T06:15:00Z" agent="primary-agent" started_at="2026-08-23T06:05:00Z" completed_at="2026-08-23T06:15:00Z">
+  <index>
+    <summary>Align Skill contracts on iteration actions, lifecycle statuses, and transaction visibility semantics.</summary>
+    <term key="component" value="skill" />
+    <term key="topic" value="convergence" />
+  </index>
+  <title>Align Skill contracts on iteration actions, lifecycle statuses, and transaction visibility semantics</title>
+  <objective>Update skills/dogdouspec/references/authority.md and mutations.md to precisely reflect all ConfirmationActionType actions, IterationStatusType replanning, and honest multi-document transaction visibility.</objective>
+  <rationale>Ensures AI paired agents have exact understanding of owner confirmation actions and low-level transaction isolation guarantees.</rationale>
+  <scope>
+    <repository path=".">
+      <include path="skills/dogdouspec/**" />
+      <include path="AGENTS.md" />
+    </repository>
+  </scope>
+  <origin>
+    <ref scope="iteration" target="20260823-req-self-hosting-skill" relation="implements" />
+  </origin>
+  <dependencies>
+    <ref scope="document" target="20260823-task-dogfood-review" relation="depends-on" />
+  </dependencies>
+  <constraints />
+  <acceptance>
+    <criterion id="20260823-task-crit-iteration-action-coverage" status="passed">Iteration lifecycle dispositions include 'replanning' and owner authority documentation covers all confirmation actions (activate, accept-design-change, continue, replan, complete, cancel, supersede).</criterion>
+    <criterion id="20260823-task-crit-tx-visibility-semantics" status="passed">Transaction documentation accurately reflects writer project locking, sequential per-file atomic replacements, unlocked reader visibility during publish, and startup crash recovery convergence.</criterion>
+  </acceptance>
+  <context>
+    <summary>Aligning authority.md and mutations.md on full confirmation actions, replanning lifecycle status, and honest multi-document transaction visibility semantics.</summary>
+  </context>
+  <records><record id="20260823T060500Z-rec-convergence-start" kind="start" status="informational" created_at="2026-08-23T06:05:00Z" actor="primary-agent" operation_id="20260823T060500Z-update-convergence-start">
+      <summary>Started Skill contract convergence task.</summary>
+    </record><record id="20260823T060500Z-rec-convergence-finding" kind="finding" status="resolved" created_at="2026-08-23T06:05:00Z" actor="primary-agent" operation_id="20260823T060500Z-update-convergence-start">
+      <summary>Confirmed Skill contract discrepancies to resolve: (1) authority.md omitted 'replanning' from IterationStatusType and omitted owner confirmation actions (accept-design-change, continue, replan), while requirement row phrased owner action as merely approval rather than explicit owner disposition; (2) mutations.md described transaction apply in a way that could imply simultaneous multi-file filesystem visibility, whereas V1_CLI_CONTRACT.md section 11 establishes that writers use one project lock, each file replacement is an atomic whole-file replacement, unlocked readers may temporarily observe mixed old/new revisions during multi-file publish, and startup crash recovery before the next write converges to a single valid set.</summary>
+    </record><record id="20260823T061000Z-rec-convergence-verify" kind="verification" status="informational" created_at="2026-08-23T06:10:00Z" actor="primary-agent" operation_id="20260823T061000Z-update-convergence-verify">
+      <summary>Verified Skill contract convergence fixes: (1) authority.md updated with full ConfirmationActionType actions (activate, accept-design-change, continue, replan, complete, cancel, supersede), IterationStatusType replanning, and explicit owner disposition wording; (2) mutations.md updated to honestly describe writer project locking, individual whole-file atomic replacements, unlocked reader visibility during publish, and startup crash recovery convergence matching V1_CLI_CONTRACT.md section 11; (3) quick_validate.py passed; (4) build.cmd passed 541 tests (396 Core + 145 CLI); (5) workspace validation passed.</summary>
+      <covers>
+        <ref scope="document" target="20260823-task-crit-iteration-action-coverage" relation="covers" />
+        <ref scope="document" target="20260823-task-crit-tx-visibility-semantics" relation="covers" />
+      </covers>
+    </record><record id="20260823T061500Z-rec-convergence-complete" kind="completion" status="informational" created_at="2026-08-23T06:15:00Z" actor="primary-agent" operation_id="20260823T061500Z-update-convergence-complete">
+      <summary>Completed Skill contract convergence task. Both criteria verified and confirmed across all contract references.</summary>
+      <covers>
+        <ref scope="document" target="20260823-task-crit-iteration-action-coverage" relation="covers" />
+        <ref scope="document" target="20260823-task-crit-tx-visibility-semantics" relation="covers" />
+      </covers>
+    </record></records>
+</task></tasks>

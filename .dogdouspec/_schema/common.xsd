@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+  <xs:simpleType name="SchemaVersionType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="1.0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TimeFirstIdType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[0-9]{8}(T[0-9]{6}Z)?-[a-z0-9]([a-z0-9-]*[a-z0-9])?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TokenKeyType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[a-z][a-z0-9-]*"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TokenValueType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[a-z0-9][a-z0-9.-]*"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ReferenceScopeType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="document"/>
+      <xs:enumeration value="iteration"/>
+      <xs:enumeration value="project"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="RecordKindType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="start"/>
+      <xs:enumeration value="discussion"/>
+      <xs:enumeration value="question"/>
+      <xs:enumeration value="attempt"/>
+      <xs:enumeration value="finding"/>
+      <xs:enumeration value="decision"/>
+      <xs:enumeration value="resolution"/>
+      <xs:enumeration value="verification"/>
+      <xs:enumeration value="completion"/>
+      <xs:enumeration value="handoff"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="RecordStatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="informational"/>
+      <xs:enumeration value="active"/>
+      <xs:enumeration value="resolved"/>
+      <xs:enumeration value="superseded"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CheckResultType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="passed"/>
+      <xs:enumeration value="failed"/>
+      <xs:enumeration value="skipped"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="OptionDispositionType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="proposed"/>
+      <xs:enumeration value="selected"/>
+      <xs:enumeration value="rejected"/>
+      <xs:enumeration value="deferred"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="IndexType">
+    <xs:sequence>
+      <xs:element name="summary" type="xs:string"/>
+      <xs:element name="term" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="key" type="TokenKeyType" use="required"/>
+          <xs:attribute name="value" type="TokenValueType" use="required"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="RefType">
+    <xs:attribute name="scope" type="ReferenceScopeType" use="required"/>
+    <xs:attribute name="target" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="relation" type="TokenKeyType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="RefListType">
+    <xs:sequence>
+      <xs:element name="ref" type="RefType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="KeyPointsType">
+    <xs:sequence>
+      <xs:element name="point" maxOccurs="unbounded">
+        <xs:complexType mixed="true">
+          <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="OptionType">
+    <xs:sequence>
+      <xs:element name="summary" type="xs:string"/>
+      <xs:element name="reason" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="disposition" type="OptionDispositionType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="OptionsType">
+    <xs:sequence>
+      <xs:element name="option" type="OptionType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="CheckType">
+    <xs:sequence>
+      <xs:element name="summary" type="xs:string"/>
+    </xs:sequence>
+    <xs:attribute name="kind" type="TokenKeyType" use="required"/>
+    <xs:attribute name="command" type="xs:string" use="optional"/>
+    <xs:attribute name="result" type="CheckResultType" use="required"/>
+    <xs:attribute name="exit_code" type="xs:integer" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="ChecksType">
+    <xs:sequence>
+      <xs:element name="check" type="CheckType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="RecordType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType" minOccurs="0"/>
+      <xs:element name="summary" type="xs:string"/>
+      <xs:element name="context" type="xs:string" minOccurs="0"/>
+      <xs:element name="options" type="OptionsType" minOccurs="0"/>
+      <xs:element name="impact" type="xs:string" minOccurs="0"/>
+      <xs:element name="outcome" type="xs:string" minOccurs="0"/>
+      <xs:element name="checks" type="ChecksType" minOccurs="0"/>
+      <xs:element name="sources" type="RefListType" minOccurs="0"/>
+      <xs:element name="covers" type="RefListType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="kind" type="RecordKindType" use="required"/>
+    <xs:attribute name="status" type="RecordStatusType" use="required"/>
+    <xs:attribute name="created_at" type="xs:dateTime" use="required"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="operation_id" type="TimeFirstIdType" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="RecordsType">
+    <xs:sequence>
+      <xs:element name="record" type="RecordType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="index" type="IndexType"/>
+  <xs:element name="ref" type="RefType"/>
+  <xs:element name="record" type="RecordType"/>
+</xs:schema>

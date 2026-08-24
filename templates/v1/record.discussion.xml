@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Replace every example value before append. Keep alternatives that explain the outcome. -->
+<record
+  id="20000101T000000Z-record-replace-discussion"
+  kind="discussion"
+  status="resolved"
+  created_at="2000-01-01T00:00:00Z"
+  actor="replace-actor">
+  <index>
+    <summary>Replace with a compact discussion index.</summary>
+    <term key="topic" value="replace-topic"/>
+  </index>
+  <summary>Replace with what was discussed.</summary>
+  <context>Replace with why the discussion became necessary.</context>
+  <options>
+    <option id="20000101-option-replace-first" disposition="rejected">
+      <summary>Replace with the first relevant option.</summary>
+      <reason>Replace with why it was rejected.</reason>
+    </option>
+    <option id="20000101-option-replace-second" disposition="selected">
+      <summary>Replace with the selected option.</summary>
+      <reason>Replace with why it was selected.</reason>
+    </option>
+  </options>
+  <outcome>Replace with the conclusion and remaining uncertainty.</outcome>
+</record>

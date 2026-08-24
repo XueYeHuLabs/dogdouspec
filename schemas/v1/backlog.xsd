@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+  <xs:include schemaLocation="common.xsd"/>
+
+  <xs:simpleType name="BacklogStatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="open"/>
+      <xs:enumeration value="scheduled"/>
+      <xs:enumeration value="completed"/>
+      <xs:enumeration value="cancelled"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="BacklogItemType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType"/>
+      <xs:element name="statement" type="xs:string"/>
+      <xs:element name="rationale" type="xs:string"/>
+      <xs:element name="impact" type="xs:string"/>
+      <xs:element name="source" type="RefListType"/>
+      <xs:choice>
+        <xs:element name="target" type="RefListType"/>
+        <xs:element name="review_condition" type="xs:string"/>
+      </xs:choice>
+      <xs:element name="records" type="RecordsType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="status" type="BacklogStatusType" use="required"/>
+    <xs:attribute name="created_at" type="xs:dateTime" use="required"/>
+    <xs:attribute name="updated_at" type="xs:dateTime" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="BacklogItemsType">
+    <xs:sequence>
+      <xs:element name="item" type="BacklogItemType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="BacklogType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType"/>
+      <xs:element name="items" type="BacklogItemsType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="schema_version" type="SchemaVersionType" use="required"/>
+    <xs:attribute name="revision" type="xs:positiveInteger" use="required"/>
+  </xs:complexType>
+
+  <xs:element name="backlog" type="BacklogType"/>
+  <xs:element name="item" type="BacklogItemType"/>
+</xs:schema>

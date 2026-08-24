@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+  <xs:include schemaLocation="common.xsd"/>
+
+  <xs:simpleType name="TaskStatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="pending"/>
+      <xs:enumeration value="in-progress"/>
+      <xs:enumeration value="blocked"/>
+      <xs:enumeration value="verification"/>
+      <xs:enumeration value="done"/>
+      <xs:enumeration value="transferred"/>
+      <xs:enumeration value="superseded"/>
+      <xs:enumeration value="cancelled"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TaskCriterionStatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="pending"/>
+      <xs:enumeration value="passed"/>
+      <xs:enumeration value="failed"/>
+      <xs:enumeration value="not-applicable"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="PathEntryType">
+    <xs:attribute name="path" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="RepositoryScopeType">
+    <xs:sequence>
+      <xs:element name="include" type="PathEntryType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="exclude" type="PathEntryType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="path" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TaskScopeType">
+    <xs:sequence>
+      <xs:element name="repository" type="RepositoryScopeType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ConstraintType" mixed="true">
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="ConstraintsType">
+    <xs:sequence>
+      <xs:element name="constraint" type="ConstraintType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TaskCriterionType" mixed="true">
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="status" type="TaskCriterionStatusType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TaskAcceptanceType">
+    <xs:sequence>
+      <xs:element name="criterion" type="TaskCriterionType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TaskContextType">
+    <xs:sequence>
+      <xs:element name="summary" type="xs:string"/>
+      <xs:element name="key_points" type="KeyPointsType" minOccurs="0"/>
+      <xs:element name="design_snapshot" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TaskType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType"/>
+      <xs:element name="title" type="xs:string"/>
+      <xs:element name="objective" type="xs:string"/>
+      <xs:element name="rationale" type="xs:string"/>
+      <xs:element name="scope" type="TaskScopeType"/>
+      <xs:element name="origin" type="RefListType"/>
+      <xs:element name="dependencies" type="RefListType" minOccurs="0"/>
+      <xs:element name="constraints" type="ConstraintsType"/>
+      <xs:element name="acceptance" type="TaskAcceptanceType"/>
+      <xs:element name="context" type="TaskContextType"/>
+      <xs:element name="records" type="RecordsType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="status" type="TaskStatusType" use="required"/>
+    <xs:attribute name="created_at" type="xs:dateTime" use="required"/>
+    <xs:attribute name="started_at" type="xs:dateTime" use="optional"/>
+    <xs:attribute name="completed_at" type="xs:dateTime" use="optional"/>
+    <xs:attribute name="updated_at" type="xs:dateTime" use="required"/>
+    <xs:attribute name="agent" type="TokenValueType" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="TasksType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType"/>
+      <xs:element name="task" type="TaskType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="iteration" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="schema_version" type="SchemaVersionType" use="required"/>
+    <xs:attribute name="revision" type="xs:positiveInteger" use="required"/>
+  </xs:complexType>
+
+  <xs:element name="tasks" type="TasksType"/>
+</xs:schema>

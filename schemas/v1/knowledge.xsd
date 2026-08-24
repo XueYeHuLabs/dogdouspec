@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+  <xs:include schemaLocation="common.xsd"/>
+
+  <xs:simpleType name="KnowledgeStatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="proposed"/>
+      <xs:enumeration value="verified"/>
+      <xs:enumeration value="retired"/>
+      <xs:enumeration value="rejected"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="KnowledgeEntryType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType"/>
+      <xs:element name="statement" type="xs:string"/>
+      <xs:element name="rationale" type="xs:string" minOccurs="0"/>
+      <xs:element name="sources" type="RefListType" minOccurs="0"/>
+      <xs:element name="records" type="RecordsType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="status" type="KnowledgeStatusType" use="required"/>
+    <xs:attribute name="created_at" type="xs:dateTime" use="required"/>
+    <xs:attribute name="updated_at" type="xs:dateTime" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="KnowledgeType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType"/>
+      <xs:element name="entry" type="KnowledgeEntryType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="schema_version" type="SchemaVersionType" use="required"/>
+    <xs:attribute name="revision" type="xs:positiveInteger" use="required"/>
+  </xs:complexType>
+
+  <xs:element name="knowledge" type="KnowledgeType"/>
+  <xs:element name="entry" type="KnowledgeEntryType"/>
+</xs:schema>

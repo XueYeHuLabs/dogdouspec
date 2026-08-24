@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The command line supplies iteration, Task ID, and expected tasks.xml revision. -->
+<task-update
+  id="20000101T000000Z-update-replace-task"
+  transition="complete"
+  actor="replace-actor"
+  occurred_at="2000-01-01T00:00:00Z">
+  <acceptance>
+    <criterion target="20000101-taskaccept-replace" result="passed"/>
+  </acceptance>
+  <resolve-records/>
+  <records>
+    <record
+      id="20000101T000000Z-record-replace-completion"
+      kind="completion"
+      status="informational"
+      created_at="2000-01-01T00:00:00Z"
+      actor="replace-actor">
+      <summary>Replace with the completed technical outcome.</summary>
+    </record>
+  </records>
+</task-update>

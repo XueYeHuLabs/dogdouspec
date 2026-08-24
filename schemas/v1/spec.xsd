@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+
+  <xs:include schemaLocation="common.xsd"/>
+
+  <xs:simpleType name="WorkKindType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="feature"/>
+      <xs:enumeration value="research"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="IterationStatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="draft"/>
+      <xs:enumeration value="active"/>
+      <xs:enumeration value="replanning"/>
+      <xs:enumeration value="completed"/>
+      <xs:enumeration value="cancelled"/>
+      <xs:enumeration value="superseded"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="RequirementStatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="proposed"/>
+      <xs:enumeration value="approved"/>
+      <xs:enumeration value="superseded"/>
+      <xs:enumeration value="withdrawn"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ProductDecisionType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="pending"/>
+      <xs:enumeration value="accepted"/>
+      <xs:enumeration value="rejected"/>
+      <xs:enumeration value="waived"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="DesignDecisionStatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="proposed"/>
+      <xs:enumeration value="accepted"/>
+      <xs:enumeration value="rejected"/>
+      <xs:enumeration value="superseded"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ResearchQuestionStatusType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="open"/>
+      <xs:enumeration value="answered"/>
+      <xs:enumeration value="deferred"/>
+      <xs:enumeration value="withdrawn"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="DeliverableType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType"/>
+      <xs:element name="description" type="xs:string"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="ScopeItemsType">
+    <xs:sequence>
+      <xs:element name="item" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ProductScopeType">
+    <xs:sequence>
+      <xs:element name="included" type="ScopeItemsType"/>
+      <xs:element name="excluded" type="ScopeItemsType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="RequirementType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType"/>
+      <xs:element name="statement" type="xs:string"/>
+      <xs:element name="rationale" type="xs:string"/>
+      <xs:element name="key_points" type="KeyPointsType" minOccurs="0"/>
+      <xs:element name="records" type="RecordsType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="status" type="RequirementStatusType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="ProductCriterionType" mixed="true">
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="decision" type="ProductDecisionType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="ProductType">
+    <xs:sequence>
+      <xs:element name="objective" type="xs:string"/>
+      <xs:element name="deliverables">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="deliverable" type="DeliverableType" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="scope" type="ProductScopeType"/>
+      <xs:element name="requirements">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="requirement" type="RequirementType" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="acceptance">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="criterion" type="ProductCriterionType" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ResearchQuestionType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType"/>
+      <xs:element name="statement" type="xs:string"/>
+      <xs:element name="rationale" type="xs:string"/>
+      <xs:element name="key_points" type="KeyPointsType" minOccurs="0"/>
+      <xs:element name="records" type="RecordsType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="status" type="ResearchQuestionStatusType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="ResearchType">
+    <xs:sequence>
+      <xs:element name="objective" type="xs:string"/>
+      <xs:element name="questions">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="question" type="ResearchQuestionType" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="method" type="xs:string"/>
+      <xs:element name="boundaries" type="ScopeItemsType"/>
+      <xs:element name="outputs" type="ScopeItemsType"/>
+      <xs:element name="acceptance">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="criterion" type="ProductCriterionType" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="BoundaryType" mixed="true">
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="DesignDecisionType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType"/>
+      <xs:element name="rationale" type="xs:string"/>
+      <xs:element name="sources" type="RefListType" minOccurs="0"/>
+      <xs:element name="records" type="RecordsType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="status" type="DesignDecisionStatusType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="DesignType">
+    <xs:sequence>
+      <xs:element name="overview" type="xs:string"/>
+      <xs:element name="boundaries">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="boundary" type="BoundaryType" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="decisions">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="decision" type="DesignDecisionType" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="ConfirmationActionType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="activate"/>
+      <xs:enumeration value="accept-design-change"/>
+      <xs:enumeration value="continue"/>
+      <xs:enumeration value="replan"/>
+      <xs:enumeration value="complete"/>
+      <xs:enumeration value="cancel"/>
+      <xs:enumeration value="supersede"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="ConfirmationTargetDecisionType">
+    <xs:attribute name="target" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="decision" type="TokenKeyType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="ConfirmationTargetsType">
+    <xs:sequence>
+      <xs:choice maxOccurs="unbounded">
+        <xs:element name="requirement" type="ConfirmationTargetDecisionType"/>
+        <xs:element name="question" type="ConfirmationTargetDecisionType"/>
+        <xs:element name="decision" type="ConfirmationTargetDecisionType"/>
+        <xs:element name="criterion" type="ConfirmationTargetDecisionType"/>
+      </xs:choice>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ConfirmationType">
+    <xs:sequence>
+      <xs:element name="summary" type="xs:string"/>
+      <xs:element name="rationale" type="xs:string" minOccurs="0"/>
+      <xs:element name="requirements" type="ConfirmationTargetsType" minOccurs="0"/>
+      <xs:element name="questions" type="ConfirmationTargetsType" minOccurs="0"/>
+      <xs:element name="design" type="ConfirmationTargetsType" minOccurs="0"/>
+      <xs:element name="acceptance" type="ConfirmationTargetsType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="action" type="ConfirmationActionType" use="required"/>
+    <xs:attribute name="decision" type="TokenKeyType" use="required"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="decided_at" type="xs:dateTime" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="IterationType">
+    <xs:sequence>
+      <xs:element name="index" type="IndexType"/>
+      <xs:choice>
+        <xs:element name="product" type="ProductType"/>
+        <xs:element name="research" type="ResearchType"/>
+      </xs:choice>
+      <xs:element name="design" type="DesignType" minOccurs="0"/>
+      <xs:element name="confirmations">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="confirmation" type="ConfirmationType" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="schema_version" type="SchemaVersionType" use="required"/>
+    <xs:attribute name="revision" type="xs:positiveInteger" use="required"/>
+    <xs:attribute name="kind" type="WorkKindType" use="required"/>
+    <xs:attribute name="status" type="IterationStatusType" use="required"/>
+    <xs:attribute name="created_at" type="xs:dateTime" use="required"/>
+    <xs:attribute name="updated_at" type="xs:dateTime" use="required"/>
+    <xs:attribute name="completed_at" type="xs:dateTime" use="optional"/>
+  </xs:complexType>
+
+  <xs:element name="iteration" type="IterationType"/>
+</xs:schema>

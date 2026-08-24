@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks
+  id="20260823-xpath-core-tasks"
+  iteration="20260823-xpath-core"
+  schema_version="1.0"
+  revision="9">
+  <index>
+    <summary>Implementation Tasks for the XPath core Iteration.</summary>
+    <term key="iteration" value="20260823-xpath-core"/>
+  </index>
+  <task
+    id="20260823-task-iteration-layout"
+    status="done"
+    created_at="2026-08-23T02:10:00Z"
+    started_at="2026-08-23T02:20:00Z"
+    completed_at="2026-08-23T03:00:00Z"
+    updated_at="2026-08-23T03:00:00Z"
+    agent="codex">
+    <index>
+      <summary>Define the Iteration-first filesystem layout.</summary>
+      <term key="component" value="xml-core"/>
+      <term key="topic" value="iteration-layout"/>
+      <term key="priority" value="p0"/>
+    </index>
+    <title>Define the Iteration-first layout</title>
+    <objective>
+      Remove the mandatory project catalog and make date-prefixed Iteration
+      directories the first project discovery surface.
+    </objective>
+    <rationale>
+      A new Agent should understand available work through one directory listing.
+    </rationale>
+    <scope>
+      <repository path=".">
+        <include path="docs/demos/v1-core/**"/>
+      </repository>
+    </scope>
+    <origin>
+      <ref
+        scope="iteration"
+        target="20260823-req-iteration-discovery"
+        relation="implements"/>
+    </origin>
+    <constraints>
+      <constraint id="20260823-constraint-no-project-catalog">
+        Iteration discovery must not depend on project.xml.
+      </constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260823-taskaccept-layout-visible" status="passed">
+        A directory listing shows the Iteration and special project content.
+      </criterion>
+      <criterion id="20260823-taskaccept-layout-identity" status="passed">
+        The Iteration ID equals its directory name.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>
+        The .dogdouspec directory is the implicit project boundary. Research is
+        represented as another Iteration directory with kind="research".
+      </summary>
+    </context>
+    <records>
+      <record
+        id="20260823T023000Z-record-layout-decision"
+        kind="decision"
+        status="informational"
+        created_at="2026-08-23T02:30:00Z"
+        actor="codex">
+        <summary>
+          Use fixed filenames inside each Iteration and no mandatory catalog.
+        </summary>
+      </record>
+      <record
+        id="20260823T030000Z-record-layout-completion"
+        kind="completion"
+        status="informational"
+        created_at="2026-08-23T03:00:00Z"
+        actor="codex">
+        <summary>The Iteration-first demo layout was completed.</summary>
+        <checks>
+          <check kind="inspection" result="passed">
+            <summary>
+              No project.xml, goal.xml, evidence.xml, or transaction directory
+              is present in the adjusted demo.
+            </summary>
+          </check>
+        </checks>
+        <covers>
+          <ref
+            scope="document"
+            target="20260823-taskaccept-layout-visible"
+            relation="covers"/>
+          <ref
+            scope="document"
+            target="20260823-taskaccept-layout-identity"
+            relation="covers"/>
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task
+    id="20260823-task-xpath-projection"
+    status="in-progress"
+    created_at="2026-08-23T03:05:00Z"
+    started_at="2026-08-23T03:15:00Z"
+    updated_at="2026-08-23T04:00:00Z"
+    agent="codex">
+    <index>
+      <summary>Define variables and composable structural projection.</summary>
+      <term key="component" value="xpath-query"/>
+      <term key="topic" value="xpath-extension"/>
+      <term key="topic" value="context-control"/>
+      <term key="priority" value="p0"/>
+    </index>
+    <title>Define XPath projection</title>
+    <objective>
+      Define XPath variables, ds:filter, ds:filter-out, and compact XML results
+      so an Agent can inspect Task indexes without loading large Task content.
+    </objective>
+    <rationale>
+      Standard XPath 1.0 can select source nodes but cannot return a projected
+      copy with selected direct members retained or removed.
+    </rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/**"/>
+        <include path="tests/DogdouSpec.Core.Tests/**"/>
+        <include path="docs/**"/>
+      </repository>
+    </scope>
+    <origin>
+      <ref
+        scope="iteration"
+        target="20260823-req-structural-projection"
+        relation="implements"/>
+    </origin>
+    <dependencies>
+      <ref
+        scope="document"
+        target="20260823-task-iteration-layout"
+        relation="depends-on"/>
+    </dependencies>
+    <constraints>
+      <constraint id="20260823-constraint-projection-readonly">
+        Projection must never modify managed source XML.
+      </constraint>
+      <constraint id="20260823-constraint-projection-direct">
+        Members select only the current element's attributes and direct children.
+      </constraint>
+      <constraint id="20260823-constraint-projection-missing">
+        A valid member absent from an input element is ignored.
+      </constraint>
+      <constraint id="20260823-constraint-query-no-truncation">
+        Query limits fail explicitly and return no partial successful result.
+      </constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260823-taskaccept-filter-members" status="pending">
+        ds:filter retains only named direct attributes and child elements.
+      </criterion>
+      <criterion id="20260823-taskaccept-filterout-members" status="pending">
+        ds:filter-out removes only named direct attributes and child elements.
+      </criterion>
+      <criterion id="20260823-taskaccept-filter-composition" status="pending">
+        Projection results remain composable XPath node sets.
+      </criterion>
+      <criterion id="20260823-taskaccept-result-limit" status="pending">
+        Oversized results fail without truncation.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>
+        The implementation uses XPath 1.0 with a custom XsltContext.
+        IXsltContextVariable binds strings. IXsltContextFunction returns an
+        XPathNodeIterator for structural projection. Standard composition after
+        the function remains owned by System.Xml.XPath.
+      </summary>
+      <design_snapshot>
+        The ds prefix is bound by the CLI. filter is an allow-list projection;
+        filter-out is an exclusion projection. Both preserve the selected root.
+      </design_snapshot>
+    </context>
+    <records>
+      <record
+        id="20260823T031500Z-record-projection-start"
+        kind="start"
+        status="informational"
+        created_at="2026-08-23T03:15:00Z"
+        actor="codex">
+        <summary>Started the XPath projection contract.</summary>
+      </record>
+      <record
+        id="20260823T033000Z-record-projection-decision"
+        kind="decision"
+        status="active"
+        created_at="2026-08-23T03:30:00Z"
+        actor="codex">
+        <summary>
+          Return a complete projected node set and let .NET evaluate subsequent
+          paths, predicates, unions, and nested extension calls.
+        </summary>
+      </record>
+      <record
+        id="20260823T040000Z-record-projection-attempt"
+        kind="attempt"
+        status="active"
+        created_at="2026-08-23T04:00:00Z"
+        actor="codex">
+        <summary>
+          The contract examples are drafted. Materialized versus virtual
+          projection remains an implementation choice pending focused tests.
+        </summary>
+      </record>
+    </records>
+  </task>
+  <task
+    id="20260823-task-task-history"
+    status="pending"
+    created_at="2026-08-23T03:10:00Z"
+    updated_at="2026-08-23T04:20:00Z">
+    <index>
+      <summary>Freeze integrated Task history and verification records.</summary>
+      <term key="component" value="task-model"/>
+      <term key="topic" value="task-history"/>
+      <term key="priority" value="p1"/>
+    </index>
+    <title>Define Task-local execution history</title>
+    <objective>
+      Define structured discussion, question, attempt, decision, blocker,
+      handoff, verification, and completion records inside the owning context.
+    </objective>
+    <rationale>
+      Ordinary verification does not need an independent Evidence lifecycle.
+    </rationale>
+    <scope>
+      <repository path=".">
+        <include path="docs/**"/>
+      </repository>
+    </scope>
+    <origin>
+      <ref
+        scope="iteration"
+        target="20260823-req-task-history"
+        relation="implements"/>
+    </origin>
+    <constraints>
+      <constraint id="20260823-constraint-history-semantic">
+        Git owns mechanical history; Task records own resumable semantic history.
+      </constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260823-taskaccept-history-integrated" status="pending">
+        A completed Task carries its verification and completion provenance.
+      </criterion>
+      <criterion id="20260823-taskaccept-history-reasoning" status="pending">
+        A discussion record preserves its trigger, material alternatives,
+        rejection reasons, outcome, and remaining uncertainty.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>
+        External artifacts are optional links from records. Signatures and hash
+        chains are outside v1.
+      </summary>
+    </context>
+    <records/>
+  </task>
+  <task
+    id="20260823-task-atomic-update"
+    status="pending"
+    created_at="2026-08-23T03:12:00Z"
+    updated_at="2026-08-23T04:20:00Z">
+    <index>
+      <summary>Define template-first atomic updates for tasks.xml.</summary>
+      <term key="component" value="transaction-core"/>
+      <term key="topic" value="atomic-update"/>
+      <term key="priority" value="p1"/>
+    </index>
+    <title>Define generic Task updates</title>
+    <objective>
+      Define schema template discovery, append, Task update, expected revision,
+      idempotency, validation, and atomic replacement while retaining a generic
+      transaction fallback.
+    </objective>
+    <rationale>
+      Most durable mutations append records. Templates keep XML visible while
+      helpers remove repeated XPath, cardinality, timestamp, and operation-order
+      mechanics from the normal Skill path.
+    </rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/**"/>
+        <include path="tests/DogdouSpec.Core.Tests/**"/>
+      </repository>
+    </scope>
+    <origin>
+      <ref
+        scope="iteration"
+        target="20260823-req-atomic-update"
+        relation="implements"/>
+    </origin>
+    <dependencies>
+      <ref
+        scope="document"
+        target="20260823-task-xpath-projection"
+        relation="depends-on"/>
+    </dependencies>
+    <constraints>
+      <constraint id="20260823-constraint-no-transaction-state">
+        Transaction request documents are not persisted project state.
+      </constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260823-taskaccept-update-atomic" status="pending">
+        Attribute, acceptance, and record updates commit together or not at all.
+      </criterion>
+      <criterion id="20260823-taskaccept-update-conflict" status="pending">
+        A stale expected revision fails without changing tasks.xml.
+      </criterion>
+      <criterion id="20260823-taskaccept-update-template" status="pending">
+        An Agent can retrieve and fill a schema-valid append or Task update
+        template without authoring a raw transaction.
+      </criterion>
+      <criterion id="20260823-taskaccept-update-idempotent" status="pending">
+        Retrying an identical node or update ID cannot append duplicate history.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>
+        The tasks.xml root revision provides optimistic concurrency. Append and
+        Task update are the default mutation surface. The generic transaction is
+        an escape hatch. No lease, task-claim file, or task-complete file is
+        required in v1.
+      </summary>
+    </context>
+    <records/>
+  </task>
+</tasks>

@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration
+  id="20260823-xpath-core"
+  schema_version="1.0"
+  revision="4"
+  kind="feature"
+  status="active"
+  created_at="2026-08-23T02:00:00Z"
+  updated_at="2026-08-23T04:20:00Z">
+  <index>
+    <summary>Define the first iteration-first XML and XPath core.</summary>
+    <term key="component" value="xml-core"/>
+    <term key="component" value="xpath-query"/>
+    <term key="priority" value="p0"/>
+  </index>
+  <product>
+    <objective>
+      Deliver a local XML and XPath workflow that lets an Agent discover an
+      Iteration, read compact Task indexes, load one complete Task, and update
+      Task state atomically.
+    </objective>
+    <deliverables>
+      <deliverable id="20260823-delivery-iteration-layout">
+        <index>
+          <summary>An Iteration-first filesystem layout without project.xml.</summary>
+          <term key="topic" value="iteration-layout"/>
+        </index>
+        <description>
+          Date-prefixed Iteration directories expose project work through one
+          ordinary directory listing.
+        </description>
+      </deliverable>
+      <deliverable id="20260823-delivery-xpath-query">
+        <index>
+          <summary>Composable XPath variables and structural projection.</summary>
+          <term key="topic" value="xpath-projection"/>
+        </index>
+        <description>
+          The query engine supports variables, ds:filter, ds:filter-out, and
+          compact XML results without silent truncation.
+        </description>
+      </deliverable>
+      <deliverable id="20260823-delivery-atomic-update">
+        <index>
+          <summary>Generic revision-checked atomic XML updates.</summary>
+          <term key="topic" value="atomic-update"/>
+        </index>
+        <description>
+          A transaction command updates tasks.xml without persisting claim or
+          completion transaction documents.
+        </description>
+      </deliverable>
+    </deliverables>
+    <scope>
+      <included>
+        <item>Iteration discovery from the .dogdouspec directory.</item>
+        <item>Product, design, Task, record, and reference XML structure.</item>
+        <item>XPath 1.0 variables and structural projection extensions.</item>
+        <item>Generic atomic Task updates.</item>
+      </included>
+      <excluded>
+        <item>MCP, GUI, schedulers, signatures, and audit hash chains.</item>
+        <item>Persistent transaction request files.</item>
+        <item>A mandatory project catalog.</item>
+      </excluded>
+    </scope>
+    <requirements>
+      <requirement id="20260823-req-iteration-discovery" status="approved">
+        <index>
+          <summary>Agents discover Iterations through date-prefixed directories.</summary>
+          <term key="topic" value="iteration-discovery"/>
+        </index>
+        <statement>
+          A directory named YYYYMMDD-name containing spec.xml is an Iteration.
+          Its spec root ID must equal the directory name.
+        </statement>
+        <rationale>
+          Filesystem discovery must remain understandable before an Agent loads
+          a project catalog or learns the complete XML model.
+        </rationale>
+      </requirement>
+      <requirement id="20260823-req-structural-projection" status="approved">
+        <index>
+          <summary>Agents can query compact Task indexes before Task content.</summary>
+          <term key="topic" value="xpath-projection"/>
+        </index>
+        <statement>
+          ds:filter and ds:filter-out operate on each selected element's direct
+          attributes and direct child elements and return composable node sets.
+        </statement>
+        <rationale>
+          Index-first projection prevents large Task bodies and record history
+          from consuming context during routine navigation.
+        </rationale>
+      </requirement>
+      <requirement id="20260823-req-task-history" status="approved">
+        <index>
+          <summary>Structured records preserve resumable reasoning and history.</summary>
+          <term key="topic" value="task-history"/>
+        </index>
+        <statement>
+          Discussions, alternatives, attempts, decisions, blockers,
+          verification, and completion remain with the owning context instead
+          of separate Evidence or transaction files.
+        </statement>
+        <rationale>
+          A conclusion without its trigger, alternatives, and reasoning is
+          difficult for a later Agent to trust or safely revise.
+        </rationale>
+        <key_points>
+          <point id="20260823-point-record-reasoning">
+            Preserve the reasoning needed to avoid repeating the discussion.
+          </point>
+          <point id="20260823-point-record-no-transcript">
+            Persist structured summaries rather than complete chat transcripts.
+          </point>
+        </key_points>
+        <records>
+          <record
+            id="20260823T041000Z-record-structured-discussion"
+            kind="discussion"
+            status="resolved"
+            created_at="2026-08-23T04:10:00Z"
+            actor="owner">
+            <index>
+              <summary>Decided how much discussion history must be retained.</summary>
+              <term key="topic" value="structured-discussion"/>
+              <term key="tag" value="reasoning-history"/>
+            </index>
+            <summary>
+              Reviewed whether durable state should retain only conclusions,
+              complete transcripts, or structured reasoning summaries.
+            </summary>
+            <context>
+              Later maintainers may not understand a conclusion when the
+              motivating problem and rejected alternatives have disappeared.
+            </context>
+            <options>
+              <option
+                id="20260823-option-conclusion-only"
+                disposition="rejected">
+                <summary>Persist only the final conclusion.</summary>
+                <reason>It loses the reasoning needed for later revision.</reason>
+              </option>
+              <option
+                id="20260823-option-full-transcript"
+                disposition="rejected">
+                <summary>Persist the complete discussion transcript.</summary>
+                <reason>It adds noise and unbounded context cost.</reason>
+              </option>
+              <option
+                id="20260823-option-structured-summary"
+                disposition="selected">
+                <summary>Persist trigger, options, reasons, and outcome.</summary>
+                <reason>It preserves understanding with bounded content.</reason>
+              </option>
+            </options>
+            <outcome>
+              Requirements and Tasks may carry structured discussion records;
+              product conclusions still require explicit confirmation.
+            </outcome>
+          </record>
+        </records>
+      </requirement>
+      <requirement id="20260823-req-atomic-update" status="approved">
+        <index>
+          <summary>Template-first Task updates remain revision-checked and atomic.</summary>
+          <term key="topic" value="atomic-update"/>
+        </index>
+        <statement>
+          An Agent obtains a schema-valid template, fills it, and uses append or
+          Task update helpers. The generic transaction remains an escape hatch.
+        </statement>
+        <rationale>
+          Raw transaction XPath and ordered operations are too error-prone for
+          routine append-oriented history and Task state changes.
+        </rationale>
+        <key_points>
+          <point id="20260823-point-template-first">
+            Prefer a readable schema-valid template over memorized transaction
+            operations.
+          </point>
+          <point id="20260823-point-transaction-fallback">
+            Preserve the generic transaction only for unsupported combinations.
+          </point>
+        </key_points>
+        <records>
+          <record
+            id="20260823T041100Z-record-template-append-discussion"
+            kind="discussion"
+            status="resolved"
+            created_at="2026-08-23T04:11:00Z"
+            actor="owner">
+            <index>
+              <summary>Selected template-first append for routine mutations.</summary>
+              <term key="topic" value="template-append"/>
+              <term key="tag" value="mutation-usability"/>
+            </index>
+            <summary>
+              Compared raw transaction requests with schema templates and
+              append-oriented helpers.
+            </summary>
+            <context>
+              Most durable updates append records, while raw transactions make
+              the caller repeat paths, XPath, cardinality, and operation order.
+            </context>
+            <options>
+              <option
+                id="20260823-option-raw-transaction-default"
+                disposition="rejected">
+                <summary>Use raw transactions for every mutation.</summary>
+                <reason>Routine writes have excessive cognitive and error cost.</reason>
+              </option>
+              <option
+                id="20260823-option-many-state-commands"
+                disposition="rejected">
+                <summary>Add one CLI command for every Task transition.</summary>
+                <reason>It expands the surface without improving record shape.</reason>
+              </option>
+              <option
+                id="20260823-option-template-append"
+                disposition="selected">
+                <summary>Fill schema templates and append or atomically update.</summary>
+                <reason>It keeps XML visible while removing low-level mechanics.</reason>
+              </option>
+            </options>
+            <outcome>
+              V1 exposes template show, append, and Task update. Transaction
+              apply remains available but is not the normal Skill path.
+            </outcome>
+          </record>
+        </records>
+      </requirement>
+    </requirements>
+    <acceptance>
+      <criterion
+        id="20260823-accept-directory-overview"
+        decision="pending">
+        One directory listing reveals Iterations and special project content.
+      </criterion>
+      <criterion
+        id="20260823-accept-resume-task"
+        decision="pending">
+        A new Agent can select the first unfinished Task and load its complete
+        durable context without loading other Task bodies.
+      </criterion>
+      <criterion
+        id="20260823-accept-integrated-verification"
+        decision="pending">
+        Task verification and completion provenance are recorded inside Task
+        records without a required Evidence document.
+      </criterion>
+      <criterion
+        id="20260823-accept-no-truncation"
+        decision="pending">
+        Query result limits fail explicitly and never silently truncate XML.
+      </criterion>
+      <criterion
+        id="20260823-accept-structured-reasoning"
+        decision="pending">
+        A later Agent can recover the trigger, material alternatives, rationale,
+        and outcome of an important Requirement or Task discussion.
+      </criterion>
+      <criterion
+        id="20260823-accept-template-append"
+        decision="pending">
+        An Agent can obtain a schema-valid template and perform a routine append
+        or Task update without authoring a raw transaction.
+      </criterion>
+    </acceptance>
+  </product>
+  <design>
+    <overview>
+      The filesystem is the coarse project index. spec.xml owns product and
+      design intent. tasks.xml owns implementation state and semantic execution
+      records. XPath provides narrow reads inside either document.
+    </overview>
+    <boundaries>
+      <boundary id="20260823-boundary-project-root">
+        The nearest ancestor .dogdouspec directory is the project boundary.
+      </boundary>
+      <boundary id="20260823-boundary-iteration-folder">
+        One date-prefixed directory is the ownership boundary for one Iteration.
+      </boundary>
+      <boundary id="20260823-boundary-transaction">
+        Transaction requests are execution inputs, not persisted project state.
+      </boundary>
+    </boundaries>
+    <decisions>
+      <decision id="20260823-design-filesystem-index" status="accepted">
+        <index>
+          <summary>Use the filesystem as the project-level Iteration index.</summary>
+          <term key="topic" value="filesystem-index"/>
+        </index>
+        <rationale>
+          Directory names expose time, topic, and available work before an Agent
+          understands any project XML schema.
+        </rationale>
+        <sources>
+          <ref
+            scope="project"
+            target="20260801-knowledge-xml-authority"
+            relation="constrained-by"/>
+        </sources>
+      </decision>
+      <decision id="20260823-design-split-spec-tasks" status="accepted">
+        <index>
+          <summary>Keep product and design separate from mutable Task state.</summary>
+          <term key="topic" value="document-ownership"/>
+        </index>
+        <rationale>
+          spec.xml changes when product or design meaning changes. tasks.xml can
+          change frequently while retaining small and reviewable Git diffs.
+        </rationale>
+      </decision>
+      <decision id="20260823-design-task-record-evidence" status="accepted">
+        <index>
+          <summary>Record ordinary verification inside the owning Task.</summary>
+          <term key="topic" value="integrated-evidence"/>
+        </index>
+        <rationale>
+          Most verification is meaningful only in the context of the Task and
+          does not require an independent evidence lifecycle.
+        </rationale>
+      </decision>
+      <decision id="20260823-design-structured-discussion" status="accepted">
+        <index>
+          <summary>Persist bounded structured reasoning, not conclusions alone.</summary>
+          <term key="topic" value="structured-discussion"/>
+        </index>
+        <rationale>
+          Trigger, options, rejection reasons, and outcome preserve long-term
+          understanding without retaining a complete conversation transcript.
+        </rationale>
+      </decision>
+      <decision id="20260823-design-template-first-append" status="accepted">
+        <index>
+          <summary>Use schema templates and append-oriented helpers by default.</summary>
+          <term key="topic" value="template-append"/>
+        </index>
+        <rationale>
+          Templates keep XML explicit while helpers own revision checks,
+          selection cardinality, timestamps, and atomic Task state updates.
+        </rationale>
+      </decision>
+    </decisions>
+  </design>
+  <confirmations>
+    <confirmation
+      id="20260823T025000Z-confirmation-activation"
+      action="activate"
+      decision="accepted"
+      actor="owner"
+      decided_at="2026-08-23T02:50:00Z">
+      <summary>
+        Product scope, acceptance criteria, and design were reviewed and
+        approved for implementation.
+      </summary>
+      <requirements>
+        <requirement
+          target="20260823-req-iteration-discovery"
+          decision="approved"/>
+        <requirement
+          target="20260823-req-structural-projection"
+          decision="approved"/>
+        <requirement
+          target="20260823-req-task-history"
+          decision="approved"/>
+        <requirement
+          target="20260823-req-atomic-update"
+          decision="approved"/>
+      </requirements>
+    </confirmation>
+    <confirmation
+      id="20260823T042000Z-confirmation-record-and-template-design"
+      action="accept-design-change"
+      decision="accepted"
+      actor="owner"
+      decided_at="2026-08-23T04:20:00Z">
+      <summary>
+        Approved structured reasoning records and template-first append/update
+        as the v1 design baseline.
+      </summary>
+      <requirements>
+        <requirement
+          target="20260823-req-task-history"
+          decision="approved"/>
+        <requirement
+          target="20260823-req-atomic-update"
+          decision="approved"/>
+      </requirements>
+      <design>
+        <decision
+          target="20260823-design-structured-discussion"
+          decision="accepted"/>
+        <decision
+          target="20260823-design-template-first-append"
+          decision="accepted"/>
+      </design>
+    </confirmation>
+  </confirmations>
+</iteration>
