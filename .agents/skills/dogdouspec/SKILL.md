@@ -1,13 +1,18 @@
 ---
 name: dogdouspec
-description: Comprehensive workflow instructions for managing project iterations, tasks, and authoritative XML artifacts in DogdouSpec workspaces using the repo-local CLI. Use when starting, executing, querying, updating, or completing tasks in a DogdouSpec workspace; do not use for generic ad-hoc XML editing outside DogdouSpec.
+description: Comprehensive workflow instructions for managing project iterations, specifications, and tasks in DogdouSpec workspaces using the repo-local CLI. Activate when planning or executing complex, long-cycle iterations, or when explicitly requested by the user to use DogdouSpec; do not use for routine ad-hoc coding or lightweight tasks.
 ---
 
 # DogdouSpec Workflow Guide
 
-DogdouSpec is a repository-local, iteration-first specification and task management system. Authoritative state is stored in XML documents under `.dogdouspec/` and validated against XSD v1 schemas.
+DogdouSpec is a repository-local, iteration-first specification and task management system designed to keep multi-step, complex engineering tasks structured, token-efficient, and resilient across AI coding sessions. Authoritative state is stored in XML documents under `.dogdouspec/` and validated against XSD v1 schemas.
 
-## Core Invariants
+## When to Use DogdouSpec
+
+- **Recommended**: Complex features, multi-step iterations, formal spec/requirement governance, architectural changes, or when cross-session/multi-agent task handoff is needed.
+- **Bypass / Do Not Use**: Routine bug fixes, minor documentation updates, single-commit refactorings, or lightweight ad-hoc tasks. For those, make code changes directly and rely on standard Git commit messages without creating or mutating DogdouSpec iterations.
+
+## Core Invariants (When Using DogdouSpec)
 
 1. **Repository-Local Execution**: Use `.\dogdouspec.cmd` (Windows) or `dotnet run --project src/DogdouSpec.Cli/DogdouSpec.Cli.csproj --` (cross-platform). No global tools, background daemons, or MCP servers are required.
 2. **Never Edit Managed XML Directly**: Never edit, write, or copy `.dogdouspec/*.xml` using text editors or scripts. All mutations must pass through the public CLI (`task update`, `task review`, `task add`, `task revise`, `task split`, `requirement propose`, `change propose`, `change apply`, `append`, `transaction apply`, `iteration confirm`).

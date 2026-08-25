@@ -431,8 +431,14 @@ Merge the DogdouSpec agent guidelines into `<TARGET_REPO>/AGENTS.md`.
 ```markdown
 ## DogdouSpec Workflow
 
-This repository uses **DogdouSpec** to manage iterations, specifications, and tasks through authoritative XML documents in `.dogdouspec/`.
+This repository supports **DogdouSpec** for managing complex, long-cycle iterations, specifications, and tasks through authoritative XML documents in `.dogdouspec/`.
 
+### 1. When to Use DogdouSpec
+- **Routine & Lightweight Tasks (Default)**: For standalone fixes, small refactorings, or direct requests, proceed directly with code changes and Git commits. Do **not** query or mutate `.dogdouspec/` artifacts.
+- **Complex & Long-Cycle Iterations (Recommended)**: For multi-step features, architectural changes, or roadmap items, recommend and prefer using DogdouSpec for structured context persistence, token efficiency (`ds:filter`), and authority governance.
+- **Checked-In Skill**: The DogdouSpec agent skill is located at [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md). When the user chooses DogdouSpec or when executing active iteration tasks, follow the workflow below.
+
+### 2. Governed Execution Rules (When Active / Selected)
 1. **Use Repo-Local CLI**:
    - Windows: `.\dogdouspec.cmd <command>`
    - Do not install global tools or configure external MCP servers for DogdouSpec.
@@ -478,8 +484,14 @@ $blockContent = @'
 
 ## DogdouSpec Workflow
 
-This repository uses **DogdouSpec** to manage iterations, specifications, and tasks through authoritative XML documents in `.dogdouspec/`.
+This repository supports **DogdouSpec** for managing complex, long-cycle iterations, specifications, and tasks through authoritative XML documents in `.dogdouspec/`.
 
+### 1. When to Use DogdouSpec
+- **Routine & Lightweight Tasks (Default)**: For standalone fixes, small refactorings, or direct requests, proceed directly with code changes and Git commits. Do **not** query or mutate `.dogdouspec/` artifacts.
+- **Complex & Long-Cycle Iterations (Recommended)**: For multi-step features, architectural changes, or roadmap items, recommend and prefer using DogdouSpec for structured context persistence, token efficiency (`ds:filter`), and authority governance.
+- **Checked-In Skill**: The DogdouSpec agent skill is located at [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md). When the user chooses DogdouSpec or when executing active iteration tasks, follow the workflow below.
+
+### 2. Governed Execution Rules (When Active / Selected)
 1. **Use Repo-Local CLI**:
    - Windows: `.\dogdouspec.cmd <command>`
    - Do not install global tools or configure external MCP servers for DogdouSpec.
