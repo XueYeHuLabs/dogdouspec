@@ -1,8 +1,41 @@
 # Coding Agent Guidelines for DogdouSpec
 
-Welcome! This repository uses **DogdouSpec** to manage iterations, specifications, and tasks through authoritative XML documents in `.dogdouspec/`.
+Welcome! This repository provides **DogdouSpec**, an iteration-first specification and task governance system designed to keep multi-step, complex engineering tasks structured, token-efficient, and resilient across AI coding sessions.
 
-## Mandatory Agent Workflow
+## 1. When to Use DogdouSpec (Applicable Scenarios & Benefits)
+
+DogdouSpec is a powerful tool for complex project management, not a rigid constraint for every interaction. Agents should choose the appropriate mode based on task complexity:
+
+### ⚡ Mode A: Direct Execution (Routine & Lightweight Tasks — Default)
+- **Applicable Scenarios**:
+  - Standalone bug fixes, typos, single-file refactorings, or script tweaks.
+  - Ad-hoc investigations, test additions, or general Q&A.
+  - Direct, bounded requests that can be completed and understood in a single interaction.
+- **Benefits**:
+  - Zero overhead, maximum speed, minimal tool calls.
+- **Workflow**:
+  - Do **NOT** query, create, or modify `.dogdouspec/` iterations or tasks.
+  - Directly make code changes and verify with `.\build.cmd`.
+  - Record the full rationale directly in the [Git Commit Guidelines](#3-git-commit-guidelines) (Title + numbered details).
+
+### 🛡️ Mode B: Governed Iteration Workflow (Complex & Long-Cycle Tasks — Recommended)
+- **Applicable Scenarios**:
+  - Multi-step features or roadmap items spanning multiple tasks or sessions.
+  - Architectural overhauls or cross-component refactoring requiring dependency tracking.
+  - Ambiguous requirements requiring formal specification, owner review gates, or research spikes.
+  - Multi-agent collaboration or handoffs where durable state persistence is needed.
+- **Benefits**:
+  - **Context Persistence**: Prevents LLM context drift across long sessions through schema-validated XML artifacts.
+  - **Token Efficiency**: Two-phase XPath queries (`ds:filter`) load only the active task rather than entire task graphs.
+  - **Authority Governance**: Strict gates prevent technical agents from auto-approving product scope or design decisions.
+  - **Zero External Dependencies**: Self-contained repo-local CLI execution without global packages, background daemons, or MCP servers.
+- **Workflow Trigger**:
+  - When a complex requirement is presented, the Agent should **recommend** using DogdouSpec to the user.
+  - When the user explicitly requests DogdouSpec, or when executing tasks inside an existing active iteration, follow the **DogdouSpec Workflow** below.
+
+## 2. DogdouSpec Workflow (When Active / Selected)
+
+This repository uses **DogdouSpec** to manage iterations, specifications, and tasks through authoritative XML documents in `.dogdouspec/`.
 
 1. **Use Repo-Local CLI**:
    - Windows: `.\dogdouspec.cmd <command>`
@@ -41,9 +74,9 @@ Welcome! This repository uses **DogdouSpec** to manage iterations, specification
 8. **Preserve User Work**:
    - Do not commit or push to git unless explicitly requested by the user.
 
-## Git Commit Guidelines
+## 3. Git Commit Guidelines
 
-Before committing code, agents MUST run `git diff --check` to ensure that the commit not contains whitespace errors. All whitespace errors MUST be fixed before committing.
+Before committing code, agents MUST run `git diff --check` to ensure that the commit contains no whitespace errors. All whitespace errors MUST be fixed before committing.
 
 All git commit messages MUST be written entirely in English and strictly follow the `Title[ + blank line + details]` format:
 

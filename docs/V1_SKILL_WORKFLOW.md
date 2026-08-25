@@ -10,6 +10,11 @@ The checked-in repository implementation of this skill is located at
 [`.agents/skills/dogdouspec/SKILL.md`](../.agents/skills/dogdouspec/SKILL.md), with bootstrap
 entry guidance for coding agents in [`AGENTS.md`](../AGENTS.md).
 
+The Skill is designed for governing complex, multi-step iterations, architectural changes,
+and formal specification/task lifecycles. Routine, lightweight, or ad-hoc tasks (such as
+standalone bug fixes, minor documentation updates, or script tweaks) should bypass this workflow
+and proceed directly with standard code edits and Git commit messages.
+
 The Skill has no hidden project state. Managed XML, the repository, and the
 current user interaction are its only authorities.
 
