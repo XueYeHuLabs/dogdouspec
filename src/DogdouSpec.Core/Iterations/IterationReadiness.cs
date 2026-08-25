@@ -4,7 +4,9 @@ using System.Xml.Linq;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Tasks;
 using DogdouSpec.Core.Validation;
+using DogdouSpec.Core.Workspace;
 using DogdouSpec.Core.XPath;
 
 namespace DogdouSpec.Core.Iterations;
@@ -28,7 +30,7 @@ public static class IterationReadiness
             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Iteration ID cannot be empty.") });
         }
 
-        var (isIterValid, normIterId, iterErr) = PathSecurity.ValidateIterationId(iterationId);
+        var (isIterValid, normIterId, iterErr) = WorkspaceDiscovery.ValidateIterationId(iterationId);
         if (!isIterValid || iterErr != null)
         {
             return (false, null, new[] { iterErr ?? Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid iteration ID '{iterationId}'.") });
@@ -108,7 +110,14 @@ public static class IterationReadiness
         var validationResult = SchemaValidator.Validate(workspaceRoot, iterationId: normIterId, version: version);
         if (!validationResult.IsValid)
         {
-            return (false, null, validationResult.Diagnostics);
+            var blockingDiagnostics = validationResult.Diagnostics
+                .Where(d => normPhase != "completion" ||
+                            !string.Equals(d.Code, DiagnosticCodes.TaskReviewRequired, StringComparison.Ordinal))
+                .ToList();
+            if (blockingDiagnostics.Any(d => string.Equals(d.Severity, "error", StringComparison.OrdinalIgnoreCase)))
+            {
+                return (false, null, blockingDiagnostics);
+            }
         }
 
         // 5. Parse spec.xml and tasks.xml
@@ -416,6 +425,22 @@ public static class IterationReadiness
             else
             {
                 technicalChecks.Add(new ReadinessTechnicalCheck("task_criteria_and_records_terminal", "failed", string.Join("; ", doneFailures.Take(3))));
+                allChecksPassed = false;
+            }
+
+            var reviewFailures = doneTasks
+                .Select(task => (Id: task.Attribute("id")?.Value ?? "unknown", Evaluation: TaskReviewGate.Evaluate(task)))
+                .Where(result => result.Evaluation.Required && !result.Evaluation.Satisfied)
+                .Select(result => $"Task '{result.Id}': {result.Evaluation.Reason}")
+                .ToList();
+            if (reviewFailures.Count == 0)
+            {
+                technicalChecks.Add(new ReadinessTechnicalCheck("review_gates", "passed",
+                    "All review-required done tasks have a latest independently attributed approval"));
+            }
+            else
+            {
+                technicalChecks.Add(new ReadinessTechnicalCheck("review_gates", "failed", string.Join("; ", reviewFailures.Take(3))));
                 allChecksPassed = false;
             }
         }

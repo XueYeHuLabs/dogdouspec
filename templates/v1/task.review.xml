@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<task-review
+  id="20000101T000000Z-review-replace"
+  actor="replace-reviewer"
+  occurred_at="2000-01-01T00:00:00Z">
+  <submission
+    id="20000101T000000Z-review-replace-submission"
+    disposition="approved">
+    <summary>Replace with the independent review outcome.</summary>
+  </submission>
+</task-review>

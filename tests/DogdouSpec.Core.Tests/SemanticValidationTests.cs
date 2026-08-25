@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.Workspace;
@@ -13,20 +14,34 @@ public sealed class SemanticValidationTests
     [ClassInitialize]
     public static void ClassInit(TestContext context)
     {
-        var current = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
-        while (current != null)
+        RepoRoot = FindRepositoryRootFromSource()
+            ?? FindRepositoryRoot(Environment.CurrentDirectory)
+            ?? FindRepositoryRoot(AppDomain.CurrentDomain.BaseDirectory)
+            ?? string.Empty;
+        Assert.IsFalse(string.IsNullOrEmpty(RepoRoot), "Repository root could not be located.");
+    }
+
+    private static string? FindRepositoryRoot(string startDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(startDirectory))
+        {
+            return null;
+        }
+
+        for (var current = new DirectoryInfo(Path.GetFullPath(startDirectory)); current != null; current = current.Parent)
         {
             if (File.Exists(Path.Combine(current.FullName, "DogdouSpec.slnx")) ||
                 File.Exists(Path.Combine(current.FullName, "DogdouSpec.sln")))
             {
-                RepoRoot = current.FullName;
-                break;
+                return current.FullName;
             }
-            current = current.Parent;
         }
 
-        Assert.IsNotNull(RepoRoot, "Repository root could not be located.");
+        return null;
     }
+
+    private static string? FindRepositoryRootFromSource([CallerFilePath] string sourceFile = "") =>
+        FindRepositoryRoot(Path.GetDirectoryName(sourceFile) ?? string.Empty);
 
     [TestInitialize]
     public void SetUp()
@@ -1560,6 +1575,24 @@ public sealed class SemanticValidationTests
         Assert.IsTrue(result.IsValid, $"Document validation failed: {string.Join("; ", result.Diagnostics.Select(d => $"{d.Code}: {d.Message}"))}");
         Assert.AreEqual(0, result.Diagnostics.Count(d => d.Severity == "error"));
         Assert.AreEqual(1, result.CheckedDocumentsCount);
+    }
+
+    [TestMethod]
+    public void Validate_UnsafeTaskScopeDeclarations_FailClosed()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var tasksPath = Path.Combine(workspace, "20260823-xpath-core", "tasks.xml");
+        var document = System.Xml.Linq.XDocument.Load(tasksPath);
+        var repository = document.Root!.Elements("task").First().Element("scope")!.Element("repository")!;
+        repository.SetAttributeValue("path", "../escape");
+        repository.Element("include")!.SetAttributeValue("path", "/src/**");
+        document.Save(tasksPath);
+
+        var result = SchemaValidator.Validate(workspace);
+
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Diagnostics.Count(diagnostic => diagnostic.Code == DiagnosticCodes.InvalidPath) >= 2,
+            string.Join("; ", result.Diagnostics.Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
     }
 
     #endregion

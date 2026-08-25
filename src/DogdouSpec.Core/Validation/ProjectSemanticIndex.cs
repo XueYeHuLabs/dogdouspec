@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
+using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Workspace;
 
 namespace DogdouSpec.Core.Validation;
@@ -10,10 +11,6 @@ namespace DogdouSpec.Core.Validation;
 /// </summary>
 public sealed class ProjectSemanticIndex
 {
-    private static readonly Regex TimeFirstIdRegex = new(
-        @"^[0-9]{8}(T[0-9]{6}Z)?-[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
     public IReadOnlyList<(ManagedDocument Document, XDocument XDoc)> LoadedDocuments { get; }
     public IReadOnlyList<IndexedObject> AllObjects { get; }
     public IReadOnlyDictionary<string, List<IndexedObject>> ObjectsById { get; }
@@ -47,7 +44,7 @@ public sealed class ProjectSemanticIndex
     }
 
     public static bool IsValidTimeFirstId(string id) =>
-        !string.IsNullOrEmpty(id) && TimeFirstIdRegex.IsMatch(id);
+        !string.IsNullOrEmpty(id) && PathSecurity.IterationIdRegex.IsMatch(id);
 
     public static ProjectSemanticIndex Build(IReadOnlyList<(ManagedDocument Document, XDocument XDoc)> documents)
     {

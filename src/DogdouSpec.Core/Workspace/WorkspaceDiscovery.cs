@@ -9,7 +9,12 @@ namespace DogdouSpec.Core.Workspace;
 /// </summary>
 public static class WorkspaceDiscovery
 {
-    private static readonly Regex IterationDirectoryPattern = new(@"^[0-9]{8}-[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.Compiled);
+    /// <summary>
+    /// Validates an iteration identifier against the TimeFirstIdType grammar.
+    /// Delegates directly to the central PathSecurity.ValidateIterationId authority.
+    /// </summary>
+    public static (bool IsValid, string NormalizedId, Diagnostic? Error) ValidateIterationId(string? iterationId) =>
+        PathSecurity.ValidateIterationId(iterationId);
 
     /// <summary>
     /// Discovers the nearest ancestor .dogdouspec directory from startDirectory,
@@ -166,7 +171,7 @@ public static class WorkspaceDiscovery
         // Iteration scope
         if (!string.IsNullOrWhiteSpace(iterationId))
         {
-            var (isValidIter, normalizedIterId, iterError) = PathSecurity.ValidateIterationId(iterationId);
+            var (isValidIter, normalizedIterId, iterError) = ValidateIterationId(iterationId);
             if (!isValidIter || iterError != null)
             {
                 diagnostics.Add(iterError!);

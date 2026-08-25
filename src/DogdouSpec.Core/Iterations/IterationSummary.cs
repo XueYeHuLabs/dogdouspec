@@ -10,6 +10,7 @@ public sealed record IterationSummary(
     string RelativePath,
     string Kind,
     string Status,
+    string CreatedAt,
     int SpecRevision,
     int TasksRevision,
     XElement? IndexElement);

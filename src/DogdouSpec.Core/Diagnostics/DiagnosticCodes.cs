@@ -58,6 +58,10 @@ public static class DiagnosticCodes
     public const string TaskTransitionConflict = "TASK_TRANSITION_CONFLICT";
     public const string TaskImmutable = "TASK_IMMUTABLE";
     public const string TaskRevisionNotAllowed = "TASK_REVISION_NOT_ALLOWED";
+    public const string TaskReviewRequired = "TASK_REVIEW_REQUIRED";
+    public const string TaskReviewActorConflict = "TASK_REVIEW_ACTOR_CONFLICT";
+    public const string TaskReviewImplementerUnknown = "TASK_REVIEW_IMPLEMENTER_UNKNOWN";
+    public const string TaskReviewStateInvalid = "TASK_REVIEW_STATE_INVALID";
     public const string IterationReplanningExecutionFrozen = "ITERATION_REPLANNING_EXECUTION_FROZEN";
 
     // Protected product state provenance and completion

@@ -161,6 +161,27 @@ public static class ProtectedStateGuard
                 return Diagnostic.Error(DiagnosticCodes.TaskTransitionConflict,
                     $"Low-level mutations cannot change task '{id}' status; use task update or a schema-aware helper.", docPath);
             }
+            var beforeReviewRequired = beforeTask?.Element("review")?.Attribute("required")?.Value == "true";
+            var afterReviewRequired = task.Element("review")?.Attribute("required")?.Value == "true";
+            if (beforeTask != null)
+            {
+                var beforeReview = beforeTask.Element("review");
+                var afterReview = task.Element("review");
+                var reviewChanged = (beforeReview == null) != (afterReview == null) ||
+                                    (beforeReview != null && afterReview != null &&
+                                     !GenericAppender.AreElementsCanonicallyEqual(beforeReview, afterReview));
+                if (reviewChanged)
+                {
+                    return Diagnostic.Error(DiagnosticCodes.TaskReviewStateInvalid,
+                        $"Low-level mutations cannot add, remove, or change task '{id}' structured review state; use task review or a schema-aware task helper.", docPath);
+                }
+            }
+            if (beforeTask != null && (beforeReviewRequired || afterReviewRequired) &&
+                !string.Equals(beforeTask.Attribute("agent")?.Value, task.Attribute("agent")?.Value, StringComparison.Ordinal))
+            {
+                return Diagnostic.Error(DiagnosticCodes.OwnerDecisionRequired,
+                    $"Low-level mutations cannot change task '{id}' implementer attribution @agent.", docPath);
+            }
             if (!string.IsNullOrEmpty(id) && !beforeIds.Contains(id) && !string.Equals(task.Attribute("status")?.Value, "pending", StringComparison.Ordinal))
             {
                 return Diagnostic.Error(DiagnosticCodes.OwnerDecisionRequired,

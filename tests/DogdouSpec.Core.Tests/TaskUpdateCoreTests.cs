@@ -1320,4 +1320,461 @@ public sealed class TaskUpdateCoreTests
         Assert.IsFalse(result.IsValid);
         Assert.IsTrue(result.Diagnostics.Any(d => d.Code == DiagnosticCodes.TaskPendingHasStartedAt), "Pending task with started_at must fail semantic validation.");
     }
+
+    [TestMethod]
+    public void TaskUpdate_StatusTermSynchronization_AllTransitionsSynchronizeIndexTerm()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260823-xpath-core";
+        var taskId = "20260823-task-task-history"; // Pending task
+
+        // 1. Add status term "pending" to task
+        var tasksPath = Path.Combine(workspace, iterId, "tasks.xml");
+        var xdoc = XDocument.Load(tasksPath);
+        var taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        taskElem.Element("index")!.Add(new XElement("term", new XAttribute("key", "status"), new XAttribute("value", "pending")));
+        xdoc.Save(tasksPath);
+
+        // 2. Start transition: pending -> in-progress
+        var startXml = """
+<task-update
+  id="20260823T050100Z-update-start-sync"
+  transition="start"
+  actor="codex"
+  occurred_at="2026-08-23T05:01:00Z">
+  <records>
+    <record
+      id="20260823T050100Z-rec-start"
+      kind="start"
+      status="informational"
+      created_at="2026-08-23T05:01:00Z"
+      actor="codex">
+      <summary>Starting task.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+        var (s1, env1, d1) = TaskUpdater.Update(workspace, iterId, taskId, 9, startXml);
+        Assert.IsTrue(s1, string.Join("; ", d1.Select(d => d.Message)));
+        xdoc = XDocument.Load(tasksPath);
+        taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        var statusTerm = taskElem.Element("index")?.Elements("term").FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        Assert.AreEqual("in-progress", (string?)statusTerm?.Attribute("value"));
+
+        // 3. Block transition: in-progress -> blocked
+        var blockXml = """
+<task-update
+  id="20260823T050200Z-update-block-sync"
+  transition="block"
+  actor="codex"
+  occurred_at="2026-08-23T05:02:00Z">
+  <records>
+    <record
+      id="20260823T050200Z-rec-block"
+      kind="finding"
+      status="active"
+      created_at="2026-08-23T05:02:00Z"
+      actor="codex">
+      <summary>Blocked on external issue.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+        var (s2, env2, d2) = TaskUpdater.Update(workspace, iterId, taskId, 10, blockXml);
+        Assert.IsTrue(s2, string.Join("; ", d2.Select(d => d.Message)));
+        xdoc = XDocument.Load(tasksPath);
+        taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        statusTerm = taskElem.Element("index")?.Elements("term").FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        Assert.AreEqual("blocked", (string?)statusTerm?.Attribute("value"));
+
+        // 4. Resume transition: blocked -> in-progress
+        var resumeXml = """
+<task-update
+  id="20260823T050300Z-update-resume-sync"
+  transition="resume"
+  actor="codex"
+  occurred_at="2026-08-23T05:03:00Z">
+  <resolve-records>
+    <record target="20260823T050200Z-rec-block"/>
+  </resolve-records>
+  <records>
+    <record
+      id="20260823T050300Z-rec-resume"
+      kind="resolution"
+      status="informational"
+      created_at="2026-08-23T05:03:00Z"
+      actor="codex">
+      <summary>Resuming task.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+        var (s3, env3, d3) = TaskUpdater.Update(workspace, iterId, taskId, 11, resumeXml);
+        Assert.IsTrue(s3, string.Join("; ", d3.Select(d => d.Message)));
+        xdoc = XDocument.Load(tasksPath);
+        taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        statusTerm = taskElem.Element("index")?.Elements("term").FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        Assert.AreEqual("in-progress", (string?)statusTerm?.Attribute("value"));
+
+        // 5. Verify transition: in-progress -> verification
+        var verifyXml = """
+<task-update
+  id="20260823T050400Z-update-verify-sync"
+  transition="verify"
+  actor="codex"
+  occurred_at="2026-08-23T05:04:00Z">
+  <acceptance>
+    <criterion target="20260823-taskaccept-history-integrated" result="passed"/>
+    <criterion target="20260823-taskaccept-history-reasoning" result="passed"/>
+  </acceptance>
+  <records>
+    <record
+      id="20260823T050400Z-rec-verify"
+      kind="verification"
+      status="informational"
+      created_at="2026-08-23T05:04:00Z"
+      actor="codex">
+      <summary>Verification complete.</summary>
+      <checks>
+        <check kind="test" result="passed">
+          <summary>Tests passed.</summary>
+        </check>
+      </checks>
+      <covers>
+        <ref scope="document" target="20260823-taskaccept-history-integrated" relation="covers"/>
+        <ref scope="document" target="20260823-taskaccept-history-reasoning" relation="covers"/>
+      </covers>
+    </record>
+  </records>
+</task-update>
+""";
+        var (s4, env4, d4) = TaskUpdater.Update(workspace, iterId, taskId, 12, verifyXml);
+        Assert.IsTrue(s4, string.Join("; ", d4.Select(d => d.Message)));
+        xdoc = XDocument.Load(tasksPath);
+        taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        statusTerm = taskElem.Element("index")?.Elements("term").FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        Assert.AreEqual("verification", (string?)statusTerm?.Attribute("value"));
+
+        // 6. Complete transition: verification -> done
+        var completeXml = """
+<task-update
+  id="20260823T050500Z-update-complete-sync"
+  transition="complete"
+  actor="codex"
+  occurred_at="2026-08-23T05:05:00Z">
+  <records>
+    <record
+      id="20260823T050500Z-rec-complete"
+      kind="completion"
+      status="informational"
+      created_at="2026-08-23T05:05:00Z"
+      actor="codex">
+      <summary>Task completed.</summary>
+      <covers>
+        <ref scope="document" target="20260823-taskaccept-history-integrated" relation="covers"/>
+        <ref scope="document" target="20260823-taskaccept-history-reasoning" relation="covers"/>
+      </covers>
+    </record>
+  </records>
+</task-update>
+""";
+        var (s5, env5, d5) = TaskUpdater.Update(workspace, iterId, taskId, 13, completeXml);
+        Assert.IsTrue(s5, string.Join("; ", d5.Select(d => d.Message)));
+        xdoc = XDocument.Load(tasksPath);
+        taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        statusTerm = taskElem.Element("index")?.Elements("term").FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        Assert.AreEqual("done", (string?)statusTerm?.Attribute("value"));
+    }
+
+    [TestMethod]
+    public void TaskUpdate_StatusTermSynchronization_TransferTransition_SynchronizesIndexTerm()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260823-xpath-core";
+        var taskId = "20260823-task-task-history";
+
+        // Add status term "pending"
+        var tasksPath = Path.Combine(workspace, iterId, "tasks.xml");
+        var xdoc = XDocument.Load(tasksPath);
+        var taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        taskElem.Element("index")!.Add(new XElement("term", new XAttribute("key", "status"), new XAttribute("value", "pending")));
+        xdoc.Save(tasksPath);
+
+        var transferXml = """
+<task-update
+  id="20260823T050600Z-update-transfer-sync"
+  transition="transfer"
+  actor="codex"
+  occurred_at="2026-08-23T05:06:00Z">
+  <records>
+    <record
+      id="20260823T050600Z-rec-transfer"
+      kind="handoff"
+      status="informational"
+      created_at="2026-08-23T05:06:00Z"
+      actor="codex">
+      <summary>Transferring task to another iteration.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+        var (s, env, d) = TaskUpdater.Update(workspace, iterId, taskId, 9, transferXml);
+        Assert.IsTrue(s, string.Join("; ", d.Select(d => d.Message)));
+        xdoc = XDocument.Load(tasksPath);
+        taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        Assert.AreEqual("transferred", (string?)taskElem.Attribute("status"));
+        var statusTerm = taskElem.Element("index")?.Elements("term").FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        Assert.IsNotNull(statusTerm);
+        Assert.AreEqual("transferred", (string?)statusTerm.Attribute("value"));
+
+        var valResult = SchemaValidator.Validate(workspace);
+        Assert.IsTrue(valResult.IsValid, string.Join("; ", valResult.Diagnostics.Select(diag => $"{diag.Code}: {diag.Message}")));
+    }
+
+    [TestMethod]
+    public void TaskUpdate_StatusTermSynchronization_SupersedeTransition_SynchronizesIndexTerm()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260823-xpath-core";
+        var taskId = "20260823-task-task-history";
+
+        // Add status term "pending"
+        var tasksPath = Path.Combine(workspace, iterId, "tasks.xml");
+        var xdoc = XDocument.Load(tasksPath);
+        var taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        taskElem.Element("index")!.Add(new XElement("term", new XAttribute("key", "status"), new XAttribute("value", "pending")));
+        xdoc.Save(tasksPath);
+
+        var supersedeXml = """
+<task-update
+  id="20260823T050700Z-update-supersede-sync"
+  transition="supersede"
+  actor="codex"
+  occurred_at="2026-08-23T05:07:00Z">
+  <records>
+    <record
+      id="20260823T050700Z-rec-supersede"
+      kind="decision"
+      status="informational"
+      created_at="2026-08-23T05:07:00Z"
+      actor="codex">
+      <summary>Task superseded by updated design.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+        var (s, env, d) = TaskUpdater.Update(workspace, iterId, taskId, 9, supersedeXml);
+        Assert.IsTrue(s, string.Join("; ", d.Select(d => d.Message)));
+        xdoc = XDocument.Load(tasksPath);
+        taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        Assert.AreEqual("superseded", (string?)taskElem.Attribute("status"));
+        var statusTerm = taskElem.Element("index")?.Elements("term").FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        Assert.IsNotNull(statusTerm);
+        Assert.AreEqual("superseded", (string?)statusTerm.Attribute("value"));
+
+        var valResult = SchemaValidator.Validate(workspace);
+        Assert.IsTrue(valResult.IsValid, string.Join("; ", valResult.Diagnostics.Select(diag => $"{diag.Code}: {diag.Message}")));
+    }
+
+    [TestMethod]
+    public void TaskUpdate_StatusTermSynchronization_CancelTransition_SynchronizesIndexTerm()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260823-xpath-core";
+        var taskId = "20260823-task-task-history";
+
+        // Add status term "pending"
+        var tasksPath = Path.Combine(workspace, iterId, "tasks.xml");
+        var xdoc = XDocument.Load(tasksPath);
+        var taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        taskElem.Element("index")!.Add(new XElement("term", new XAttribute("key", "status"), new XAttribute("value", "pending")));
+        xdoc.Save(tasksPath);
+
+        var cancelXml = """
+<task-update
+  id="20260823T050800Z-update-cancel-sync"
+  transition="cancel"
+  actor="codex"
+  occurred_at="2026-08-23T05:08:00Z">
+  <records>
+    <record
+      id="20260823T050800Z-rec-cancel"
+      kind="decision"
+      status="informational"
+      created_at="2026-08-23T05:08:00Z"
+      actor="codex">
+      <summary>Cancelling task work.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+        var (s, env, d) = TaskUpdater.Update(workspace, iterId, taskId, 9, cancelXml);
+        Assert.IsTrue(s, string.Join("; ", d.Select(d => d.Message)));
+        xdoc = XDocument.Load(tasksPath);
+        taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        Assert.AreEqual("cancelled", (string?)taskElem.Attribute("status"));
+        var statusTerm = taskElem.Element("index")?.Elements("term").FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        Assert.IsNotNull(statusTerm);
+        Assert.AreEqual("cancelled", (string?)statusTerm.Attribute("value"));
+
+        var valResult = SchemaValidator.Validate(workspace);
+        Assert.IsTrue(valResult.IsValid, string.Join("; ", valResult.Diagnostics.Select(diag => $"{diag.Code}: {diag.Message}")));
+    }
+
+    [TestMethod]
+    public void TaskUpdate_ZeroStatusTerm_DoesNotInventStatusTerm()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260823-xpath-core";
+        var taskId = "20260823-task-task-history";
+
+        // Task initially has NO status term in demo
+        var tasksPath = Path.Combine(workspace, iterId, "tasks.xml");
+        var xdoc = XDocument.Load(tasksPath);
+        var taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        var statusTerm = taskElem.Element("index")?.Elements("term").FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        statusTerm?.Remove();
+        xdoc.Save(tasksPath);
+
+        // Start task
+        var startXml = """
+<task-update
+  id="20260823T051000Z-update-nostatus"
+  transition="start"
+  actor="codex"
+  occurred_at="2026-08-23T05:10:00Z">
+  <records>
+    <record
+      id="20260823T051000Z-rec-nostatus"
+      kind="start"
+      status="informational"
+      created_at="2026-08-23T05:10:00Z"
+      actor="codex">
+      <summary>Starting task without status term.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+        var (s, env, d) = TaskUpdater.Update(workspace, iterId, taskId, 9, startXml);
+        Assert.IsTrue(s, string.Join("; ", d.Select(d => d.Message)));
+
+        // Verify task status is in-progress and NO status term was invented
+        xdoc = XDocument.Load(tasksPath);
+        taskElem = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        Assert.AreEqual("in-progress", (string?)taskElem.Attribute("status"));
+        var terms = taskElem.Element("index")?.Elements("term").Where(t => (string?)t.Attribute("key") == "status").ToList();
+        Assert.IsNotNull(terms);
+        Assert.AreEqual(0, terms.Count);
+    }
+
+    [TestMethod]
+    public void TaskSemanticValidation_DuplicateStatusTerms_FailsWithAmbiguousReference()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var tasksPath = Path.Combine(workspace, "20260823-xpath-core", "tasks.xml");
+        var xdoc = XDocument.Load(tasksPath);
+        var taskElem = xdoc.Root!.Elements("task").First();
+        var indexElem = taskElem.Element("index")!;
+        indexElem.Add(new XElement("term", new XAttribute("key", "status"), new XAttribute("value", "done")));
+        indexElem.Add(new XElement("term", new XAttribute("key", "status"), new XAttribute("value", "done")));
+        xdoc.Save(tasksPath);
+
+        var result = SchemaValidator.Validate(workspace);
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Diagnostics.Any(d => d.Code == DiagnosticCodes.AmbiguousReference), "Duplicate status terms must fail with AmbiguousReference.");
+    }
+
+    [TestMethod]
+    public void TaskSemanticValidation_StaleStatusTerm_FailsWithTaskTransitionConflict()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var tasksPath = Path.Combine(workspace, "20260823-xpath-core", "tasks.xml");
+        var xdoc = XDocument.Load(tasksPath);
+        var inProgressTask = xdoc.Root!.Elements("task").First(t => (string?)t.Attribute("status") == "in-progress");
+        var indexElem = inProgressTask.Element("index")!;
+        indexElem.Add(new XElement("term", new XAttribute("key", "status"), new XAttribute("value", "pending"))); // Stale value
+        xdoc.Save(tasksPath);
+
+        var result = SchemaValidator.Validate(workspace);
+        Assert.IsFalse(result.IsValid);
+        Assert.IsTrue(result.Diagnostics.Any(d => d.Code == DiagnosticCodes.TaskTransitionConflict), "Stale status term on task must fail with TaskTransitionConflict.");
+    }
+
+    [TestMethod]
+    public void TaskUpdate_TemplateTaskUpdateExecution_WithCovers_SucceedsAndPassesValidation()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260823-xpath-core";
+        var taskId = "20260823-task-xpath-projection"; // in-progress task
+
+        // 1. Move to verification first
+        var verifyXml = """
+<task-update
+  id="20260823T052000Z-update-verify-tpl"
+  transition="verify"
+  actor="codex"
+  occurred_at="2026-08-23T05:20:00Z">
+  <acceptance>
+    <criterion target="20260823-taskaccept-filter-members" result="passed"/>
+    <criterion target="20260823-taskaccept-filterout-members" result="passed"/>
+    <criterion target="20260823-taskaccept-filter-composition" result="passed"/>
+    <criterion target="20260823-taskaccept-result-limit" result="passed"/>
+  </acceptance>
+  <records>
+    <record
+      id="20260823T052000Z-rec-verify-tpl"
+      kind="verification"
+      status="informational"
+      created_at="2026-08-23T05:20:00Z"
+      actor="codex">
+      <summary>Verified implementation.</summary>
+      <checks>
+        <check kind="test" result="passed"><summary>Tests pass</summary></check>
+      </checks>
+      <covers>
+        <ref scope="document" target="20260823-taskaccept-filter-members" relation="covers"/>
+        <ref scope="document" target="20260823-taskaccept-filterout-members" relation="covers"/>
+        <ref scope="document" target="20260823-taskaccept-filter-composition" relation="covers"/>
+        <ref scope="document" target="20260823-taskaccept-result-limit" relation="covers"/>
+      </covers>
+    </record>
+  </records>
+</task-update>
+""";
+        var (vOk, _, vDiags) = TaskUpdater.Update(workspace, iterId, taskId, 9, verifyXml);
+        Assert.IsTrue(vOk, string.Join("; ", vDiags.Select(d => d.Message)));
+
+        // 2. Read template file from templates/v1/task.update.xml
+        var tplPath = Path.Combine(RepoRoot, "templates", "v1", "task.update.xml");
+        var tplText = File.ReadAllText(tplPath);
+
+        // 3. Perform placeholder substitution
+        var nowTimestamp = "2026-08-23T05:21:00Z";
+        var requestXml = tplText
+            .Replace("20000101T000000Z-update-replace-task", "20260823T052100Z-update-tpl-complete")
+            .Replace("replace-actor", "codex")
+            .Replace("2000-01-01T00:00:00Z", nowTimestamp)
+            .Replace("20000101T000000Z-record-replace-completion", "20260823T052100Z-record-tpl-complete")
+            .Replace("20000101-taskaccept-replace", "20260823-taskaccept-filter-members")
+            .Replace("Replace with the completed technical outcome.", "Implemented projection functions.");
+
+        // Add covers refs for all remaining criteria
+        requestXml = requestXml.Replace(
+            "<ref scope=\"document\" target=\"20260823-taskaccept-filter-members\" relation=\"covers\"/>",
+            "<ref scope=\"document\" target=\"20260823-taskaccept-filter-members\" relation=\"covers\"/>\n        <ref scope=\"document\" target=\"20260823-taskaccept-filterout-members\" relation=\"covers\"/>\n        <ref scope=\"document\" target=\"20260823-taskaccept-filter-composition\" relation=\"covers\"/>\n        <ref scope=\"document\" target=\"20260823-taskaccept-result-limit\" relation=\"covers\"/>");
+
+        // Remove the optional acceptance block since criteria were passed in verify
+        var requestDoc = XDocument.Parse(requestXml);
+        requestDoc.Root!.Element("acceptance")?.Remove();
+        requestXml = requestDoc.ToString();
+
+        // 4. Execute TaskUpdater.Update
+        var (cOk, cEnv, cDiags) = TaskUpdater.Update(workspace, iterId, taskId, 10, requestXml);
+        Assert.IsTrue(cOk, string.Join("; ", cDiags.Select(d => d.Message)));
+        Assert.IsNotNull(cEnv);
+
+        // 5. Full workspace validation must pass
+        var valResult = SchemaValidator.Validate(workspace);
+        Assert.IsTrue(valResult.IsValid, string.Join("; ", valResult.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+    }
 }

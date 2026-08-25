@@ -7,7 +7,7 @@ Skill may adapt command invocation and prompt wording, but must preserve these
 reads, writes, authority gates, and stop conditions.
 
 The checked-in repository implementation of this skill is located at
-[`skills/dogdouspec/SKILL.md`](../skills/dogdouspec/SKILL.md), with bootstrap
+[`.agents/skills/dogdouspec/SKILL.md`](../.agents/skills/dogdouspec/SKILL.md), with bootstrap
 entry guidance for coding agents in [`AGENTS.md`](../AGENTS.md).
 
 The Skill has no hidden project state. Managed XML, the repository, and the
@@ -50,16 +50,11 @@ remain unloaded.
 
 ## 3. Select actionable Task state
 
-First query compact unfinished Task indexes:
+First query the compact active Task index:
 
 ```xpath
 ds:filter(
-  //task[not(
-    @status='done'
-    or @status='transferred'
-    or @status='superseded'
-    or @status='cancelled'
-  )],
+  //task[@status='in-progress' or @status='verification'][1],
   '@id',
   '@status',
   '@agent',
@@ -70,8 +65,14 @@ ds:filter(
 Task selection is derived each time:
 
 1. Resume the first `in-progress` or `verification` Task.
-2. Otherwise select the first ready `pending` Task whose dependencies are
-   terminal.
+2. If that query is empty, invoke the public read-only helper:
+   ```powershell
+   dogdouspec task next --iteration "<ITERATION_ID>" --format xml
+   ```
+   It selects the first ready `pending` Task only after resolving dependency
+   state across document, iteration, and project boundaries. A local XPath
+   pending-task expression cannot prove cross-document readiness and must not
+   substitute for this helper.
 3. Report `blocked` Tasks separately.
 4. Stop the automatic Task loop when no actionable Task remains.
 
@@ -169,6 +170,7 @@ dogdouspec task update `
 - **Block**: transition `block` (`in-progress` | `verification` -> `blocked`), appends Finding/blocker record.
 - **Resume**: transition `resume` (`blocked` -> `in-progress`), resolves blocking records.
 - **Verify**: transition `verify` (`in-progress` -> `verification`), updates criteria results to `passed`.
+- **Review, when required**: submit `task review` in `verification`. Approval actor must differ from Task `@agent`. `changes-requested` appends an active finding and moves the Task back to `in-progress`; resolve it, verify again, and obtain fresh approval.
 - **Complete**: transition `complete` (`verification` -> `done`), sets `completed_at`, appends completion record.
 - **Transfer / Supersede / Cancel**: transition `transfer`, `supersede`, or `cancel`.
 - **State-preserving record append / context update**: omit `transition`.
@@ -180,6 +182,9 @@ On retry, the Skill submits the identical request XML with either the original
 pre-commit expected revision or the current revision; the CLI recognizes the
 already-applied receipt from the Task records and returns `already_applied="true"`.
 The Skill never generates new operation IDs merely because a response was lost.
+
+Task review actor separation is provenance only. It does not authenticate the
+actor string or replace repository identity, branch protection, or CI policy.
 
 A revision conflict (`REVISION_CONFLICT`, exit 4) means the source changed
 concurrently. The Skill reloads the Task state and revision, reconciles changes,
@@ -259,6 +264,36 @@ An Agent may recommend a disposition. Product change, risk acceptance,
 deferral of required work, supersession, and Iteration completion remain owner
 decisions.
 
+### 9.1 Governance boundaries
+
+A Task exclusion is a current-scope boundary, not a deferred obligation or
+implicit risk acceptance. Create a backlog item only when a credible,
+non-blocking obligation remains: it must state its source, impact, why it is
+outside current acceptance, and a review or scheduling condition. Do not add a
+backlog item for a resolved concern, a purely excluded path, or an unknown
+future possibility. Deferring required work or accepting product risk remains
+an owner decision.
+
+Use the public `backlog add`, `backlog list`, and
+`backlog schedule|complete|cancel` helpers with the exact `backlog.xml`
+revision and stable operation ID. Defects record `kind=defect`, severity,
+source iteration or Task, impact, and a target iteration or review condition.
+An optional resolving Task is recorded as backlog evidence only; it does not
+rewrite Task origin authority.
+
+Knowledge is optional and belongs in `knowledge.xml` only for a stable,
+reusable fact that is likely to affect later Tasks or Iterations and has a
+stated source. Command transcripts, one-off attempts, and Task-local status do
+not qualify.
+
+`context/design_snapshot` is optional. Add it only when a later executor or
+verifier needs concise Task-local technical context to resume safely: the
+chosen approach, its constraint, and the next consequence. Do not add it as
+handoff or verification boilerplate, and do not restate the Task. A material
+choice that changes product behavior, an external/compatibility or security
+boundary, or materially constrains other Tasks requires a formal proposed
+design decision and owner disposition; a snapshot is never a substitute.
+
 ## 10. Product review gates
 
 The automatic loop stops before:
@@ -316,6 +351,9 @@ After each successful mutation:
 Before handing off, append a handoff record when the Task remains non-terminal.
 It summarizes current state, last successful action, failed attempts, next
 technical step, and stop conditions. It does not duplicate the complete Task.
+Add `design_snapshot` only when those fields cannot preserve material technical
+context needed for safe resumption or verification; it is not mandatory
+handoff boilerplate.
 
 ## 13. Prohibited Skill behavior
 

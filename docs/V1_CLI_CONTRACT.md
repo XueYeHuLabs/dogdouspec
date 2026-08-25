@@ -60,12 +60,16 @@ dogdouspec schema show
 dogdouspec template show
 dogdouspec append --stdin|--file
 dogdouspec task update --stdin|--file
+dogdouspec task review --stdin|--file
 dogdouspec task add --stdin|--file
 dogdouspec task revise --stdin|--file
 dogdouspec task split --stdin|--file
+dogdouspec task next
+dogdouspec task scope
 dogdouspec requirement propose --stdin|--file
 dogdouspec change propose --stdin|--file
 dogdouspec change apply --stdin|--file
+dogdouspec backlog add|list|schedule|complete|cancel
 dogdouspec transaction apply --stdin|--file
 ```
 
@@ -74,6 +78,81 @@ templates, `task add/revise/split`, `requirement propose`, `change propose/apply
 
 Every mutating command identifies itself as mutating in help output and requires
 an expected revision for each existing document it may change.
+
+### 2.1 Read-only task selection and scope verification
+
+`task next` derives one actionable Task without writing managed state:
+
+```powershell
+.\dogdouspec.cmd task next --iteration "<ITERATION_ID>" --format xml
+```
+
+It returns the first `in-progress` or `verification` Task in document order. If
+none exists, it returns the first `pending` Task whose `depends-on` references
+resolve to terminal Tasks across the declared `document`, `iteration`, or
+`project` boundary. A local XPath pending-task expression cannot establish
+cross-document dependency readiness and must not substitute for this helper.
+
+`task scope` compares changed repository-relative paths with a selected Task's
+declared `<scope>` and writes nothing:
+
+```powershell
+.\dogdouspec.cmd task scope --iteration "<ITERATION_ID>" --task "<TASK_ID>" --path src/DogdouSpec.Core/Tasks/TaskUpdater.cs --format xml
+.\dogdouspec.cmd task scope --iteration "<ITERATION_ID>" --task "<TASK_ID>" --git-ref HEAD --format xml
+.\dogdouspec.cmd task scope --iteration "<ITERATION_ID>" --task "<TASK_ID>" --git-range main...HEAD --format xml
+```
+
+Exactly one input source is required. `--path` is repeatable and names concrete
+changed paths. `--git-ref REV` resolves `REV` to one commit and compares that
+commit to the current index and working tree; it reports tracked changes only
+and deliberately excludes untracked files. `--git-range A..B` uses Git's
+two-endpoint diff and `A...B` uses Git's merge-base diff. The command resolves
+each user revision to a commit before diffing, accepts neither option-like
+revisions nor malformed ranges, uses `--name-only -z --no-renames`, and bounds
+its read-only Git child process to 30 seconds. External diff drivers and text
+conversion filters are explicitly disabled with `--no-ext-diff --no-textconv`.
+
+A scope repository `path` is a literal repository-relative base (`.` is the
+root). Includes and excludes are evaluated relative to that base. `/` and `\`
+normalize to `/`; redundant `.` components normalize away; `*` matches within
+one segment, `?` one non-separator character, and `**` zero or more complete
+path segments. `.` and `**` include every concrete repository path. Use
+`directory/**` for recursive directories; a trailing slash is not a recursive
+shorthand. On Windows matching is case-insensitive; elsewhere it is ordinal
+case-sensitive. If any applicable repository block excludes a path, that
+exclusion wins globally over every include. Absolute, traversal, device, ADS,
+control-character, and wildcard changed-path inputs are rejected. Output lists
+are ordinal-sorted.
+
+A valid scope report exits 0. A completed report containing one or more
+out-of-scope paths exits 1; argument, Git, XML, and workspace errors retain
+their normal diagnostic exit codes.
+
+### 2.2 Backlog lifecycle helpers
+
+`backlog add`, `schedule`, `complete`, and `cancel` are bounded mutating helpers;
+`backlog list` is read-only. Every mutation requires the exact positive
+`backlog.xml` revision plus stable `--id`, `--operation-id`, `--actor`, and
+`--occurred-at` values. An identical retry at the current or immediately prior
+revision returns `already_applied="true"`; changed payload, reused operation ID,
+or stale unrelated revision fails closed.
+
+```powershell
+.\dogdouspec.cmd backlog add --id <ITEM_ID> --operation-id <OP_ID> --actor <ACTOR> --occurred-at <ISO_TIME> --kind defect --severity p1 --summary <TEXT> --statement <TEXT> --rationale <TEXT> --impact <TEXT> --source-iteration <ITERATION_ID> --source-task <TASK_ID> --review-condition <TEXT> --expected-revision <REV> --format xml
+.\dogdouspec.cmd backlog list --status open --kind defect --severity p1 --format xml
+.\dogdouspec.cmd backlog schedule --id <ITEM_ID> --operation-id <OP_ID> --actor <ACTOR> --occurred-at <ISO_TIME> --resolving-task <TASK_ID> --expected-revision <REV> --format xml
+.\dogdouspec.cmd backlog complete --id <ITEM_ID> --operation-id <OP_ID> --actor <ACTOR> --occurred-at <ISO_TIME> --resolving-task <TASK_ID> --expected-revision <REV> --format xml
+.\dogdouspec.cmd backlog cancel --id <ITEM_ID> --operation-id <OP_ID> --actor <ACTOR> --occurred-at <ISO_TIME> --expected-revision <REV> --format xml
+```
+
+Every item requires a source iteration or Task, non-empty impact, and exactly
+one target iteration or review condition. Defect items additionally require a
+`kind=defect` index term and severity `p0` through `p3`. Scheduling permits only
+`open -> scheduled`; completion and cancellation permit `open|scheduled` to a
+terminal state. Terminal items are immutable. `--resolving-task` writes a
+`resolved-by` reference on the backlog receipt as traceable evidence; it never
+changes Task origin or any `tasks.xml` document. Actor separation is recorded
+provenance, not authenticated identity.
 
 ## 3. Result and diagnostic envelope
 
@@ -111,6 +190,7 @@ Exit codes:
 | Code | Meaning |
 |---:|---|
 | 0 | Success, including a verified idempotent retry |
+| 1 | Read-only scope verification completed with one or more out-of-scope paths |
 | 2 | Command, XML request, XPath, or argument error |
 | 3 | Schema or semantic validation failure |
 | 4 | Revision, lock, cardinality, or idempotency conflict |
@@ -156,13 +236,11 @@ dogdouspec iteration create `
   --format xml
 ```
 
-`--id` is explicit and must follow the Work-directory grammar. `kind` is
+`--id` is explicit and must follow the `TimeFirstIdType` grammar (`YYYYMMDD-name` or `YYYYMMDDTHHmmssZ-name`, e.g., `20260823-feature` or `20260825T143000Z-feature`). `kind` is
 `feature` or `research`. Creation atomically creates the directory, `spec.xml`,
 and `tasks.xml`; it never chooses a suffix silently.
 
-Iteration listing reads date-prefixed direct child directories in normalized
-name order. It reports malformed candidate directories as diagnostics rather
-than hiding them.
+Iteration listing discovers candidate iteration direct child directories matching the time-first pattern and returns summaries in deterministic ascending chronological order based on `created_at` timestamp (parsed as UTC), with ordinal directory/iteration `id` as the tie-breaker. Both `xml` (as `@created_at` attribute on `<iteration>`) and `human` output formats expose `created_at`. It reports malformed candidate directories as structured diagnostics rather than hiding them.
 
 ## 5. XPath query contract
 
@@ -308,6 +386,7 @@ V1 templates include:
 - `record.finding`
 - `record.verification`
 - `task.update`
+- `task.review`
 - `iteration.confirmation`
 - `knowledge.entry`
 - `backlog.item`
@@ -446,7 +525,37 @@ Rules:
    - Terminal tasks (`done`, `transferred`, `superseded`, `cancelled`) are immutable; metadata changes, transitions, and non-informational record appends fail with `TASK_IMMUTABLE` (exit 4).
    - When iteration `status="replanning"`, execution transitions (`start`, `resume`, `verify`, `complete`) fail closed with `ITERATION_REPLANNING_EXECUTION_FROZEN` (exit 5).
 
-## 8.1 Task addition, revision, and splitting
+## 8.1 Structured Task review gate
+
+Tasks may opt in with immutable implementer attribution and a review gate:
+
+```xml
+<task id="20260825-task-example" agent="implementation-agent" status="verification" ...>
+  ...
+  <review required="true"/>
+  <records>...</records>
+</task>
+```
+
+Submit the `task.review` request template while the Task is in `verification`:
+
+```powershell
+dogdouspec task review --iteration ID --task TASK_ID --expected-revision N (--stdin | --file PATH)
+```
+
+An `approved` submission is accepted only when its actor differs from Task
+`@agent`, no active finding remains, and the operation ID is unused across the
+workspace. A `changes-requested` submission appends an active finding, moves the
+Task to `in-progress`, and requires correction, a new verification transition,
+and a fresh approval. Completion readiness reports missing approvals and active
+review findings. Legacy Tasks without `<review>` retain their existing lifecycle.
+
+Actor separation is durable provenance, not authenticated or cryptographic
+identity. DogdouSpec does not prove who controls an actor string; repositories
+needing authenticated review must enforce that in their surrounding Git/CI or
+identity system.
+
+## 8.2 Task addition, revision, and splitting
 
 ```powershell
 dogdouspec task add `
@@ -504,6 +613,31 @@ dogdouspec change apply `
 2. `change apply`: Applied during iteration `status="replanning"`. It must resolve a finding, dispose a task, or add a successor (no-op requests fail); it resolves active finding records, persists every disposition rationale, sets terminal task dispositions (`superseded`/`transferred`/`cancelled`), adds successor tasks, and appends one deterministic receipt with the canonical-request fingerprint. Fails with `CHANGE_APPLICATION_INVALID` (exit 4) if iteration status is not `replanning`.
 
 `request-sha256` is an idempotency fingerprint over canonical request XML. It does not provide a signature, authenticity guarantee, or evidence integrity claim.
+
+### 8.3.1 Deterministic public-CLI replanning smoke
+
+Run this drill only in a disposable workspace. It demonstrates the public
+command sequence; it does not authorize an Agent to make the two owner
+confirmations. Start from the `change.propose`, `change.apply`, and
+`iteration.confirmation` templates, replace every placeholder, and re-query
+the returned revisions before each subsequent write.
+
+1. In an **active** iteration with an approved requirement and a started Task,
+   submit `change propose --expected-spec-revision <N> --expected-tasks-revision <N> --file change-propose.xml`. The request creates an active finding, freezes each affected Task, and may propose a replacement requirement.
+2. After an explicit owner decision, submit `iteration confirm --file owner-replan.xml` with `action="replan"`, the current revisions, and decisions that supersede/approve the relevant requirements. The iteration becomes `replanning`; execution transitions are frozen.
+3. Submit `change apply --expected-spec-revision <N> --expected-tasks-revision <N> --file change-apply.xml`. Resolve the finding, dispose affected Task(s), and add successor Task(s) with origins pointing to approved requirements.
+4. Run the read-only gate and require `technically_ready="true"` with required action `continue`:
+
+   ```powershell
+   dogdouspec iteration readiness --iteration <ITERATION_ID> --phase activation --format xml
+   ```
+
+5. Only after a further explicit owner decision, submit `iteration confirm --file owner-continue.xml` with `action="continue"` and the current revisions. Confirm that a successor can be selected or started through the normal public Task commands.
+
+`TaskChangeWorkflowCliTests.ChangeProposeAndApply_Cli_EndToEndLifecycle_Succeeds`
+is the deterministic integration counterpart: it performs this public CLI
+sequence against an isolated workspace and verifies the readiness gate before
+continuation.
 
 ## 9. Readiness and product confirmation
 

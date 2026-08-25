@@ -81,6 +81,25 @@
     <xs:attribute name="occurred_at" type="xs:dateTime" use="required"/>
   </xs:complexType>
 
+  <xs:complexType name="TaskReviewRequestSubmissionType">
+    <xs:sequence>
+      <xs:element name="summary" type="xs:string"/>
+      <xs:element name="impact" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="disposition" type="TaskReviewDispositionType" use="required"/>
+    <xs:attribute name="finding_id" type="TimeFirstIdType" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="TaskReviewRequestType">
+    <xs:sequence>
+      <xs:element name="submission" type="TaskReviewRequestSubmissionType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="occurred_at" type="xs:dateTime" use="required"/>
+  </xs:complexType>
+
   <xs:complexType name="TaskAddType">
     <xs:sequence>
       <xs:element name="task" type="TaskType"/>
@@ -291,6 +310,7 @@
   </xs:complexType>
 
   <xs:element name="task-update" type="TaskUpdateType"/>
+  <xs:element name="task-review" type="TaskReviewRequestType"/>
   <xs:element name="task-add" type="TaskAddType"/>
   <xs:element name="task-revise" type="TaskReviseType"/>
   <xs:element name="task-split" type="TaskSplitType"/>

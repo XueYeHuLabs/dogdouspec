@@ -217,10 +217,10 @@ public static class PathSecurity
         return (true, null);
     }
 
-    public static readonly Regex IterationIdRegex = new(@"^[0-9]{8}-[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.Compiled);
+    public static readonly Regex IterationIdRegex = new(@"^[0-9]{8}(T[0-9]{6}Z)?-[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     /// <summary>
-    /// Validates an iteration identifier against the exact YYYYMMDD-name grammar.
+    /// Validates an iteration identifier against the TimeFirstIdType grammar (YYYYMMDD-name or YYYYMMDDTHHmmssZ-name).
     /// Rejects traversal, separators, absolute paths, ADS/device syntax, invalid casing/characters.
     /// </summary>
     public static (bool IsValid, string NormalizedId, Diagnostic? Error) ValidateIterationId(string? iterationId)
@@ -261,10 +261,10 @@ public static class PathSecurity
             return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.InvalidPath, $"Reserved device name '{iterationId}' is rejected."));
         }
 
-        // Grammar check (YYYYMMDD-name in lowercase)
+        // Grammar check matching TimeFirstIdType (YYYYMMDD-name or YYYYMMDDTHHmmssZ-name in lowercase)
         if (!IterationIdRegex.IsMatch(trimmed))
         {
-            return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Iteration identifier '{iterationId}' does not match required pattern YYYYMMDD-name (e.g. 20260823-feature)."));
+            return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Iteration identifier '{iterationId}' does not match required pattern YYYYMMDD-name or YYYYMMDDTHHmmssZ-name (e.g. 20260823-feature or 20260823T143000Z-feature)."));
         }
 
         return (true, trimmed, null);

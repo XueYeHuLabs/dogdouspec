@@ -46,6 +46,10 @@ public sealed class IterationListResult
                 writer.WriteAttributeString("path", iter.RelativePath);
                 writer.WriteAttributeString("kind", iter.Kind);
                 writer.WriteAttributeString("status", iter.Status);
+                if (!string.IsNullOrEmpty(iter.CreatedAt))
+                {
+                    writer.WriteAttributeString("created_at", iter.CreatedAt);
+                }
                 writer.WriteAttributeString("spec_revision", iter.SpecRevision.ToString(CultureInfo.InvariantCulture));
                 writer.WriteAttributeString("tasks_revision", iter.TasksRevision.ToString(CultureInfo.InvariantCulture));
 
@@ -76,7 +80,8 @@ public sealed class IterationListResult
 
         foreach (var iter in Iterations)
         {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"- {iter.Id} ({iter.Kind}, status: {iter.Status}, spec rev: {iter.SpecRevision}, tasks rev: {iter.TasksRevision})");
+            var createdPart = !string.IsNullOrEmpty(iter.CreatedAt) ? $", created: {iter.CreatedAt}" : "";
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- {iter.Id} ({iter.Kind}, status: {iter.Status}{createdPart}, spec rev: {iter.SpecRevision}, tasks rev: {iter.TasksRevision})");
             var summary = iter.IndexElement?.Element("summary")?.Value;
             if (!string.IsNullOrWhiteSpace(summary))
             {

@@ -40,6 +40,7 @@ public static class EmbeddedResources
         "requirement.propose",
         "task.add",
         "task.revise",
+        "task.review",
         "task.split",
         "task.update",
         "transaction.apply"

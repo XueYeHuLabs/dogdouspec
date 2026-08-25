@@ -626,6 +626,24 @@ public static class TaskUpdater
             targetStatus = resolvedStatus;
         }
 
+        var extraReadPreconditions = new List<TransactionReadPrecondition>();
+
+        if (transition is "start" or "resume")
+        {
+            var (depsSatisfied, depDiags, depReadPreconditions) = TaskDependencyGate.EvaluateTaskDependencies(
+                workspaceRoot,
+                taskId,
+                targetTask,
+                normDocPath);
+
+            if (!depsSatisfied || depDiags.Count > 0)
+            {
+                return (false, null, depDiags);
+            }
+
+            extraReadPreconditions.AddRange(depReadPreconditions);
+        }
+
         if (transition is "start" or "resume" or "verify" or "complete")
         {
             try
@@ -700,6 +718,7 @@ public static class TaskUpdater
         if (!string.IsNullOrEmpty(targetStatus))
         {
             targetTask.SetAttributeValue("status", targetStatus);
+            StatusTermHelper.SynchronizeStatusTerm(targetTask, targetStatus);
         }
 
         if (reqAcceptance != null)
@@ -853,7 +872,8 @@ public static class TaskUpdater
             new[] { operation },
             clock,
             faultInjector,
-            version);
+            version,
+            readPreconditions: extraReadPreconditions);
     }
 
     private static bool IsValidUtcTimestamp(string? value, out DateTimeOffset dto)

@@ -87,7 +87,7 @@ public static class IterationCommand
 
         var idOption = new Option<string>("--id")
         {
-            Description = "Iteration identifier following YYYYMMDD-name grammar",
+            Description = "Iteration identifier following TimeFirstId grammar (YYYYMMDD-name or YYYYMMDDTHHmmssZ-name)",
             Required = true
         };
 
@@ -140,7 +140,7 @@ public static class IterationCommand
                 return 2;
             }
 
-            var (isIdValid, _, idGrammarError) = PathSecurity.ValidateIterationId(id);
+            var (isIdValid, _, idGrammarError) = WorkspaceDiscovery.ValidateIterationId(id);
             if (!isIdValid || idGrammarError != null)
             {
                 var envelope = new DiagnosticsEnvelope("iteration create", idGrammarError!);
