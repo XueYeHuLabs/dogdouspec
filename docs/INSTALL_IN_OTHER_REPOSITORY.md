@@ -34,7 +34,7 @@ flowchart LR
 > **Never Copy Managed State Wholesale**: Never copy this source repository's `.dogdouspec/` directory or root `AGENTS.md` wholesale into the target repository. DogdouSpec manages per-project state; copying existing iterations or repository-specific agent rules will corrupt target workspace authority.
 
 > [!NOTE]
-> **Packaging Architecture**: The deployment builds a self-contained single-file .NET Core runtime application (`win-x64` CoreCLR). It does **not** rely on Native AOT compilation (`PublishAot`) or external NuGet/global package feeds at target runtime. The target machine requires only Windows x64; the .NET SDK (`10.0.303`-compatible) and NuGet package access (for compile-time dependencies such as `System.CommandLine`) are required only on the machine building the binary from source.
+> **Packaging Architecture**: The deployment builds a trimmed, self-contained native executable (`win-x64`) using Native AOT compilation (`PublishAot`) with IL trimming fallback. It does not rely on external runtime dependencies or NuGet/global package feeds at target runtime. The target machine requires only Windows x64; the .NET SDK (`10.0.303`-compatible) is required only on the machine building the binary from source.
 
 > [!IMPORTANT]
 > **Verified Reference Baseline**: The verified reference commit baseline tested with DogdouSpec v1 is `50c40cc01e959c057b22846d29a5e9d3d2e15dfa` (commit `50c40cc`). The installer or project owner must explicitly supply their approved 40-hex commit SHA for their concrete deployment.
@@ -50,7 +50,7 @@ Following this deployment procedure, the target repository will have the followi
 ├── dogdouspec.cmd                     # Root wrapper script for repo-local execution
 ├── tools/
 │   └── dogdouspec/
-│       └── dogdouspec.exe             # Self-contained win-x64 single-file executable (~74 MB)
+│       └── dogdouspec.exe             # Self-contained win-x64 single-file executable (~9.5 MB)
 ├── .dogdouspec/                       # Managed XML workspace directory (created by workspace init)
 ├── .agents/
 │   └── skills/
@@ -629,7 +629,7 @@ When tracking DogdouSpec in the target repository's version control:
 | Path | Commit to Git? | Description |
 | :--- | :---: | :--- |
 | `dogdouspec.cmd` | **Yes** | Root CLI wrapper for developer and agent execution. |
-| `tools/dogdouspec/dogdouspec.exe` | **Yes** | Repository-local self-contained binary (~74 MB), ensuring zero-dependency execution across machines and CI without requiring .NET SDK installation. |
+| `tools/dogdouspec/dogdouspec.exe` | **Yes** | Repository-local self-contained binary (~9.5 MB), ensuring zero-dependency execution across machines and CI without requiring .NET SDK installation. |
 | `.dogdouspec/` | **Yes** | Managed authoritative XML documents (`backlog.xml`, `knowledge.xml`, iterations) and `_schema/` XSD files. |
 | `.agents/skills/dogdouspec/` | **Yes** | Agent skill definition and reference guides (default path). |
 | `AGENTS.md` | **Yes** | Repository agent guidelines. |
