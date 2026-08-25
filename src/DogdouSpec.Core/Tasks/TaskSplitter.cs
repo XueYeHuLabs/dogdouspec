@@ -426,6 +426,7 @@ public static class TaskSplitter
 
         // 4. Apply Mutations
         parentTask.SetAttributeValue("status", targetParentStatus);
+        StatusTermHelper.SynchronizeStatusTerm(parentTask, targetParentStatus);
         parentTask.SetAttributeValue("updated_at", occurredAt);
 
         if (dispRecords.Count > 0)

@@ -10,7 +10,7 @@ DogdouSpec is a repository-local, iteration-first specification and task managem
 ## Core Invariants
 
 1. **Repository-Local Execution**: Use `.\dogdouspec.cmd` (Windows) or `dotnet run --project src/DogdouSpec.Cli/DogdouSpec.Cli.csproj --` (cross-platform). No global tools, background daemons, or MCP servers are required.
-2. **Never Edit Managed XML Directly**: Never edit, write, or copy `.dogdouspec/*.xml` using text editors or scripts. All mutations must pass through the public CLI (`task update`, `task add`, `task revise`, `task split`, `requirement propose`, `change propose`, `change apply`, `append`, `transaction apply`, `iteration confirm`).
+2. **Never Edit Managed XML Directly**: Never edit, write, or copy `.dogdouspec/*.xml` using text editors or scripts. All mutations must pass through the public CLI (`task update`, `task review`, `task add`, `task revise`, `task split`, `requirement propose`, `change propose`, `change apply`, `append`, `transaction apply`, `iteration confirm`).
 3. **Two-Phase Query Pattern**: Query compact indexes first (`ds:filter`), then load full task details only for the active task. Never load whole task graphs into context.
 4. **Exact Revisions & Post-Mutation Re-Query**: Always pass exact expected revisions to mutating commands. After each mutation, validate the workspace with `dogdouspec validate` and re-query target documents.
 5. **Respect Authority Boundaries**: Technical task automation never auto-completes product requirements, design decisions, acceptance criteria, or iterations. Stop and prompt the owner when product decisions are needed.
@@ -51,8 +51,12 @@ Use two explicit compact queries to derive the next actionable task:
 
 2. **Next Ready Pending Task** (If no task is in-progress or in verification):
    ```powershell
-   .\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "ds:filter(/tasks/task[@status='pending' and not(dependencies/ref[@relation='depends-on']/@target = /tasks/task[@status!='done' and @status!='transferred' and @status!='superseded' and @status!='cancelled']/@id)][1], '@id', '@status', '@agent', 'index')" --format xml
+   .\dogdouspec.cmd task next --iteration "<ITERATION_ID>" --format xml
    ```
+
+   This public read-only helper is mandatory whenever the active-task query is
+   empty. A pending-task XPath is document-local and cannot prove readiness for
+   `depends-on` references in another iteration or document.
 
 *Note: Blocked tasks (`@status='blocked'`) are reported separately to resolve blockers or escalate.*
 
@@ -79,7 +83,11 @@ Identify objectives, scope includes/excludes, origin requirement, acceptance cri
    ```powershell
    Get-Content update_verify.xml -Raw | .\dogdouspec.cmd task update --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin --format xml
    ```
-4. **Complete Task** (transitions `verification` -> `done`):
+4. **Review Gate, When Required**: If the selected Task contains `<review required="true">`, submit `task review` while it is in `verification`. Approval actor must differ from Task `@agent`; this is provenance separation, not authenticated identity. `changes-requested` creates an active finding and returns the Task to `in-progress`, so correct it, resolve the finding, verify again, and obtain fresh approval.
+   ```powershell
+   Get-Content task_review.xml -Raw | .\dogdouspec.cmd task review --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin --format xml
+   ```
+5. **Complete Task** (transitions `verification` -> `done`):
    ```powershell
    Get-Content update_complete.xml -Raw | .\dogdouspec.cmd task update --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin --format xml
    ```
@@ -92,6 +100,7 @@ When requirements, scope, or architecture need adjustment during an iteration:
 - **Adding Bounded Work for Immediate Execution**: Use `dogdouspec task quick --title ... --scope ... --done-when ... --why ... [--start]`. It remains a normal Task; omit `--origin` only for operational maintenance. Deferred work belongs in backlog.
 - **Adding a New Planned Technical Task**: Use `dogdouspec task add` to add a pending task referencing an existing approved requirement.
 - **Deferred or Material Work**: Put work not ready to execute in backlog. If it changes product behavior, architecture, requirements, or owner acceptance boundaries, use `change propose`, not `task quick` or `task revise`.
+- **Backlog Lifecycle**: Use `dogdouspec backlog add` for a credible non-blocking obligation, `backlog list` to inspect it, and `backlog schedule|complete|cancel` for its governed disposition. Supply the exact `backlog.xml` revision and stable replay IDs. A `--resolving-task` link is backlog evidence only and never changes that Task's origin.
 - **Splitting a Complex Task**: Use `dogdouspec task split` to mark the parent task `superseded`, `transferred`, or `cancelled` and add 2+ focused pending subtasks atomically.
 - **Proposing a New Requirement**: Use `dogdouspec requirement propose` to add a requirement with `status="proposed"`. (Technical agents cannot self-approve; owner confirmation via `iteration confirm` is required).
 - **Handling Mid-Flight Surprises / Material Scope Gaps**:
@@ -99,6 +108,23 @@ When requirements, scope, or architecture need adjustment during an iteration:
   2. Ask the human product owner to confirm replanning (`dogdouspec iteration confirm --stdin` with `action="replan"`).
   3. During `status="replanning"`, use `dogdouspec change apply` to resolve active findings, apply task dispositions (`superseded`/`transferred`/`cancelled`), and add successor tasks.
   4. Ask the product owner to confirm continuation (`dogdouspec iteration confirm --stdin` with `action="continue"`).
+
+### Governance boundaries
+
+An excluded path or concern only limits the current Task's scope. It is **not**
+evidence that work was deferred, accepted as risk, or no longer required. Do
+not create governance records merely because a Task has an exclusion.
+
+| Surface | Required when | Optional / do not use when |
+|---|---|---|
+| Backlog | A credible non-blocking obligation remains after the current Task: record its source, impact, why it is not current acceptance, and a review or scheduling condition. Deferring currently required work or accepting product risk remains an owner gate. | A scope exclusion is only a boundary, the concern has been resolved, or no future obligation is known. |
+| Knowledge | A stable, reusable fact is likely to affect future Tasks or Iterations and its source can be stated. | One-off command output, raw investigation notes, a transient failed attempt, or a fact already captured by the Task record. |
+| `design_snapshot` | A handoff or verification cannot be safely resumed without concise Task-local technical context: the chosen approach, its constraint, and the next consequence. | Routine status, implementation boilerplate, or a formal product/design choice already represented elsewhere. Omit it rather than restating the Task. |
+| Formal design decision | A choice changes product behavior, an external/compatibility or security boundary, or materially constrains other Tasks and therefore needs owner disposition. Propose it and stop for the owner; a snapshot never substitutes for this decision. | Reversible implementation mechanics wholly inside an accepted boundary. Record only the material rationale needed by the next executor. |
+
+Verification records and handoffs use the same rule: include a
+`design_snapshot` only when that material context is needed to verify or resume
+the Task. A concise check result and next step are normally sufficient.
 
 ### 6. Post-Mutation Re-query & Validation
 

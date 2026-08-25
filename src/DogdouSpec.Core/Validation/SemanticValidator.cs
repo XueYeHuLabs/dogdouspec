@@ -1,5 +1,8 @@
+using System.Buffers;
 using System.Globalization;
+using System.Xml;
 using DogdouSpec.Core.Diagnostics;
+using DogdouSpec.Core.Tasks;
 
 namespace DogdouSpec.Core.Validation;
 
@@ -9,6 +12,16 @@ namespace DogdouSpec.Core.Validation;
 /// </summary>
 public static class SemanticValidator
 {
+    private static readonly HashSet<string> ReservedDeviceNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+    };
+    private static readonly SearchValues<char> InvalidScopePathCharacters = SearchValues.Create("<>\"|");
+    private static readonly HashSet<string> AllowedBacklogSeverities = new(
+        new[] { "p0", "p1", "p2", "p3" }, StringComparer.Ordinal);
+
     public static List<Diagnostic> Validate(
         ProjectSemanticIndex index,
         string? iterationFilter = null,
@@ -19,9 +32,13 @@ public static class SemanticValidator
         ValidateIdentityAndOwnership(index, diagnostics);
         ValidateOperationReceipts(index, diagnostics);
         ValidateReferences(index, diagnostics);
+        ValidateBacklogItems(index, diagnostics);
         ValidateConfirmationTargets(index, diagnostics);
         ValidateTaskGraphsAndTerminalPredicates(index, diagnostics);
+        ValidateTaskReviews(index, diagnostics);
+        ValidateTaskScopePaths(index, diagnostics);
         ValidateProtectedProductStateAndCompletion(index, diagnostics);
+        ValidateStatusIndexTerms(index, diagnostics);
 
         // Filter diagnostics to the requested scope if specified
         IEnumerable<Diagnostic> filtered = diagnostics;
@@ -170,17 +187,22 @@ public static class SemanticValidator
                     receipt.LinePosition));
             }
 
-            // 2. Must only be used on a <record> inside <records> of a <task> in a tasks.xml document
+            // 2. Must only be used on a receipt record owned by a Task or Backlog item.
             var isTaskOwnedRecord = string.Equals(receipt.ElementName, "record", StringComparison.Ordinal) &&
                                     string.Equals(receipt.ParentElementName, "records", StringComparison.Ordinal) &&
                                     !string.IsNullOrEmpty(receipt.ContainingTaskId) &&
                                     receipt.Document.RelativePath.EndsWith("tasks.xml", StringComparison.OrdinalIgnoreCase);
+            var backlogItemId = receipt.Element.Ancestors("item").FirstOrDefault()?.Attribute("id")?.Value;
+            var isBacklogOwnedRecord = string.Equals(receipt.ElementName, "record", StringComparison.Ordinal) &&
+                                       string.Equals(receipt.ParentElementName, "records", StringComparison.Ordinal) &&
+                                       !string.IsNullOrEmpty(backlogItemId) &&
+                                       string.Equals(receipt.Document.RelativePath, "backlog.xml", StringComparison.OrdinalIgnoreCase);
 
-            if (!isTaskOwnedRecord)
+            if (!isTaskOwnedRecord && !isBacklogOwnedRecord)
             {
                 diagnostics.Add(Diagnostic.Error(
                     DiagnosticCodes.InvalidReferenceTargetType,
-                    $"Operation ID '{receipt.OperationId}' is used on <{receipt.ElementName}> in '{receipt.Document.RelativePath}'. Operation IDs are only permitted on Task-owned records in tasks.xml.",
+                    $"Operation ID '{receipt.OperationId}' is used on <{receipt.ElementName}> in '{receipt.Document.RelativePath}'. Operation IDs are only permitted on Task- or Backlog-item-owned records.",
                     receipt.Document.RelativePath,
                     receipt.LineNumber,
                     receipt.LinePosition));
@@ -198,21 +220,25 @@ public static class SemanticValidator
             }
         }
 
-        // 4. Check if any operation_id is spread across multiple tasks or multiple documents
+        // 4. Check if any operation_id is spread across multiple owners or documents.
         foreach (var (opId, receipts) in index.OperationReceiptsById)
         {
-            var distinctTasks = receipts
-                .Select(r => (Doc: r.Document.RelativePath, Task: r.ContainingTaskId ?? string.Empty))
+            var distinctOwners = receipts
+                .Select(r =>
+                {
+                    var backlogItemId = r.Element.Ancestors("item").FirstOrDefault()?.Attribute("id")?.Value;
+                    return (Doc: r.Document.RelativePath, Owner: r.ContainingTaskId ?? backlogItemId ?? string.Empty);
+                })
                 .Distinct()
                 .ToList();
 
-            if (distinctTasks.Count > 1)
+            if (distinctOwners.Count > 1)
             {
                 foreach (var r in receipts)
                 {
                     diagnostics.Add(Diagnostic.Error(
                         DiagnosticCodes.AmbiguousReference,
-                        $"Operation ID '{opId}' is spread across multiple Tasks or documents ({string.Join(", ", distinctTasks.Select(d => $"{d.Doc}:{d.Task}"))}).",
+                        $"Operation ID '{opId}' is spread across multiple Task or Backlog-item owners ({string.Join(", ", distinctOwners.Select(d => $"{d.Doc}:{d.Owner}"))}).",
                         r.Document.RelativePath,
                         r.LineNumber,
                         r.LinePosition));
@@ -376,6 +402,156 @@ public static class SemanticValidator
                         r.LinePosition));
                 }
             }
+
+            if (string.Equals(r.Document.RelativePath, "backlog.xml", StringComparison.OrdinalIgnoreCase))
+            {
+                var isBacklogSource = r.Element.Parent?.Name.LocalName == "source" &&
+                                      r.Element.Parent?.Parent?.Name.LocalName == "item";
+                var isBacklogTarget = r.Element.Parent?.Name.LocalName == "target" &&
+                                      r.Element.Parent?.Parent?.Name.LocalName == "item";
+                var isResolvingTask = string.Equals(r.Relation, "resolved-by", StringComparison.Ordinal) &&
+                                      r.Element.Ancestors("record").Any() &&
+                                      r.Element.Ancestors("item").Any();
+                if (isBacklogSource && targetObj.ElementName is not ("iteration" or "task"))
+                {
+                    diagnostics.Add(Diagnostic.Error(
+                        DiagnosticCodes.InvalidReferenceTargetType,
+                        $"Backlog source reference must target an iteration or task, but targets <{targetObj.ElementName}>.",
+                        r.Document.RelativePath, r.LineNumber, r.LinePosition));
+                }
+                if (isBacklogTarget &&
+                    (!string.Equals(r.Relation, "target-iteration", StringComparison.Ordinal) ||
+                     !string.Equals(targetObj.ElementName, "iteration", StringComparison.Ordinal)))
+                {
+                    diagnostics.Add(Diagnostic.Error(
+                        DiagnosticCodes.InvalidReferenceTargetType,
+                        $"Backlog target reference must use relation 'target-iteration' and target an iteration; found relation '{r.Relation}' targeting <{targetObj.ElementName}>.",
+                        r.Document.RelativePath, r.LineNumber, r.LinePosition));
+                }
+                if (isResolvingTask && !string.Equals(targetObj.ElementName, "task", StringComparison.Ordinal))
+                {
+                    diagnostics.Add(Diagnostic.Error(
+                        DiagnosticCodes.InvalidReferenceTargetType,
+                        $"Backlog resolved-by reference must target a task, but targets <{targetObj.ElementName}>.",
+                        r.Document.RelativePath, r.LineNumber, r.LinePosition));
+                }
+            }
+        }
+    }
+
+    private static void ValidateTaskReviews(ProjectSemanticIndex index, List<Diagnostic> diagnostics)
+    {
+        foreach (var parsedTask in index.AllTasks)
+        {
+            var task = parsedTask.Element;
+            var review = task.Element("review");
+            if (review == null)
+            {
+                continue;
+            }
+            var required = bool.TryParse((string?)review.Attribute("required"), out var parsedRequired) && parsedRequired;
+            var submissions = review.Elements("submission").ToList();
+            if (!required && submissions.Count > 0)
+            {
+                diagnostics.Add(Diagnostic.Error(DiagnosticCodes.TaskReviewStateInvalid,
+                    $"Task '{parsedTask.Id}' has review submissions while review required=false.",
+                    parsedTask.Document.RelativePath));
+            }
+            if (submissions.Count > 0 && parsedTask.Status is "pending" or "blocked")
+            {
+                diagnostics.Add(Diagnostic.Error(DiagnosticCodes.TaskReviewStateInvalid,
+                    $"Task '{parsedTask.Id}' cannot retain review submissions while status is '{parsedTask.Status}'.",
+                    parsedTask.Document.RelativePath));
+            }
+            if (required && string.IsNullOrWhiteSpace((string?)task.Attribute("agent")))
+            {
+                diagnostics.Add(Diagnostic.Error(DiagnosticCodes.TaskReviewImplementerUnknown,
+                    $"Review-required task '{parsedTask.Id}' must declare immutable implementer attribution in @agent.",
+                    parsedTask.Document.RelativePath));
+            }
+            var records = task.Element("records")?.Elements("record").ToList() ?? new List<System.Xml.Linq.XElement>();
+            foreach (var submission in submissions)
+            {
+                var recordId = (string?)submission.Attribute("record");
+                var matches = records.Where(r => string.Equals((string?)r.Attribute("id"), recordId, StringComparison.Ordinal)).ToList();
+                var disposition = (string?)submission.Attribute("disposition");
+                var validKind = disposition == "approved" ? "decision" : "finding";
+                var dispositionTerm = matches.FirstOrDefault()?.Element("index")?.Elements("term")
+                    .FirstOrDefault(t => string.Equals((string?)t.Attribute("key"), "review-disposition", StringComparison.Ordinal))
+                    ?.Attribute("value")?.Value;
+                var fingerprintTerm = matches.FirstOrDefault()?.Element("index")?.Elements("term")
+                    .FirstOrDefault(t => string.Equals((string?)t.Attribute("key"), "request-sha256", StringComparison.Ordinal))
+                    ?.Attribute("value")?.Value;
+                if (matches.Count != 1 ||
+                    !string.Equals((string?)matches[0].Attribute("kind"), validKind, StringComparison.Ordinal) ||
+                    !string.Equals((string?)matches[0].Attribute("actor"), (string?)submission.Attribute("actor"), StringComparison.Ordinal) ||
+                    !string.Equals((string?)matches[0].Attribute("created_at"), (string?)submission.Attribute("reviewed_at"), StringComparison.Ordinal) ||
+                    string.IsNullOrWhiteSpace((string?)matches[0].Attribute("operation_id")) ||
+                    !string.Equals(dispositionTerm, disposition, StringComparison.Ordinal) ||
+                    string.IsNullOrWhiteSpace(fingerprintTerm))
+                {
+                    diagnostics.Add(Diagnostic.Error(DiagnosticCodes.TaskReviewStateInvalid,
+                        $"Task '{parsedTask.Id}' review submission '{submission.Attribute("id")?.Value}' does not link to one matching local durable {validKind} record.",
+                        parsedTask.Document.RelativePath));
+                }
+            }
+            if (string.Equals(parsedTask.Status, "done", StringComparison.Ordinal))
+            {
+                var evaluation = TaskReviewGate.Evaluate(task);
+                if (evaluation.Required && !evaluation.Satisfied)
+                {
+                    diagnostics.Add(Diagnostic.Error(DiagnosticCodes.TaskReviewRequired,
+                        $"Task '{parsedTask.Id}' cannot be done: {evaluation.Reason}", parsedTask.Document.RelativePath));
+                }
+            }
+        }
+    }
+
+    private static void ValidateBacklogItems(ProjectSemanticIndex index, List<Diagnostic> diagnostics)
+    {
+        var backlog = index.LoadedDocuments.FirstOrDefault(d =>
+            string.Equals(d.Document.RelativePath, "backlog.xml", StringComparison.OrdinalIgnoreCase));
+        if (backlog.XDoc?.Root == null)
+        {
+            return;
+        }
+
+        foreach (var item in backlog.XDoc.Root.Element("items")?.Elements("item") ?? Enumerable.Empty<System.Xml.Linq.XElement>())
+        {
+            var id = (string?)item.Attribute("id") ?? "(missing)";
+            var terms = item.Element("index")?.Elements("term").ToList() ?? new List<System.Xml.Linq.XElement>();
+            var kindTerms = terms.Where(t => string.Equals((string?)t.Attribute("key"), "kind", StringComparison.Ordinal)).ToList();
+            var severityTerms = terms.Where(t => string.Equals((string?)t.Attribute("key"), "severity", StringComparison.Ordinal)).ToList();
+            var kind = kindTerms.SingleOrDefault()?.Attribute("value")?.Value;
+
+            if (kindTerms.Count > 1 || (kindTerms.Count == 1 && string.IsNullOrWhiteSpace(kind)))
+            {
+                diagnostics.Add(Diagnostic.Error(DiagnosticCodes.InvalidArgument,
+                    $"Backlog item '{id}' may declare at most one non-empty index term key='kind'.", "backlog.xml"));
+            }
+            if (string.Equals(kind, "defect", StringComparison.Ordinal) &&
+                (severityTerms.Count != 1 || !AllowedBacklogSeverities.Contains(severityTerms[0].Attribute("value")?.Value ?? string.Empty)))
+            {
+                diagnostics.Add(Diagnostic.Error(DiagnosticCodes.InvalidArgument,
+                    $"Defect backlog item '{id}' must declare exactly one severity term p0, p1, p2, or p3.", "backlog.xml"));
+            }
+            if (string.IsNullOrWhiteSpace(item.Element("impact")?.Value))
+            {
+                diagnostics.Add(Diagnostic.Error(DiagnosticCodes.InvalidArgument,
+                    $"Backlog item '{id}' must state a non-empty impact.", "backlog.xml"));
+            }
+            if (item.Element("source")?.Elements("ref").Any() != true)
+            {
+                diagnostics.Add(Diagnostic.Error(DiagnosticCodes.InvalidArgument,
+                    $"Backlog item '{id}' must contain at least one source reference.", "backlog.xml"));
+            }
+            var target = item.Element("target");
+            var review = item.Element("review_condition");
+            if ((target == null) == (review == null) || (review != null && string.IsNullOrWhiteSpace(review.Value)))
+            {
+                diagnostics.Add(Diagnostic.Error(DiagnosticCodes.InvalidArgument,
+                    $"Backlog item '{id}' must contain exactly one target or non-empty review_condition.", "backlog.xml"));
+            }
         }
     }
 
@@ -424,8 +600,19 @@ public static class SemanticValidator
                 }
 
                 // 2. Validate requirement targets
+                var allowedReqDecs = new[] { "approved", "superseded", "withdrawn" };
                 foreach (var t in conf.Requirements)
                 {
+                    if (!allowedReqDecs.Contains(t.Decision, StringComparer.Ordinal))
+                    {
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.InvalidArgument,
+                            $"Invalid requirement decision '{t.Decision}' for target '{t.Target}' in confirmation '{conf.Id}'. Allowed requirement decisions: {string.Join(", ", allowedReqDecs)}.",
+                            iter.Document.RelativePath,
+                            t.LineNumber ?? conf.LineNumber,
+                            t.LinePosition ?? conf.LinePosition));
+                    }
+
                     if (!index.ObjectsById.TryGetValue(t.Target, out var targetObjs) || targetObjs.Count == 0)
                     {
                         diagnostics.Add(Diagnostic.Error(
@@ -469,8 +656,19 @@ public static class SemanticValidator
                 }
 
                 // 3. Validate question targets
+                var allowedQDecs = new[] { "answered", "deferred", "withdrawn" };
                 foreach (var t in conf.Questions)
                 {
+                    if (!allowedQDecs.Contains(t.Decision, StringComparer.Ordinal))
+                    {
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.InvalidArgument,
+                            $"Invalid question decision '{t.Decision}' for target '{t.Target}' in confirmation '{conf.Id}'. Allowed question decisions: {string.Join(", ", allowedQDecs)}.",
+                            iter.Document.RelativePath,
+                            t.LineNumber ?? conf.LineNumber,
+                            t.LinePosition ?? conf.LinePosition));
+                    }
+
                     if (!index.ObjectsById.TryGetValue(t.Target, out var targetObjs) || targetObjs.Count == 0)
                     {
                         diagnostics.Add(Diagnostic.Error(
@@ -514,8 +712,19 @@ public static class SemanticValidator
                 }
 
                 // 4. Validate design decision targets
+                var allowedDDecs = new[] { "accepted", "rejected", "superseded" };
                 foreach (var t in conf.DesignDecisions)
                 {
+                    if (!allowedDDecs.Contains(t.Decision, StringComparer.Ordinal))
+                    {
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.InvalidArgument,
+                            $"Invalid design decision disposition '{t.Decision}' for target '{t.Target}' in confirmation '{conf.Id}'. Allowed design decision dispositions: {string.Join(", ", allowedDDecs)}.",
+                            iter.Document.RelativePath,
+                            t.LineNumber ?? conf.LineNumber,
+                            t.LinePosition ?? conf.LinePosition));
+                    }
+
                     if (!index.ObjectsById.TryGetValue(t.Target, out var targetObjs) || targetObjs.Count == 0)
                     {
                         diagnostics.Add(Diagnostic.Error(
@@ -559,8 +768,19 @@ public static class SemanticValidator
                 }
 
                 // 5. Validate acceptance criteria targets
+                var allowedCritDecs = new[] { "accepted", "rejected", "waived" };
                 foreach (var t in conf.AcceptanceCriteria)
                 {
+                    if (!allowedCritDecs.Contains(t.Decision, StringComparer.Ordinal))
+                    {
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.InvalidArgument,
+                            $"Invalid acceptance criterion decision '{t.Decision}' for target '{t.Target}' in confirmation '{conf.Id}'. Allowed acceptance criterion decisions: {string.Join(", ", allowedCritDecs)}.",
+                            iter.Document.RelativePath,
+                            t.LineNumber ?? conf.LineNumber,
+                            t.LinePosition ?? conf.LinePosition));
+                    }
+
                     if (!index.ObjectsById.TryGetValue(t.Target, out var targetObjs) || targetObjs.Count == 0)
                     {
                         diagnostics.Add(Diagnostic.Error(
@@ -602,6 +822,105 @@ public static class SemanticValidator
                                 t.LinePosition ?? conf.LinePosition));
                         }
                     }
+                }
+            }
+        }
+    }
+
+    private static void ValidateTaskScopePaths(
+        ProjectSemanticIndex index,
+        List<Diagnostic> diagnostics)
+    {
+        foreach (var task in index.AllTasks)
+        {
+            foreach (var repository in task.Element.Element("scope")?.Elements("repository") ?? Enumerable.Empty<System.Xml.Linq.XElement>())
+            {
+                ValidateTaskScopePathValue(task, repository, repository.Attribute("path")?.Value, isRepositoryBase: true, diagnostics);
+
+                foreach (var include in repository.Elements("include"))
+                {
+                    ValidateTaskScopePathValue(task, include, include.Attribute("path")?.Value, isRepositoryBase: false, diagnostics);
+                }
+
+                foreach (var exclude in repository.Elements("exclude"))
+                {
+                    ValidateTaskScopePathValue(task, exclude, exclude.Attribute("path")?.Value, isRepositoryBase: false, diagnostics);
+                }
+            }
+        }
+    }
+
+    private static void ValidateTaskScopePathValue(
+        ParsedTask task,
+        System.Xml.Linq.XElement element,
+        string? rawPath,
+        bool isRepositoryBase,
+        List<Diagnostic> diagnostics)
+    {
+        var lineInfo = (IXmlLineInfo)element;
+        Diagnostic BuildDiagnostic(string reason) => Diagnostic.Error(
+            DiagnosticCodes.InvalidPath,
+            $"Task '{task.Id}' declares unsafe scope path '{rawPath ?? string.Empty}': {reason}",
+            task.Document.RelativePath,
+            lineInfo.HasLineInfo() ? lineInfo.LineNumber : task.LineNumber,
+            lineInfo.HasLineInfo() ? lineInfo.LinePosition : task.LinePosition);
+
+        if (string.IsNullOrWhiteSpace(rawPath))
+        {
+            diagnostics.Add(BuildDiagnostic("the value must not be empty."));
+            return;
+        }
+
+        var path = rawPath.Trim();
+        if (!string.Equals(rawPath, path, StringComparison.Ordinal) || path.Any(char.IsControl))
+        {
+            diagnostics.Add(BuildDiagnostic("leading or trailing whitespace and control characters are not allowed."));
+            return;
+        }
+
+        if (path.StartsWith('/') ||
+            path.StartsWith('\\') ||
+            (path.Length >= 2 && path[1] == ':') ||
+            path.Contains(':'))
+        {
+            diagnostics.Add(BuildDiagnostic("absolute, rooted, drive-qualified, device, and ADS forms are not allowed."));
+            return;
+        }
+
+        if (isRepositoryBase && (path.Contains('*') || path.Contains('?')))
+        {
+            diagnostics.Add(BuildDiagnostic("repository base paths must be literal and cannot contain wildcards."));
+            return;
+        }
+
+        var segments = path.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var segment in segments)
+        {
+            if (segment == "..")
+            {
+                diagnostics.Add(BuildDiagnostic("parent traversal segments are not allowed."));
+                return;
+            }
+
+            if (segment.AsSpan().IndexOfAny(InvalidScopePathCharacters) >= 0)
+            {
+                diagnostics.Add(BuildDiagnostic("Windows-unsafe path characters are not allowed."));
+                return;
+            }
+
+            if (segment.Length > 1 && (segment.EndsWith(' ') || segment.EndsWith('.')))
+            {
+                diagnostics.Add(BuildDiagnostic("segments ending in a space or period are not Windows-safe."));
+                return;
+            }
+
+            if (!segment.Contains('*') && !segment.Contains('?'))
+            {
+                var baseName = Path.GetFileNameWithoutExtension(segment);
+                if (ReservedDeviceNames.Contains(segment) || ReservedDeviceNames.Contains(baseName))
+                {
+                    diagnostics.Add(BuildDiagnostic($"reserved device segment '{segment}' is not allowed."));
+                    return;
                 }
             }
         }
@@ -1196,6 +1515,207 @@ public static class SemanticValidator
                                 crit.LineNumber ?? iter.LineNumber,
                                 crit.LinePosition ?? iter.LinePosition));
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    private static void ValidateStatusIndexTerms(
+        ProjectSemanticIndex index,
+        List<Diagnostic> diagnostics)
+    {
+        // 1. Tasks in all tasks.xml
+        foreach (var task in index.AllTasks)
+        {
+            var indexElem = task.Element.Element("index");
+            if (indexElem == null) continue;
+
+            var statusTerms = indexElem.Elements("term")
+                .Where(t => string.Equals(t.Attribute("key")?.Value, "status", StringComparison.Ordinal))
+                .ToList();
+
+            if (statusTerms.Count > 1)
+            {
+                foreach (var term in statusTerms)
+                {
+                    var lineInfo = (System.Xml.IXmlLineInfo)term;
+                    diagnostics.Add(Diagnostic.Error(
+                        DiagnosticCodes.AmbiguousReference,
+                        $"Task '{task.Id}' index contains ambiguous duplicate 'status' terms ({statusTerms.Count} found).",
+                        task.Document.RelativePath,
+                        lineInfo.HasLineInfo() ? lineInfo.LineNumber : task.LineNumber,
+                        lineInfo.HasLineInfo() ? lineInfo.LinePosition : task.LinePosition));
+                }
+            }
+            else if (statusTerms.Count == 1)
+            {
+                var termVal = statusTerms[0].Attribute("value")?.Value;
+                if (!string.Equals(termVal, task.Status, StringComparison.Ordinal))
+                {
+                    var lineInfo = (System.Xml.IXmlLineInfo)statusTerms[0];
+                    diagnostics.Add(Diagnostic.Error(
+                        DiagnosticCodes.TaskTransitionConflict,
+                        $"Task '{task.Id}' has status '{task.Status}' but index status term has stale value '{termVal}'.",
+                        task.Document.RelativePath,
+                        lineInfo.HasLineInfo() ? lineInfo.LineNumber : task.LineNumber,
+                        lineInfo.HasLineInfo() ? lineInfo.LinePosition : task.LinePosition));
+                }
+            }
+        }
+
+        // 2. Iteration and its sub-elements in spec.xml
+        foreach (var iter in index.Iterations)
+        {
+            var indexElem = iter.Element.Element("index");
+            if (indexElem != null)
+            {
+                var statusTerms = indexElem.Elements("term")
+                    .Where(t => string.Equals(t.Attribute("key")?.Value, "status", StringComparison.Ordinal))
+                    .ToList();
+
+                if (statusTerms.Count > 1)
+                {
+                    foreach (var term in statusTerms)
+                    {
+                        var lineInfo = (System.Xml.IXmlLineInfo)term;
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.AmbiguousReference,
+                            $"Iteration '{iter.Id}' index contains ambiguous duplicate 'status' terms ({statusTerms.Count} found).",
+                            iter.Document.RelativePath,
+                            lineInfo.HasLineInfo() ? lineInfo.LineNumber : iter.LineNumber,
+                            lineInfo.HasLineInfo() ? lineInfo.LinePosition : iter.LinePosition));
+                    }
+                }
+                else if (statusTerms.Count == 1)
+                {
+                    var termVal = statusTerms[0].Attribute("value")?.Value;
+                    if (!string.Equals(termVal, iter.Status, StringComparison.Ordinal))
+                    {
+                        var lineInfo = (System.Xml.IXmlLineInfo)statusTerms[0];
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.WorkKindMismatch,
+                            $"Iteration '{iter.Id}' has status '{iter.Status}' but index status term has stale value '{termVal}'.",
+                            iter.Document.RelativePath,
+                            lineInfo.HasLineInfo() ? lineInfo.LineNumber : iter.LineNumber,
+                            lineInfo.HasLineInfo() ? lineInfo.LinePosition : iter.LinePosition));
+                    }
+                }
+            }
+
+            // Requirements
+            foreach (var req in iter.Requirements)
+            {
+                var reqIndexElem = req.Element.Element("index");
+                if (reqIndexElem == null) continue;
+
+                var statusTerms = reqIndexElem.Elements("term")
+                    .Where(t => string.Equals(t.Attribute("key")?.Value, "status", StringComparison.Ordinal))
+                    .ToList();
+
+                if (statusTerms.Count > 1)
+                {
+                    foreach (var term in statusTerms)
+                    {
+                        var lineInfo = (System.Xml.IXmlLineInfo)term;
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.AmbiguousReference,
+                            $"Requirement '{req.Id}' index contains ambiguous duplicate 'status' terms ({statusTerms.Count} found).",
+                            iter.Document.RelativePath,
+                            lineInfo.HasLineInfo() ? lineInfo.LineNumber : req.LineNumber,
+                            lineInfo.HasLineInfo() ? lineInfo.LinePosition : req.LinePosition));
+                    }
+                }
+                else if (statusTerms.Count == 1)
+                {
+                    var termVal = statusTerms[0].Attribute("value")?.Value;
+                    if (!string.Equals(termVal, req.Status, StringComparison.Ordinal))
+                    {
+                        var lineInfo = (System.Xml.IXmlLineInfo)statusTerms[0];
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.WorkKindMismatch,
+                            $"Requirement '{req.Id}' has status '{req.Status}' but index status term has stale value '{termVal}'.",
+                            iter.Document.RelativePath,
+                            lineInfo.HasLineInfo() ? lineInfo.LineNumber : req.LineNumber,
+                            lineInfo.HasLineInfo() ? lineInfo.LinePosition : req.LinePosition));
+                    }
+                }
+            }
+
+            // Research Questions
+            foreach (var q in iter.Questions)
+            {
+                var qIndexElem = q.Element.Element("index");
+                if (qIndexElem == null) continue;
+
+                var statusTerms = qIndexElem.Elements("term")
+                    .Where(t => string.Equals(t.Attribute("key")?.Value, "status", StringComparison.Ordinal))
+                    .ToList();
+
+                if (statusTerms.Count > 1)
+                {
+                    foreach (var term in statusTerms)
+                    {
+                        var lineInfo = (System.Xml.IXmlLineInfo)term;
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.AmbiguousReference,
+                            $"Research question '{q.Id}' index contains ambiguous duplicate 'status' terms ({statusTerms.Count} found).",
+                            iter.Document.RelativePath,
+                            lineInfo.HasLineInfo() ? lineInfo.LineNumber : q.LineNumber,
+                            lineInfo.HasLineInfo() ? lineInfo.LinePosition : q.LinePosition));
+                    }
+                }
+                else if (statusTerms.Count == 1)
+                {
+                    var termVal = statusTerms[0].Attribute("value")?.Value;
+                    if (!string.Equals(termVal, q.Status, StringComparison.Ordinal))
+                    {
+                        var lineInfo = (System.Xml.IXmlLineInfo)statusTerms[0];
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.WorkKindMismatch,
+                            $"Research question '{q.Id}' has status '{q.Status}' but index status term has stale value '{termVal}'.",
+                            iter.Document.RelativePath,
+                            lineInfo.HasLineInfo() ? lineInfo.LineNumber : q.LineNumber,
+                            lineInfo.HasLineInfo() ? lineInfo.LinePosition : q.LinePosition));
+                    }
+                }
+            }
+
+            // Design Decisions
+            foreach (var d in iter.DesignDecisions)
+            {
+                var dIndexElem = d.Element.Element("index");
+                if (dIndexElem == null) continue;
+
+                var statusTerms = dIndexElem.Elements("term")
+                    .Where(t => string.Equals(t.Attribute("key")?.Value, "status", StringComparison.Ordinal))
+                    .ToList();
+
+                if (statusTerms.Count > 1)
+                {
+                    foreach (var term in statusTerms)
+                    {
+                        var lineInfo = (System.Xml.IXmlLineInfo)term;
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.AmbiguousReference,
+                            $"Design decision '{d.Id}' index contains ambiguous duplicate 'status' terms ({statusTerms.Count} found).",
+                            iter.Document.RelativePath,
+                            lineInfo.HasLineInfo() ? lineInfo.LineNumber : d.LineNumber,
+                            lineInfo.HasLineInfo() ? lineInfo.LinePosition : d.LinePosition));
+                    }
+                }
+                else if (statusTerms.Count == 1)
+                {
+                    var termVal = statusTerms[0].Attribute("value")?.Value;
+                    if (!string.Equals(termVal, d.Status, StringComparison.Ordinal))
+                    {
+                        var lineInfo = (System.Xml.IXmlLineInfo)statusTerms[0];
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.WorkKindMismatch,
+                            $"Design decision '{d.Id}' has status '{d.Status}' but index status term has stale value '{termVal}'.",
+                            iter.Document.RelativePath,
+                            lineInfo.HasLineInfo() ? lineInfo.LineNumber : d.LineNumber,
+                            lineInfo.HasLineInfo() ? lineInfo.LinePosition : d.LinePosition));
                     }
                 }
             }

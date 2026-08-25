@@ -323,6 +323,9 @@ public sealed class IterationCliTests
             "--kind", "feature");
         Assert.AreEqual(0, createExit);
 
+        var specDoc = XDocument.Load(Path.Combine(workspace, iterId, "spec.xml"));
+        var updatedAtStr = specDoc.Root?.Attribute("updated_at")?.Value ?? "2026-08-24T12:00:00Z";
+
         var requestXml = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <iteration-confirmation
   id=""20260824T120000Z-confirm-activate""
@@ -330,7 +333,7 @@ public sealed class IterationCliTests
   action=""activate""
   expected_spec_revision=""1""
   actor=""lead""
-  decided_at=""2026-08-24T12:00:00Z"">
+  decided_at=""{updatedAtStr}"">
   <summary>Owner approved iteration plan.</summary>
   <requirements>
     <requirement target=""20260824-req-feature-cli"" decision=""approved""/>
@@ -517,6 +520,7 @@ public sealed class IterationCliTests
         Assert.IsTrue(stdout.Contains("id=\"20260823-xpath-core\"", StringComparison.Ordinal));
         Assert.IsTrue(stdout.Contains("status=\"active\"", StringComparison.Ordinal));
         Assert.IsTrue(stdout.Contains("kind=\"feature\"", StringComparison.Ordinal));
+        Assert.IsTrue(stdout.Contains("created_at=\"", StringComparison.Ordinal));
         Assert.IsTrue(stdout.Contains("<index>", StringComparison.Ordinal));
     }
 
@@ -533,6 +537,122 @@ public sealed class IterationCliTests
         Assert.AreEqual(0, exitCode, $"Stderr: {stderr}");
         Assert.IsTrue(stdout.Contains("Iterations in workspace:", StringComparison.Ordinal));
         Assert.IsTrue(stdout.Contains("20260823-xpath-core", StringComparison.Ordinal));
+        Assert.IsTrue(stdout.Contains("created:", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void IterationCreate_TimestampIdGrammar_Cli_Succeeds()
+    {
+        var workspace = CreateWorkspaceCopy();
+
+        var (exitCode, stdout, stderr) = RunCli(
+            "iteration", "create",
+            "--id", "20260825T143000Z-cli-ts",
+            "--kind", "feature",
+            "--workspace-root", workspace,
+            "--format", "xml");
+
+        Assert.AreEqual(0, exitCode, $"Stderr: {stderr}");
+        Assert.IsTrue(stdout.Contains("<mutation command=\"iteration create\"", StringComparison.Ordinal));
+        Assert.IsTrue(stdout.Contains("20260825T143000Z-cli-ts/spec.xml", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void IterationCreate_InvalidNearMissIds_Cli_FailsWithExitCode2()
+    {
+        var workspace = CreateWorkspaceCopy();
+
+        var invalidIds = new[]
+        {
+            "20260825T14300Z-short",
+            "20260825t143000z-lower",
+            "20260825T143000Z-UPPER",
+            "20260825-slug-",
+            "-leading-dash"
+        };
+
+        foreach (var badId in invalidIds)
+        {
+            var (exitCode, stdout, stderr) = RunCli(
+                "iteration", "create",
+                "--id", badId,
+                "--kind", "feature",
+                "--workspace-root", workspace,
+                "--format", "xml");
+
+            Assert.AreEqual(2, exitCode, $"ID '{badId}' should have returned exit code 2");
+            Assert.IsTrue(stderr.Contains(DiagnosticCodes.InvalidArgument, StringComparison.Ordinal));
+        }
+    }
+
+    [TestMethod]
+    public void IterationLifecycle_EndToEnd_TimestampId_Cli_Succeeds()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260825T143000Z-timestamp-cli";
+
+        // 1. iteration create
+        var (createExit, createOut, createErr) = RunCli(
+            "iteration", "create",
+            "--id", iterId,
+            "--kind", "feature",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, createExit, $"Create stderr: {createErr}");
+        Assert.IsTrue(createOut.Contains("<mutation command=\"iteration create\"", StringComparison.Ordinal));
+
+        // 2. validate workspace
+        var (valExit, valOut, valErr) = RunCli(
+            "validate",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, valExit, $"Validate stderr: {valErr}");
+        Assert.IsTrue(valOut.Contains("<validation valid=\"true\"", StringComparison.Ordinal));
+
+        // 3. iteration list
+        var (listExit, listOut, listErr) = RunCli(
+            "iteration", "list",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, listExit, $"List stderr: {listErr}");
+        Assert.IsTrue(listOut.Contains($"id=\"{iterId}\"", StringComparison.Ordinal));
+
+        // 4. iteration readiness
+        var (readyExit, readyOut, readyErr) = RunCli(
+            "iteration", "readiness",
+            "--iteration", iterId,
+            "--phase", "activation",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, readyExit, $"Readiness stderr: {readyErr}");
+        Assert.IsTrue(readyOut.Contains("<readiness", StringComparison.Ordinal));
+
+        // 5. iteration confirm activate
+        var confirmXml = $"""
+<iteration-confirmation
+  id="20260825T143500Z-confirm-activate"
+  iteration="{iterId}"
+  action="activate"
+  expected_spec_revision="1"
+  actor="owner"
+  decided_at="2026-08-25T14:35:00Z">
+  <summary>Owner activated timestamp iteration via CLI.</summary>
+  <requirements>
+    <requirement target="20260825T143000Z-req-timestamp-cli" decision="approved"/>
+  </requirements>
+  <acceptance>
+    <criterion target="20260825T143000Z-crit-timestamp-cli" decision="accepted"/>
+  </acceptance>
+</iteration-confirmation>
+""";
+        var (confExit, confOut, confErr) = RunCliWithStdin(
+            confirmXml,
+            "iteration", "confirm",
+            "--workspace-root", workspace,
+            "--stdin",
+            "--format", "xml");
+        Assert.AreEqual(0, confExit, $"Confirm stderr: {confErr}");
+        Assert.IsTrue(confOut.Contains("<mutation command=\"iteration confirm\"", StringComparison.Ordinal));
     }
 
     [TestMethod]

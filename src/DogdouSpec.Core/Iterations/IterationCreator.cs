@@ -1,10 +1,14 @@
 using System.Globalization;
 using System.Text;
+using System.Xml;
+using System.Xml.Schema;
 using DogdouSpec.Core.Diagnostics;
+using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
+using DogdouSpec.Core.Workspace;
 
 namespace DogdouSpec.Core.Iterations;
 
@@ -27,7 +31,7 @@ public static class IterationCreator
         clock ??= SystemClock.Instance;
 
         // 1. Validate ID grammar
-        var (isIdValid, normalizedId, idError) = PathSecurity.ValidateIterationId(iterationId);
+        var (isIdValid, normalizedId, idError) = WorkspaceDiscovery.ValidateIterationId(iterationId);
         if (!isIdValid || idError != null)
         {
             return (false, null, new[] { idError ?? Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Invalid iteration ID.") });
@@ -68,20 +72,21 @@ public static class IterationCreator
             // 6. Generate draft documents with deterministic IDs
             var nowUtc = clock.UtcNow;
             var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
-            var datePrefix = normalizedId.Substring(0, 8);
-            var slug = normalizedId.Substring(9);
+            var firstDash = normalizedId.IndexOf('-');
+            var timePrefix = normalizedId.Substring(0, firstDash);
+            var slug = normalizedId.Substring(firstDash + 1);
 
             string specContent;
             if (string.Equals(kind, "feature", StringComparison.Ordinal))
             {
-                specContent = GenerateFeatureSpecXml(normalizedId, datePrefix, slug, isoTime);
+                specContent = GenerateFeatureSpecXml(normalizedId, timePrefix, slug, isoTime);
             }
             else
             {
-                specContent = GenerateResearchSpecXml(normalizedId, datePrefix, slug, isoTime);
+                specContent = GenerateResearchSpecXml(normalizedId, timePrefix, slug, isoTime);
             }
 
-            var tasksContent = GenerateTasksXml(normalizedId, datePrefix, slug);
+            var tasksContent = GenerateTasksXml(normalizedId, timePrefix, slug);
 
             // 7. Prospective validation against prospective workspace view
             var specRelPath = $"{normalizedId}/spec.xml";

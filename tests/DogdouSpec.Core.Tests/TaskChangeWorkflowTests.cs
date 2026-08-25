@@ -4,6 +4,7 @@ using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Iterations;
 using DogdouSpec.Core.Requirements;
 using DogdouSpec.Core.Tasks;
+using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.XPath;
@@ -79,7 +80,8 @@ public sealed class TaskChangeWorkflowTests
     private void InitWorkspaceWithFeatureIteration(string iterId = "20260824-test-feature")
     {
         _workspace = CreateWorkspaceCopy();
-        var (iSuccess, _, iDiags) = IterationCreator.Create(_workspace, iterId, "feature");
+        var clock = new TestClock(new DateTime(2026, 8, 24, 9, 0, 0, DateTimeKind.Utc));
+        var (iSuccess, _, iDiags) = IterationCreator.Create(_workspace, iterId, "feature", clock);
         Assert.IsTrue(iSuccess, $"Iteration create failed: {string.Join(", ", iDiags.Select(d => d.Message))}");
     }
 
@@ -891,6 +893,7 @@ public sealed class TaskChangeWorkflowTests
         var specXmlPath = Path.Combine(_workspace, iterId, "spec.xml");
         var specDoc = XDocument.Load(specXmlPath);
         specDoc.Root!.SetAttributeValue("status", "replanning");
+        DogdouSpec.Core.Tasks.StatusTermHelper.SynchronizeStatusTerm(specDoc.Root, "replanning");
         var confs = specDoc.Root!.Element("confirmations");
         if (confs == null)
         {

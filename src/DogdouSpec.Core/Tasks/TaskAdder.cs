@@ -28,17 +28,19 @@ public static class TaskAdder
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0") => AddInternal(workspaceRoot, iterationId, expectedRevision, requestXml, false, false, "task add", clock, faultInjector, version);
+        string version = "1.0") => AddInternal(workspaceRoot, iterationId, expectedRevision, requestXml, false, false, "task add", clock, faultInjector, version, null);
 
     /// <summary>Creates a normal task from the compact quick-task request.  The start form is one write, not add then update.</summary>
     public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) AddQuick(
         string workspaceRoot, string iterationId, int expectedRevision, string requestXml, bool start, bool dryRun = false,
-        IClock? clock = null, IFaultInjector? faultInjector = null, string version = "1.0") =>
-        AddInternal(workspaceRoot, iterationId, expectedRevision, requestXml, start, dryRun, "task quick", clock, faultInjector, version);
+        IClock? clock = null, IFaultInjector? faultInjector = null, string version = "1.0",
+        IReadOnlyList<TransactionReadPrecondition>? readPreconditions = null) =>
+        AddInternal(workspaceRoot, iterationId, expectedRevision, requestXml, start, dryRun, "task quick", clock, faultInjector, version, readPreconditions);
 
     private static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) AddInternal(
         string workspaceRoot, string iterationId, int expectedRevision, string requestXml, bool start, bool dryRun,
-        string commandName, IClock? clock, IFaultInjector? faultInjector, string version)
+        string commandName, IClock? clock, IFaultInjector? faultInjector, string version,
+        IReadOnlyList<TransactionReadPrecondition>? readPreconditions)
     {
         if (string.IsNullOrWhiteSpace(workspaceRoot))
         {
@@ -475,7 +477,8 @@ public static class TaskAdder
             clock,
             faultInjector,
             version,
-            correlationId: addId);
+            correlationId: addId,
+            readPreconditions: readPreconditions);
     }
 
     private static XElement CreateReceipt(string operationId, string actor, string occurredAt, string fingerprint, string summary) =>

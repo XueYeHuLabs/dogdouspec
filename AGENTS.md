@@ -27,7 +27,7 @@ Welcome! This repository uses **DogdouSpec** to manage iterations, specification
      .\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id='<TASK_ID>']" --format xml
      ```
 4. **Follow the Checked-In Skill**:
-   - Read [`skills/dogdouspec/SKILL.md`](skills/dogdouspec/SKILL.md) and its references for complete guidelines on XPath projections, mutation semantics, and authority rules.
+   - Read [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md) and its references for complete guidelines on XPath projections, mutation semantics, and authority rules.
 5. **Code Changes & Verification**:
    - Run `.\build.cmd` before and after changes. Ensure all test suites pass with 0 errors and 0 warnings.
 6. **Task Updates & State Transitions**:

@@ -108,6 +108,9 @@ public sealed class SecurityTests
     [DataRow("20260823-feature-1")]
     [DataRow("20260823-9")]
     [DataRow("20260823-task-update-helper")]
+    [DataRow("20260825T143000Z-feat")]
+    [DataRow("20260825T000000Z-a")]
+    [DataRow("20260825T235959Z-feature-1")]
     public void ValidateIterationId_ValidIds_AreAccepted(string iterationId)
     {
         var (isValid, normalized, error) = PathSecurity.ValidateIterationId(iterationId);
@@ -156,6 +159,8 @@ public sealed class SecurityTests
     [DataRow("20260823-XPath")]
     [DataRow("20260823-FEATURE")]
     [DataRow("20260823-MixedCase")]
+    [DataRow("20260825t143000z-lower")]
+    [DataRow("20260825T143000Z-UPPER")]
     public void ValidateIterationId_InvalidCasing_IsRejected(string iterationId)
     {
         var (isValid, _, error) = PathSecurity.ValidateIterationId(iterationId);
@@ -173,6 +178,12 @@ public sealed class SecurityTests
     [DataRow("20260823-")]
     [DataRow("20260823--double-hyphen")]
     [DataRow("20260823-ending-hyphen-")]
+    [DataRow("20260825T14300Z-short")]
+    [DataRow("20260825T1430000Z-long")]
+    [DataRow("20260825T143000-missing-z")]
+    [DataRow("20260825T143000Z-")]
+    [DataRow("20260825T143000Z--double-hyphen")]
+    [DataRow("20260825T143000Z-ending-hyphen-")]
     [DataRow("")]
     [DataRow("   ")]
     public void ValidateIterationId_InvalidGrammar_IsRejected(string iterationId)

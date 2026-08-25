@@ -17,7 +17,8 @@ public sealed record QuickTaskInput(
     string Title, IReadOnlyList<string> Scopes, string DoneWhen, string Why,
     IReadOnlyList<string> Origins, IReadOnlyList<string> Dependencies,
     IReadOnlyList<string> Terms, string? IterationId, int? ExpectedRevision,
-    bool Start, bool DryRun, string? TaskId, string? OperationId);
+    bool Start, bool DryRun, string? TaskId, string? OperationId,
+    string? Agent = null, bool ReviewRequired = false);
 
 public sealed record QuickTaskResult(string IterationId, int ExpectedRevision, string RequestXml, XElement Task);
 
@@ -37,6 +38,8 @@ public static class TaskQuick
             return (false, null, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "--operation-id must begin with a UTC YYYYMMDDTHHmmssZ timestamp so retries are deterministic.") });
         if (string.IsNullOrWhiteSpace(input.TaskId) != string.IsNullOrWhiteSpace(input.OperationId))
             return (false, null, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "--id and --operation-id must be supplied together for a replayable invocation.") });
+        if (input.ReviewRequired && string.IsNullOrWhiteSpace(input.Agent))
+            return (false, null, null, new[] { Diagnostic.Error(DiagnosticCodes.TaskReviewImplementerUnknown, "--review-required must be paired with --agent implementer attribution.") });
 
         var (iterationOk, iterationId, iterationDiag) = ResolveIteration(workspaceRoot, input.IterationId);
         if (!iterationOk) return (false, null, null, new[] { iterationDiag! });
@@ -101,6 +104,7 @@ public static class TaskQuick
         var task = new XElement("task",
             new XAttribute("id", taskId), new XAttribute("status", input.Start ? "in-progress" : "pending"),
             new XAttribute("created_at", at), new XAttribute("updated_at", at),
+            string.IsNullOrWhiteSpace(input.Agent) ? null : new XAttribute("agent", input.Agent),
             input.Start ? new XAttribute("started_at", at) : null,
             new XElement("index", new XElement("summary", input.Title), terms),
             new XElement("title", input.Title), new XElement("objective", input.DoneWhen), new XElement("rationale", input.Why),
@@ -109,17 +113,34 @@ public static class TaskQuick
             input.Dependencies.Count == 0 ? null : new XElement("dependencies", input.Dependencies.Select(id => new XElement("ref", new XAttribute("scope", "document"), new XAttribute("target", id), new XAttribute("relation", "depends-on")))),
             new XElement("constraints"), new XElement("acceptance", new XElement("criterion", new XAttribute("id", taskId + "-done"), new XAttribute("status", "pending"), input.DoneWhen)),
             new XElement("context", new XElement("summary", input.Why)),
+            input.ReviewRequired ? new XElement("review", new XAttribute("required", "true")) : null,
             new XElement("records", input.Start ? new XElement("record", new XAttribute("id", operationId + "-start"), new XAttribute("kind", "start"), new XAttribute("status", "informational"), new XAttribute("created_at", at), new XAttribute("actor", "quick-task"), new XElement("summary", "Quick task created and started atomically.")) : null));
+        StatusTermHelper.SynchronizeStatusTerm(task, input.Start ? "in-progress" : "pending");
         var request = new XElement("task-add", new XAttribute("id", operationId), new XAttribute("actor", "quick-task"), new XAttribute("occurred_at", at), task);
         var requestXml = Serialize(request);
         if (Encoding.UTF8.GetByteCount(requestXml) > XPathQueryLimits.MaxDocumentBytes)
             return (false, null, null, new[] { Diagnostic.Error(DiagnosticCodes.LimitExceeded, "Generated task quick request exceeds the maximum XML document size.") });
-        if (input.Dependencies.Any(id => !tasks.Root!.Elements("task").Any(t => string.Equals(t.Attribute("id")?.Value, id, StringComparison.Ordinal))))
-            return (false, null, null, new[] { Diagnostic.Error(DiagnosticCodes.DanglingReference, "Every --depends-on value must identify an existing task.", tasksRelative) });
-        if (input.Start && input.Dependencies.Any(id => !tasks.Root!.Elements("task").Any(t => string.Equals(t.Attribute("id")?.Value, id, StringComparison.Ordinal) && IsTerminal(t.Attribute("status")?.Value))))
-            return (false, null, null, new[] { Diagnostic.Error(DiagnosticCodes.TaskTransitionConflict, "Quick --start requires every --depends-on task to be terminal.", tasksRelative) });
+        IReadOnlyList<TransactionReadPrecondition> dependencyReadPreconditions = Array.Empty<TransactionReadPrecondition>();
+        if (input.Dependencies.Count > 0)
+        {
+            var (depsOk, depDiags, depReadPreconditions) = TaskDependencyGate.EvaluateTaskDependencies(workspaceRoot, taskId, task, tasksRelative);
+            if (input.Start)
+            {
+                if (!depsOk || depDiags.Count > 0)
+                    return (false, null, null, depDiags);
+                dependencyReadPreconditions = depReadPreconditions;
+            }
+            else
+            {
+                var nonStatusErrors = depDiags.Where(d => d.Code != DiagnosticCodes.TaskTransitionConflict).ToList();
+                if (nonStatusErrors.Count > 0)
+                    return (false, null, null, nonStatusErrors);
+            }
+        }
         var result = new QuickTaskResult(iterationId!, expectedRevision, requestXml, task);
-        var (success, envelope, diagnostics) = TaskAdder.AddQuick(workspaceRoot, iterationId!, expectedRevision, requestXml, input.Start, input.DryRun);
+        var (success, envelope, diagnostics) = TaskAdder.AddQuick(
+            workspaceRoot, iterationId!, expectedRevision, requestXml, input.Start, input.DryRun,
+            readPreconditions: dependencyReadPreconditions);
         return (success, result, envelope, diagnostics);
     }
 

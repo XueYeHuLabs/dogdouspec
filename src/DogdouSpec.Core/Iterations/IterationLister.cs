@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Xml;
 using System.Xml.Linq;
+using System.Xml.Schema;
 using DogdouSpec.Core.Diagnostics;
+using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.Workspace;
@@ -136,6 +138,7 @@ public static class IterationLister
 
                 var kind = specRoot.Attribute("kind")?.Value ?? string.Empty;
                 var status = specRoot.Attribute("status")?.Value ?? string.Empty;
+                var createdAt = specRoot.Attribute("created_at")?.Value ?? string.Empty;
                 var specRevStr = specRoot.Attribute("revision")?.Value ?? string.Empty;
                 int.TryParse(specRevStr, CultureInfo.InvariantCulture, out var specRevision);
 
@@ -182,6 +185,7 @@ public static class IterationLister
                         RelativePath: dirName,
                         Kind: kind,
                         Status: status,
+                        CreatedAt: createdAt,
                         SpecRevision: specRevision,
                         TasksRevision: tasksRevision,
                         IndexElement: indexEl != null ? new XElement(indexEl) : null));
@@ -207,6 +211,11 @@ public static class IterationLister
             return (false, null, sortedDiags);
         }
 
-        return (true, new IterationListResult(workspaceRoot, iterations), Array.Empty<Diagnostic>());
+        var sortedIterations = iterations
+            .OrderBy(it => DateTimeOffset.TryParse(it.CreatedAt, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var dt) ? dt : DateTimeOffset.MinValue)
+            .ThenBy(it => it.Id, StringComparer.Ordinal)
+            .ToList();
+
+        return (true, new IterationListResult(workspaceRoot, sortedIterations), Array.Empty<Diagnostic>());
     }
 }

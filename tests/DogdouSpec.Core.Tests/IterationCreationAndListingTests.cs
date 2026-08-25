@@ -1,9 +1,13 @@
 using System.Xml.Linq;
+using System.Xml.Schema;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Iterations;
+using DogdouSpec.Core.Resources;
+using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
+using DogdouSpec.Core.Workspace;
 
 namespace DogdouSpec.Core.Tests;
 
@@ -219,6 +223,125 @@ public sealed class IterationCreationAndListingTests
     }
 
     [TestMethod]
+    public void Create_WithTimestampIdGrammar_CreatesValidSpecAndTasks()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var fixedTime = new DateTime(2026, 8, 25, 14, 30, 0, DateTimeKind.Utc);
+        var clock = new TestClock(fixedTime);
+
+        var iterId = "20260825T143000Z-timestamp-feat";
+        var (success, env, diags) = IterationCreator.Create(
+            workspace,
+            iterId,
+            "feature",
+            clock);
+
+        Assert.IsTrue(success, $"Creation failed: {string.Join("; ", diags.Select(d => d.Message))}");
+        Assert.IsNotNull(env);
+
+        var iterDir = Path.Combine(workspace, iterId);
+        var specPath = Path.Combine(iterDir, "spec.xml");
+        var tasksPath = Path.Combine(iterDir, "tasks.xml");
+
+        var specXDoc = XDocument.Load(specPath);
+        var specRoot = specXDoc.Root!;
+        Assert.AreEqual(iterId, specRoot.Attribute("id")?.Value);
+        Assert.AreEqual("2026-08-25T14:30:00Z", specRoot.Attribute("created_at")?.Value);
+
+        var deliv = specRoot.Descendants("deliverable").FirstOrDefault();
+        Assert.IsNotNull(deliv);
+        Assert.AreEqual("20260825T143000Z-deliv-timestamp-feat", deliv.Attribute("id")?.Value);
+
+        var req = specRoot.Descendants("requirement").FirstOrDefault();
+        Assert.IsNotNull(req);
+        Assert.AreEqual("20260825T143000Z-req-timestamp-feat", req.Attribute("id")?.Value);
+
+        var crit = specRoot.Descendants("criterion").FirstOrDefault();
+        Assert.IsNotNull(crit);
+        Assert.AreEqual("20260825T143000Z-crit-timestamp-feat", crit.Attribute("id")?.Value);
+
+        var tasksXDoc = XDocument.Load(tasksPath);
+        var tasksRoot = tasksXDoc.Root!;
+        Assert.AreEqual("20260825T143000Z-tasks-timestamp-feat", tasksRoot.Attribute("id")?.Value);
+        Assert.AreEqual(iterId, tasksRoot.Attribute("iteration")?.Value);
+
+        // Validate spec.xml against spec XSD schema
+        var specSchema = EmbeddedResources.GetCompiledSchemaSet("spec", "1.0");
+        var specDiags = new List<Diagnostic>();
+        var specSettings = SecureXmlReaderFactory.CreateSecureSettings(
+            schemaSet: specSchema,
+            validationEventHandler: (sender, args) =>
+            {
+                specDiags.Add(Diagnostic.Error(DiagnosticCodes.SchemaValidationError, args.Message));
+            });
+        using (var reader = SecureXmlReaderFactory.CreateReader(File.OpenRead(specPath), specSettings))
+        {
+            while (reader.Read()) { }
+        }
+        Assert.AreEqual(0, specDiags.Count, $"spec.xml validation failed: {string.Join("; ", specDiags.Select(d => d.Message))}");
+
+        // Validate tasks.xml against tasks XSD schema
+        var tasksSchema = EmbeddedResources.GetCompiledSchemaSet("tasks", "1.0");
+        var tasksDiags = new List<Diagnostic>();
+        var tasksSettings = SecureXmlReaderFactory.CreateSecureSettings(
+            schemaSet: tasksSchema,
+            validationEventHandler: (sender, args) =>
+            {
+                tasksDiags.Add(Diagnostic.Error(DiagnosticCodes.SchemaValidationError, args.Message));
+            });
+        using (var reader = SecureXmlReaderFactory.CreateReader(File.OpenRead(tasksPath), tasksSettings))
+        {
+            while (reader.Read()) { }
+        }
+        Assert.AreEqual(0, tasksDiags.Count, $"tasks.xml validation failed: {string.Join("; ", tasksDiags.Select(d => d.Message))}");
+
+        // Validate whole workspace
+        var val = SchemaValidator.Validate(workspace);
+        Assert.IsTrue(val.IsValid, $"Workspace validation failed: {string.Join("; ", val.Diagnostics.Select(d => $"{d.Code}: {d.Message}"))}");
+
+        // Assert schema routing recognizes timestamp-form spec/tasks paths
+        var specManaged = new ManagedDocument($"{iterId}/spec.xml", specPath, iterId);
+        var tasksManaged = new ManagedDocument($"{iterId}/tasks.xml", tasksPath, iterId);
+        Assert.AreEqual("spec", DocumentSchemaMapper.GetSchemaNameForDocument(specManaged));
+        Assert.AreEqual("tasks", DocumentSchemaMapper.GetSchemaNameForDocument(tasksManaged));
+
+        // Verify readiness assessment on timestamp-form iteration
+        var (assessOk, assessRes, assessDiags) = IterationReadiness.Assess(workspace, iterId, "activation");
+        Assert.IsTrue(assessOk, $"Readiness assessment failed: {string.Join("; ", assessDiags.Select(d => d.Message))}");
+        Assert.IsNotNull(assessRes);
+
+        // Verify confirmation lifecycle on timestamp-form iteration
+        var activateXml = $"""
+<iteration-confirmation
+  id="20260825T143500Z-confirm-activate"
+  iteration="{iterId}"
+  action="activate"
+  expected_spec_revision="1"
+  actor="owner"
+  decided_at="2026-08-25T14:35:00Z">
+  <summary>Owner activated timestamp-prefixed iteration.</summary>
+  <requirements>
+    <requirement target="20260825T143000Z-req-timestamp-feat" decision="approved"/>
+  </requirements>
+  <acceptance>
+    <criterion target="20260825T143000Z-crit-timestamp-feat" decision="accepted"/>
+  </acceptance>
+</iteration-confirmation>
+""";
+        var (confirmOk, confirmEnv, confirmDiags) = IterationConfirmer.Confirm(workspace, activateXml);
+        Assert.IsTrue(confirmOk, $"Confirmation failed: {string.Join("; ", confirmDiags.Select(d => d.Message))}");
+        Assert.IsNotNull(confirmEnv);
+
+        // Verify iteration list discovers the activated iteration with correct status
+        var (listOk, listResult, listDiags) = IterationLister.List(workspace);
+        Assert.IsTrue(listOk, $"Iteration listing failed: {string.Join("; ", listDiags.Select(d => d.Message))}");
+        Assert.IsNotNull(listResult);
+        var listed = listResult.Iterations.FirstOrDefault(it => it.Id == iterId);
+        Assert.IsNotNull(listed);
+        Assert.AreEqual("active", listed.Status);
+    }
+
+    [TestMethod]
     public void Create_InvalidIdGrammar_FailsWithExitCode2()
     {
         var workspace = CreateWorkspaceCopy();
@@ -230,7 +353,15 @@ public sealed class IterationCreationAndListingTests
             "20260823-UPPERCASE",
             "20260823-name_with_underscore",
             "../traversal",
-            ""
+            "",
+            "20260825T14300Z-short-time",
+            "20260825T1430000Z-long-time",
+            "20260825t143000z-lowercase-t-z",
+            "20260825T143000-missing-z",
+            "20260825T143000Z-",
+            "20260825-slug-",
+            "-leading-dash",
+            "20260825T143000Z-UPPER"
         };
 
         foreach (var badId in invalidIds)
@@ -339,6 +470,7 @@ public sealed class IterationCreationAndListingTests
         Assert.IsTrue(xml.Contains("<iterations workspace="));
         Assert.IsTrue(xml.Contains("id=\"20260823-xpath-core\""));
         Assert.IsTrue(xml.Contains("id=\"20260824-second-iteration\""));
+        Assert.IsTrue(xml.Contains("created_at="));
         Assert.IsTrue(xml.Contains("spec_revision=\"4\""));
         Assert.IsTrue(xml.Contains("tasks_revision=\"9\""));
 
@@ -346,6 +478,44 @@ public sealed class IterationCreationAndListingTests
         var human = result.ToHumanString();
         Assert.IsTrue(human.Contains("20260823-xpath-core"));
         Assert.IsTrue(human.Contains("20260824-second-iteration"));
+        Assert.IsTrue(human.Contains("created:"));
+    }
+
+    [TestMethod]
+    public void List_MultipleIterations_DeterministicChronologicalOrderAndTieBreaking()
+    {
+        var workspace = CreateWorkspaceCopy();
+
+        // 20260823-xpath-core has created_at = 2026-08-23T00:00:00Z in demo fixture
+
+        // Create beta at 2026-08-25T10:00:00Z
+        var clockT1 = new TestClock(new DateTime(2026, 8, 25, 10, 0, 0, DateTimeKind.Utc));
+        var (ok1, _, _) = IterationCreator.Create(workspace, "20260825-beta", "feature", clockT1);
+        Assert.IsTrue(ok1);
+
+        // Create alpha at same timestamp 2026-08-25T10:00:00Z
+        var (ok2, _, _) = IterationCreator.Create(workspace, "20260825-alpha", "feature", clockT1);
+        Assert.IsTrue(ok2);
+
+        // Create later timestamped iteration at 2026-08-25T14:30:00Z
+        var clockT2 = new TestClock(new DateTime(2026, 8, 25, 14, 30, 0, DateTimeKind.Utc));
+        var (ok3, _, _) = IterationCreator.Create(workspace, "20260825T143000Z-delta", "research", clockT2);
+        Assert.IsTrue(ok3);
+
+        var (success, result, diags) = IterationLister.List(workspace);
+        Assert.IsTrue(success);
+        Assert.IsNotNull(result);
+        Assert.AreEqual(4, result.Iterations.Count);
+
+        // Deterministic ascending chronological order with ordinal ID tie-break:
+        // 1. 20260823-xpath-core (2026-08-23T00:00:00Z)
+        // 2. 20260825-alpha (2026-08-25T10:00:00Z, alpha < beta tie-break)
+        // 3. 20260825-beta (2026-08-25T10:00:00Z)
+        // 4. 20260825T143000Z-delta (2026-08-25T14:30:00Z)
+        Assert.AreEqual("20260823-xpath-core", result.Iterations[0].Id);
+        Assert.AreEqual("20260825-alpha", result.Iterations[1].Id);
+        Assert.AreEqual("20260825-beta", result.Iterations[2].Id);
+        Assert.AreEqual("20260825T143000Z-delta", result.Iterations[3].Id);
     }
 
     [TestMethod]

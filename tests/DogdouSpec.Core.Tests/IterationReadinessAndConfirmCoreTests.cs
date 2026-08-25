@@ -306,7 +306,8 @@ public sealed class IterationReadinessAndConfirmCoreTests
     {
         var workspace = CreateWorkspaceCopy();
         var iterId = "20260824-feature-activate";
-        var (createOk, _, _) = IterationCreator.Create(workspace, iterId, "feature");
+        var clock = new TestClock(new DateTime(2026, 8, 24, 12, 0, 0, DateTimeKind.Utc));
+        var (createOk, _, _) = IterationCreator.Create(workspace, iterId, "feature", clock);
         Assert.IsTrue(createOk);
 
         var tasksPath = Path.Combine(workspace, iterId, "tasks.xml");
@@ -355,7 +356,8 @@ public sealed class IterationReadinessAndConfirmCoreTests
     {
         var workspace = CreateWorkspaceCopy();
         var iterId = "20260824-feature-unapproved-req";
-        var (createOk, _, _) = IterationCreator.Create(workspace, iterId, "feature");
+        var clock = new TestClock(new DateTime(2026, 8, 24, 12, 0, 0, DateTimeKind.Utc));
+        var (createOk, _, _) = IterationCreator.Create(workspace, iterId, "feature", clock);
         Assert.IsTrue(createOk);
 
         // Attempt activation without explicit decision for proposed req created by template
@@ -964,6 +966,142 @@ public sealed class IterationReadinessAndConfirmCoreTests
         // Original spec.xml is intact
         var specHashAfter = ComputeFileSha256(specPath);
         Assert.AreEqual(specHashBefore, specHashAfter);
+    }
+
+    [TestMethod]
+    public void Confirm_InvalidRequirementDecision_ReportsAllowedTokens()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var requestXml = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<iteration-confirmation
+  id=""20260824T181000Z-confirm-req-inv""
+  iteration=""20260823-xpath-core""
+  action=""replan""
+  expected_spec_revision=""4""
+  actor=""owner""
+  decided_at=""2026-08-24T18:10:00Z"">
+  <summary>Invalid decision test.</summary>
+  <requirements>
+    <requirement target=""20260823-req-xpath-eval"" decision=""accepted""/>
+  </requirements>
+</iteration-confirmation>";
+
+        var (success, _, diags) = IterationConfirmer.Confirm(workspace, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.FirstOrDefault(d => d.Code == DiagnosticCodes.InvalidArgument);
+        Assert.IsNotNull(diag, $"Expected INVALID_ARGUMENT diagnostic, got: {string.Join("; ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains("approved, superseded, withdrawn"), $"Diagnostic should report allowed requirement tokens, got: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void Confirm_InvalidDesignDecision_ReportsAllowedTokens()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var requestXml = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<iteration-confirmation
+  id=""20260824T181100Z-confirm-des-inv""
+  iteration=""20260823-xpath-core""
+  action=""replan""
+  expected_spec_revision=""4""
+  actor=""owner""
+  decided_at=""2026-08-24T18:11:00Z"">
+  <summary>Invalid design decision test.</summary>
+  <design>
+    <decision target=""20260823-dec-evaluator-engine"" decision=""approved""/>
+  </design>
+</iteration-confirmation>";
+
+        var (success, _, diags) = IterationConfirmer.Confirm(workspace, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.FirstOrDefault(d => d.Code == DiagnosticCodes.InvalidArgument);
+        Assert.IsNotNull(diag, $"Expected INVALID_ARGUMENT diagnostic, got: {string.Join("; ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains("accepted, rejected, superseded"), $"Diagnostic should report allowed design tokens, got: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void Confirm_InvalidAcceptanceDecision_ReportsAllowedTokens()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var requestXml = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<iteration-confirmation
+  id=""20260824T181200Z-confirm-acc-inv""
+  iteration=""20260823-xpath-core""
+  action=""replan""
+  expected_spec_revision=""4""
+  actor=""owner""
+  decided_at=""2026-08-24T18:12:00Z"">
+  <summary>Invalid acceptance decision test.</summary>
+  <acceptance>
+    <criterion target=""20260823-accept-xpath-eval"" decision=""approved""/>
+  </acceptance>
+</iteration-confirmation>";
+
+        var (success, _, diags) = IterationConfirmer.Confirm(workspace, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.FirstOrDefault(d => d.Code == DiagnosticCodes.InvalidArgument);
+        Assert.IsNotNull(diag, $"Expected INVALID_ARGUMENT diagnostic, got: {string.Join("; ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains("accepted, rejected, waived"), $"Diagnostic should report allowed acceptance tokens, got: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void Confirm_AcceptDesignChange_WithNonDesignTargets_FailsWithActionInapplicable()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var requestXml = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<iteration-confirmation
+  id=""20260824T181300Z-confirm-act-inapp""
+  iteration=""20260823-xpath-core""
+  action=""accept-design-change""
+  expected_spec_revision=""4""
+  actor=""owner""
+  decided_at=""2026-08-24T18:13:00Z"">
+  <summary>Action inapplicable test.</summary>
+  <requirements>
+    <requirement target=""20260823-req-xpath-eval"" decision=""approved""/>
+  </requirements>
+</iteration-confirmation>";
+
+        var (success, _, diags) = IterationConfirmer.Confirm(workspace, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.FirstOrDefault(d => d.Code == DiagnosticCodes.OwnerDecisionRequired);
+        Assert.IsNotNull(diag, $"Expected OWNER_DECISION_REQUIRED diagnostic, got: {string.Join("; ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains("<design>"), $"Diagnostic should report allowed target <design>, got: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void Confirm_SynchronizesStatusTerms_SpecRootAndDecisions()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var specPath = Path.Combine(workspace, "20260823-xpath-core", "spec.xml");
+        var xdocBefore = XDocument.Load(specPath);
+        xdocBefore.Root!.Element("index")!.Add(new XElement("term", new XAttribute("key", "status"), new XAttribute("value", "active")));
+        xdocBefore.Save(specPath);
+        var rootStatusTermBefore = xdocBefore.Root!.Element("index")?.Elements("term").FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        Assert.IsNotNull(rootStatusTermBefore);
+        Assert.AreEqual("active", (string?)rootStatusTermBefore.Attribute("value"));
+
+        var replanXml = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<iteration-confirmation
+  id=""20260824T181500Z-confirm-sync-term""
+  iteration=""20260823-xpath-core""
+  action=""replan""
+  expected_spec_revision=""4""
+  actor=""lead""
+  decided_at=""2026-08-24T18:15:00Z"">
+  <summary>Moving to replanning to test term sync.</summary>
+</iteration-confirmation>";
+
+        var (success, _, diags) = IterationConfirmer.Confirm(workspace, replanXml);
+        Assert.IsTrue(success, string.Join("; ", diags.Select(d => d.Message)));
+
+        var xdocAfter = XDocument.Load(specPath);
+        Assert.AreEqual("replanning", (string?)xdocAfter.Root!.Attribute("status"));
+        var rootStatusTermAfter = xdocAfter.Root!.Element("index")?.Elements("term").FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        Assert.IsNotNull(rootStatusTermAfter);
+        Assert.AreEqual("replanning", (string?)rootStatusTermAfter.Attribute("value"));
+
+        var valResult = SchemaValidator.Validate(workspace);
+        Assert.IsTrue(valResult.IsValid, string.Join("; ", valResult.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
     }
 
     #endregion

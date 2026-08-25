@@ -396,6 +396,7 @@ public static class ChangeApplier
             }
 
             targetTask.SetAttributeValue("status", targetStatus);
+            DogdouSpec.Core.Tasks.StatusTermHelper.SynchronizeStatusTerm(targetTask, targetStatus);
             targetTask.SetAttributeValue("updated_at", occurredAt);
 
             var dispRecords = td.Elements("record").ToList();

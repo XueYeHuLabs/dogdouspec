@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20260825-dogfood-remediation" schema_version="1.0" revision="3" kind="feature" status="active" created_at="2026-08-25T02:45:12Z" updated_at="2026-08-25T02:54:28Z">
+  <index>
+        <summary>Remediate defects and workflow gaps discovered through DogdouClix dogfooding.</summary>
+        <term key="kind" value="feature" />
+        <term key="iteration" value="20260825-dogfood-remediation" />
+        <term key="topic" value="dogfood-remediation" />
+        <term key="status" value="active" />
+      </index>
+  <product>
+        <objective>Correct confirmed DogdouSpec defects and converge installation, task execution, governance, review, and dogfooding guidance without weakening authority or evidence boundaries.</objective>
+        <deliverables>
+          <deliverable id="20260825-deliv-portable-installation">
+            <index><summary>Portable repository installation with .agents/skills as the default skill path.</summary><term key="component" value="installation" /></index>
+            <description>Installer guidance, upgrade and rollback procedures, generated AGENTS blocks, and tests consistently use .agents/skills/dogdouspec by default while documenting configurable compatibility targets.</description>
+          </deliverable>
+          <deliverable id="20260825-deliv-core-correctness">
+            <index><summary>Deterministic time, identifier, listing, task metadata, completion, dependency, and scope behavior.</summary><term key="component" value="core" /></index>
+            <description>Core and CLI behavior eliminate date-sensitive tests, accept the schema identifier grammar, expose chronological metadata, preserve task index consistency, provide valid completion templates, enforce dependencies, and verify declared repository scope.</description>
+          </deliverable>
+          <deliverable id="20260825-deliv-governance-workflows">
+            <index><summary>Usable backlog, knowledge, design, replanning, and review workflows.</summary><term key="component" value="governance" /></index>
+            <description>Existing backlog is the defect/deferred-work store, design and context capture have decision heuristics, replanning has a public smoke path, and configurable independent review findings participate in task completion readiness.</description>
+          </deliverable>
+          <deliverable id="20260825-deliv-regression-evidence">
+            <index><summary>Regression tests and synchronized public documentation for all dogfood findings.</summary><term key="component" value="verification" /></index>
+            <description>Focused tests, complete build evidence, installation documentation, Skill instructions, templates, and dogfood evaluation guidance agree with implemented behavior.</description>
+          </deliverable>
+        </deliverables>
+        <scope>
+          <included>
+            <item>DogdouSpec Core, CLI, XSD schemas, embedded templates, tests, Skill references, installation guide, and dogfood documentation required to close the identified findings.</item>
+            <item>Backward-compatible migration behavior for repositories already using the legacy root skills/dogdouspec path.</item>
+            <item>Backlog-based defect tracking and configurable review gates; no separate issue entity is introduced in this iteration.</item>
+          </included>
+          <excluded>
+            <item>Cryptographic actor identity, remote identity providers, external issue tracker integrations, MCP servers, and unrelated product features.</item>
+            <item>Automatic claims that a test result or review attestation is true without external execution or identity evidence.</item>
+            <item>Direct edits to DogdouClix product code or its completed DogdouSpec iteration history.</item>
+          </excluded>
+        </scope>
+        <requirements>
+          <requirement id="20260825-req-skill-installation" status="approved">
+            <index><summary>Use .agents/skills as the default checked-in skill installation path.</summary><term key="component" value="installation" /></index>
+            <statement>Repository installation, upgrade, rollback, generated guidance, and verification must default to .agents/skills/dogdouspec and explicitly preserve a bounded compatibility path for existing installations.</statement>
+            <rationale>DogdouClix dogfooding confirmed that the legacy root skills path is not automatically discovered by the primary Antigravity workflow, while the owner selected .agents/skills as the supported default.</rationale>
+          </requirement>
+          <requirement id="20260825-req-time-and-iteration-listing" status="approved">
+            <index><summary>Make clocks, time-first identifiers, and iteration listing deterministic and contract-consistent.</summary><term key="component" value="iterations" /></index>
+            <statement>Tests must use controllable time, iteration create must accept every identifier allowed by TimeFirstIdType, and iteration list must expose created_at with deterministic ordering semantics.</statement>
+            <rationale>Hard-coded timestamps currently break mandatory builds and the CLI rejects the timestamped identifier grammar accepted by the schema.</rationale>
+          </requirement>
+          <requirement id="20260825-req-task-contracts" status="approved">
+            <index><summary>Converge task completion, revision, decision vocabulary, and index metadata contracts.</summary><term key="component" value="tasks" /></index>
+            <statement>Task transitions must not leave misleading status index terms, completion templates must satisfy coverage predicates, mutation guidance must use returned exact revisions, and diagnostics must state action-specific decision vocabularies without weakening domain semantics.</statement>
+            <rationale>Dogfooding found stale task index terms, an invalid completion template, and avoidable operator confusion around revisions and confirmation tokens.</rationale>
+          </requirement>
+          <requirement id="20260825-req-dependency-and-scope" status="approved">
+            <index><summary>Enforce declared task dependencies and provide repository scope verification.</summary><term key="component" value="execution-integrity" /></index>
+            <statement>Cross-iteration project-scoped task dependencies must be documented and enforced by execution transitions and actionable selection, and a public read-only command must compare declared task repository scope with actual changed paths using defined path semantics.</statement>
+            <rationale>Schema validation accepts cross-iteration dependencies but current task start and ready selection can bypass them, while repository scope is documentation-only.</rationale>
+          </requirement>
+          <requirement id="20260825-req-governance-guidance" status="approved">
+            <index><summary>Activate backlog, knowledge, design context, ADR, and replanning workflows.</summary><term key="component" value="workflow" /></index>
+            <statement>The checked-in Skill must define when to create backlog items, knowledge entries, design snapshots, and formal design decisions, and must provide a tested replanning smoke procedure without treating every excluded scope item as deferred work.</statement>
+            <rationale>DogdouClix completed three iterations without exercising or populating these intended governance surfaces.</rationale>
+          </requirement>
+          <requirement id="20260825-req-backlog-defects" status="approved">
+            <index><summary>Use the existing backlog as the structured store for non-blocking defects and deferred obligations.</summary><term key="component" value="backlog" /></index>
+            <statement>Public CLI helpers and Skill guidance must support creating, querying, scheduling, and resolving defect-class backlog items with traceable task and iteration references, without adding a duplicate issues.xml model.</statement>
+            <rationale>The current generic append escape hatch is insufficient for routine defect lifecycle management, but the existing backlog schema already owns the relevant project-level concept.</rationale>
+          </requirement>
+          <requirement id="20260825-req-review-gate" status="approved">
+            <index><summary>Add configurable structured review gates while preserving evidence honesty.</summary><term key="component" value="review" /></index>
+            <statement>Tasks that declare review required must not complete until structured approval exists, changes-requested findings must block completion, reviewer and implementer attribution must remain explicit, and documentation must state that actor fields are provenance rather than authenticated identity.</statement>
+            <rationale>DogdouClix completed its iteration before independent review reported multiple open high-severity findings.</rationale>
+          </requirement>
+          <requirement id="20260825-req-regression-and-docs" status="approved">
+            <index><summary>Close every dogfood finding with regression evidence and synchronized documentation.</summary><term key="component" value="verification" /></index>
+            <statement>The repository build must pass with zero errors and warnings, focused tests must cover every changed contract, and public documentation and templates must accurately distinguish structural attestation from authenticated execution evidence.</statement>
+            <rationale>The evaluation report overstated evidence guarantees and omitted or misclassified several findings.</rationale>
+          </requirement>
+        </requirements>
+        <acceptance>
+          <criterion id="20260825-crit-installation-default" decision="pending">A clean installation uses .agents/skills/dogdouspec by default and upgrade/rollback verification covers both default and legacy installations.</criterion>
+          <criterion id="20260825-crit-deterministic-build" decision="pending">The mandatory build is date-independent and all source and CLI tests pass with zero warnings and errors.</criterion>
+          <criterion id="20260825-crit-core-consistency" decision="pending">Identifier, listing, task index, completion template, revision, dependency, and scope behavior match one documented executable contract.</criterion>
+          <criterion id="20260825-crit-governance-usable" decision="pending">Backlog defect lifecycle, ADR/context guidance, knowledge capture, and replanning smoke workflow are public, queryable, and covered by tests.</criterion>
+          <criterion id="20260825-crit-review-enforced" decision="pending">A review-required task cannot complete with missing approval or active changes-requested findings, while non-review tasks retain the existing lightweight workflow.</criterion>
+          <criterion id="20260825-crit-evidence-honesty" decision="pending">Documentation consistently states that XML validates structured provenance and internal consistency but does not authenticate actors or independently prove external test execution.</criterion>
+        </acceptance>
+      </product>
+  
+<design>
+        <overview>Preserve DogdouSpec's iteration-first XML authority model while adding deterministic execution checks and optional policy gates at the existing task and backlog boundaries.</overview>
+        <boundaries>
+          <boundary id="20260825-boundary-no-authentication">Structured actor attribution is auditable provenance, not cryptographic authentication.</boundary>
+          <boundary id="20260825-boundary-no-issues-document">Backlog remains the workspace-level store for defects and deferred obligations during this iteration.</boundary>
+        </boundaries>
+        <decisions>
+          <decision id="20260825-decision-agents-skill-default" status="accepted">
+            <index><summary>Default repository skill installation to .agents/skills/dogdouspec.</summary><term key="component" value="installation" /></index>
+            <rationale>The owner selected the widely supported .agents workspace convention; compatibility with legacy installations remains explicit rather than silently duplicated.</rationale>
+          </decision>
+          <decision id="20260825-decision-backlog-defects" status="accepted">
+            <index><summary>Extend backlog lifecycle instead of introducing issues.xml.</summary><term key="component" value="backlog" /></index>
+            <rationale>The existing backlog entity already models open, scheduled, completed, and cancelled project obligations with sources and targets.</rationale>
+          </decision>
+          <decision id="20260825-decision-configurable-review" status="accepted">
+            <index><summary>Make independent task review an explicit configurable gate.</summary><term key="component" value="review" /></index>
+            <rationale>Mandatory review for every repository would over-constrain small workflows, while review-required work must fail closed and preserve the non-authentication boundary.</rationale>
+          </decision>
+        </decisions>
+      </design><confirmations><confirmation id="20260825T025428Z-confirm-dogfood-activation" action="activate" decision="accepted" actor="owner-instruction" decided_at="2026-08-25T02:54:28Z"><summary>Owner explicitly approved the DogdouClix dogfood remediation baseline and authorized activation.</summary><requirements>
+    <requirement target="20260825-req-skill-installation" decision="approved" />
+    <requirement target="20260825-req-time-and-iteration-listing" decision="approved" />
+    <requirement target="20260825-req-task-contracts" decision="approved" />
+    <requirement target="20260825-req-dependency-and-scope" decision="approved" />
+    <requirement target="20260825-req-governance-guidance" decision="approved" />
+    <requirement target="20260825-req-backlog-defects" decision="approved" />
+    <requirement target="20260825-req-review-gate" decision="approved" />
+    <requirement target="20260825-req-regression-and-docs" decision="approved" />
+  </requirements><design>
+    <decision target="20260825-decision-agents-skill-default" decision="accepted" />
+    <decision target="20260825-decision-backlog-defects" decision="accepted" />
+    <decision target="20260825-decision-configurable-review" decision="accepted" />
+  </design></confirmation></confirmations></iteration>
+

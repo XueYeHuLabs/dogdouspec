@@ -1,0 +1,448 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20260825-tasks-dogfood-remediation" iteration="20260825-dogfood-remediation" schema_version="1.0" revision="34">
+  <index>
+    <summary>Tasks for iteration 20260825-dogfood-remediation.</summary>
+    <term key="iteration" value="20260825-dogfood-remediation" />
+  </index>
+<task id="20260825-task-install-skill-default" status="done" created_at="2026-08-25T02:48:30Z" updated_at="2026-08-25T03:29:30Z" agent="agy-gemini" started_at="2026-08-25T02:56:35Z" completed_at="2026-08-25T03:29:30Z">
+    <index><summary>Move the checked-in DogdouSpec skill and installation workflow to .agents/skills by default with bounded legacy compatibility.</summary><term key="component" value="install" /><term key="kind" value="implementation" /></index>
+    <title>Default repository skill installation to .agents</title>
+    <objective>Update source layout, installation, upgrade, rollback, AGENTS guidance, and verification so .agents/skills/dogdouspec is the default supported repository skill path.</objective>
+    <rationale>The owner selected .agents/skills as the default and DogdouClix proved the legacy root skills path is not automatically discovered by the primary agent workflow.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="AGENTS.md" />
+        <include path="README.md" />
+        <include path=".agents/skills/dogdouspec/**" />
+        <include path="skills/dogdouspec/**" />
+        <include path="docs/INSTALL_IN_OTHER_REPOSITORY.md" />
+        <include path="docs/V1_SKILL_WORKFLOW.md" />
+        <include path="tests/**" />
+      </repository>
+    </scope>
+    <origin><ref scope="iteration" target="20260825-req-skill-installation" relation="implements" /></origin>
+    <constraints>
+      <constraint id="20260825-constraint-install-agy">Implementation and focused verification must be delegated to agy.exe with Gemini 3.7 Flash High; transfer to Terra High is allowed only after an observed agy rate-limit failure.</constraint>
+      <constraint id="20260825-constraint-install-preserve">Preserve unrelated user work and do not commit or push without explicit owner instruction.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260825-crit-install-layout" status="passed">The checked-in skill and all current repository references use .agents/skills/dogdouspec as the default path.</criterion>
+      <criterion id="20260825-crit-install-installer" status="passed">Initial installation, upgrade, rollback, and compatibility checks are idempotent and preserve existing legacy installations without silent clobbering.</criterion>
+      <criterion id="20260825-crit-install-tests" status="passed">Focused tests or executable documentation checks cover the default and legacy compatibility cases.</criterion>
+    </acceptance>
+    <context><summary>Moved the checked-in skill to .agents/skills/dogdouspec, added content-aware fail-closed compatibility and exact rollback guidance, and verified 16 executable documentation scenarios.</summary></context>
+    <records>
+      <record id="20260825T024830Z-record-install-skill-default" kind="discussion" status="informational" created_at="2026-08-25T02:48:30Z" actor="primary-agent" operation_id="20260825T024830Z-taskadd-install-skill-default"><summary>Task planned from DogdouClix dogfood findings.</summary></record>
+    <record id="20260825T024830Z-taskadd-install-skill-default-receipt" kind="discussion" status="informational" created_at="2026-08-25T02:48:30Z" actor="primary-agent" operation_id="20260825T024830Z-taskadd-install-skill-default"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="16d4f88d6a67f52cc548f3690798615dcd5b012cf9bf2c06e74bd2441f8ad319" /></index><summary>Task addition receipt.</summary></record><record id="20260825T025635Z-record-start-install-skill-default" kind="start" status="informational" created_at="2026-08-25T02:56:35Z" actor="primary-agent" operation_id="20260825T025635Z-taskstart-install-skill-default">
+      <summary>Started implementation after explicit owner activation approval.</summary>
+    </record><record id="20260825T032910Z-record-verify-install-skill-default" kind="verification" status="informational" created_at="2026-08-25T03:29:10Z" actor="primary-agent" operation_id="20260825T032910Z-taskverify-install-skill-default">
+      <summary>Primary and independent agy review passed; 16 focused executable-documentation tests passed, git diff check passed, and workspace validation passed.</summary>
+      <covers>
+        <ref scope="document" target="20260825-crit-install-layout" relation="covers" />
+        <ref scope="document" target="20260825-crit-install-installer" relation="covers" />
+        <ref scope="document" target="20260825-crit-install-tests" relation="covers" />
+      </covers>
+    </record><record id="20260825T032930Z-record-complete-install-skill-default" kind="completion" status="informational" created_at="2026-08-25T03:29:30Z" actor="primary-agent" operation_id="20260825T032930Z-taskcomplete-install-skill-default">
+      <summary>Completed the .agents default skill installation migration after primary verification and independent agy PASS review.</summary>
+      <covers>
+        <ref scope="document" target="20260825-crit-install-layout" relation="covers" />
+        <ref scope="document" target="20260825-crit-install-installer" relation="covers" />
+        <ref scope="document" target="20260825-crit-install-tests" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260825-task-time-id-list" status="done" created_at="2026-08-25T02:48:31Z" updated_at="2026-08-25T04:11:06Z" agent="agy-gemini" started_at="2026-08-25T03:29:57Z" completed_at="2026-08-25T04:11:06Z">
+    <index><summary>Inject deterministic test time, accept full TimeFirstId grammar, and expose chronological iteration metadata.</summary><term key="component" value="time" /><term key="kind" value="implementation" /></index>
+    <title>Make time and iteration listing deterministic</title>
+    <objective>Eliminate date-sensitive tests and converge iteration create/list behavior with the schema time-first identifier contract.</objective>
+    <rationale>Mandatory tests fail after their hard-coded date and iteration create rejects timestamped IDs accepted by TimeFirstIdType.</rationale>
+    <scope>
+    <repository path=".">
+      <include path="src/DogdouSpec.Core/Iterations/**" />
+      <include path="src/DogdouSpec.Cli/Commands/IterationCommand.cs" />
+      <include path="src/DogdouSpec.Core/Workspace/**" />
+      <include path="src/DogdouSpec.Core/Security/**" />
+      <include path="src/DogdouSpec.Core/Validation/**" />
+      <include path="schemas/v1/common.xsd" />
+      <include path="tests/DogdouSpec.Core.Tests/**" />
+      <include path="tests/DogdouSpec.Cli.Tests/**" />
+      <include path="docs/**" />
+    </repository>
+  </scope>
+    <origin><ref scope="iteration" target="20260825-req-time-and-iteration-listing" relation="implements" /></origin>
+    <constraints>
+      <constraint id="20260825-constraint-time-agy">Implementation and focused verification must be delegated to agy.exe with Gemini 3.7 Flash High; transfer to Terra High is allowed only after an observed agy rate-limit failure.</constraint>
+      <constraint id="20260825-constraint-time-preserve">Preserve unrelated user work and do not commit or push without explicit owner instruction.</constraint>
+    <constraint id="20260825-constraint-time-central-grammar">All production iteration-path and schema-routing consumers must use one shared time-first iteration identifier grammar so timestamp IDs remain valid after creation.</constraint></constraints>
+    <acceptance>
+      <criterion id="20260825-crit-time-clock" status="passed">The previously failing date-sensitive tests pass on an injected or relative clock independent of wall-clock date.</criterion>
+      <criterion id="20260825-crit-time-id" status="passed">iteration create accepts both YYYYMMDD-slug and YYYYMMDDTHHmmssZ-slug exactly as the schema permits.</criterion>
+      <criterion id="20260825-crit-time-list" status="passed">iteration list exposes created_at and has documented deterministic ordering covered by Core and CLI tests.</criterion>
+    </acceptance>
+    <context><summary>Removed wall-clock test brittleness, centralized schema-aligned time-first iteration ID validation, and added deterministic created_at listing plus timestamp lifecycle coverage.</summary></context>
+    <records>
+      <record id="20260825T024831Z-record-time-id-list" kind="discussion" status="informational" created_at="2026-08-25T02:48:31Z" actor="primary-agent" operation_id="20260825T024831Z-taskadd-time-id-list"><summary>Task planned from DogdouClix dogfood findings.</summary></record>
+    <record id="20260825T024831Z-taskadd-time-id-list-receipt" kind="discussion" status="informational" created_at="2026-08-25T02:48:31Z" actor="primary-agent" operation_id="20260825T024831Z-taskadd-time-id-list"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="ac46066e82a403abddc5205d4f449b3745c83cc1fc6e1faad7139c4b2cb659e9" /></index><summary>Task addition receipt.</summary></record><record id="20260825T032957Z-record-start-time-id-list" kind="start" status="informational" created_at="2026-08-25T03:29:57Z" actor="primary-agent" operation_id="20260825T032957Z-taskstart-time-id-list">
+      <summary>Started deterministic time, time-first iteration ID, and chronological listing implementation.</summary>
+    </record><record id="20260825T035933Z-record-revise-time-id-central-validation" kind="discussion" status="informational" created_at="2026-08-25T03:59:33Z" actor="primary-agent" operation_id="20260825T035933Z-taskrevise-time-id-central-validation">
+      <summary>Expanded technical scope after independent review proved timestamp-form iterations were still rejected by central path security and schema mapping.</summary>
+    </record><record id="20260825T035933Z-taskrevise-time-id-central-validation-receipt" kind="discussion" status="informational" created_at="2026-08-25T03:59:33Z" actor="primary-agent" operation_id="20260825T035933Z-taskrevise-time-id-central-validation"><index><summary>Task revision receipt.</summary><term key="request-sha256" value="63da846dfc6dc941b6ac62db6b60eca8c6973e4ac731da3096453793ddbaed17" /></index><summary>Task revision receipt.</summary></record><record id="20260825T041046Z-record-verify-time-id-list" kind="verification" status="informational" created_at="2026-08-25T04:10:46Z" actor="primary-agent" operation_id="20260825T041046Z-taskverify-time-id-list">
+      <summary>Primary build passed with 0 warnings and 0 errors, Core 427 of 427 and CLI 168 of 168; independent agy review passed with no findings.</summary>
+      <covers>
+        <ref scope="document" target="20260825-crit-time-clock" relation="covers" />
+        <ref scope="document" target="20260825-crit-time-id" relation="covers" />
+        <ref scope="document" target="20260825-crit-time-list" relation="covers" />
+      </covers>
+    </record><record id="20260825T041106Z-record-complete-time-id-list" kind="completion" status="informational" created_at="2026-08-25T04:11:06Z" actor="primary-agent" operation_id="20260825T041106Z-taskcomplete-time-id-list">
+      <summary>Completed deterministic time, centralized time-first identifier, and chronological iteration listing remediation.</summary>
+      <covers>
+        <ref scope="document" target="20260825-crit-time-clock" relation="covers" />
+        <ref scope="document" target="20260825-crit-time-id" relation="covers" />
+        <ref scope="document" target="20260825-crit-time-list" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260825-task-task-contracts" status="done" created_at="2026-08-25T02:48:32Z" updated_at="2026-08-25T04:42:27Z" agent="agy-gemini" started_at="2026-08-25T04:11:34Z" completed_at="2026-08-25T04:42:27Z">
+    <index><summary>Fix task status index drift, completion templates, revision guidance, and action-specific decision diagnostics.</summary><term key="component" value="task" /><term key="kind" value="implementation" /></index>
+    <title>Converge task mutation contracts</title>
+    <objective>Make task state and supporting operator surfaces internally consistent without weakening OCC, coverage provenance, or domain vocabulary.</objective>
+    <rationale>DogdouClix exposed stale status terms and completion-template friction while the correct fixes are contract convergence rather than removing evidence or concurrency guards.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+        <include path="src/DogdouSpec.Core/Validation/**" />
+        <include path="src/DogdouSpec.Core/Iterations/**" />
+        <include path="src/DogdouSpec.Cli/**" />
+        <include path="templates/v1/task.update.xml" />
+        <include path="schemas/v1/**" />
+        <include path="skills/**" />
+        <include path=".agents/skills/**" />
+        <include path="docs/**" />
+        <include path="tests/**" />
+      </repository>
+    </scope>
+    <origin><ref scope="iteration" target="20260825-req-task-contracts" relation="implements" /></origin>
+    <constraints>
+      <constraint id="20260825-constraint-task-agy">Implementation and focused verification must be delegated to agy.exe with Gemini 3.7 Flash High; transfer to Terra High is allowed only after an observed agy rate-limit failure.</constraint>
+      <constraint id="20260825-constraint-task-preserve">Preserve unrelated user work and do not commit or push without explicit owner instruction.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260825-crit-task-index" status="passed">A transition synchronizes any task index status term or validation rejects ambiguous canonical duplication; regression tests cover every transition.</criterion>
+      <criterion id="20260825-crit-task-template" status="passed">The shipped task.update completion template includes complete covers references and succeeds after placeholder replacement.</criterion>
+      <criterion id="20260825-crit-task-occ" status="passed">Documentation uses the exact returned revision or post-write re-query and does not recommend blind revision arithmetic.</criterion>
+      <criterion id="20260825-crit-task-vocabulary" status="passed">Confirmation diagnostics and templates state allowed requirement and acceptance decision tokens while retaining approved versus accepted semantics.</criterion>
+    </acceptance>
+    <context><summary>Synchronized task status index terms across every writer and transition, added ambiguity validation, executable covers templates, exact-revision guidance, and domain-specific confirmation vocabulary diagnostics.</summary></context>
+    <records>
+      <record id="20260825T024832Z-record-task-contracts" kind="discussion" status="informational" created_at="2026-08-25T02:48:32Z" actor="primary-agent" operation_id="20260825T024832Z-taskadd-task-contracts"><summary>Task planned from DogdouClix dogfood findings.</summary></record>
+    <record id="20260825T024832Z-taskadd-task-contracts-receipt" kind="discussion" status="informational" created_at="2026-08-25T02:48:32Z" actor="primary-agent" operation_id="20260825T024832Z-taskadd-task-contracts"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="33dac970bb2629ab7ebcf28ce7285c9a2b216f98ec03280017c9639cce704e41" /></index><summary>Task addition receipt.</summary></record><record id="20260825T041134Z-record-start-task-contracts" kind="start" status="informational" created_at="2026-08-25T04:11:34Z" actor="primary-agent" operation_id="20260825T041134Z-taskstart-task-contracts"><summary>Started task mutation contract convergence.</summary></record><record id="20260825T044208Z-record-verify-task-contracts" kind="verification" status="informational" created_at="2026-08-25T04:42:08Z" actor="primary-agent" operation_id="20260825T044208Z-taskverify-task-contracts"><summary>Primary build passed Core 440 and CLI 168 with zero warnings/errors; independent agy review passed and all LOW findings were closed.</summary><covers>
+    <ref scope="document" target="20260825-crit-task-index" relation="covers" />
+    <ref scope="document" target="20260825-crit-task-template" relation="covers" />
+    <ref scope="document" target="20260825-crit-task-occ" relation="covers" />
+    <ref scope="document" target="20260825-crit-task-vocabulary" relation="covers" />
+  </covers></record><record id="20260825T044227Z-record-complete-task-contracts" kind="completion" status="informational" created_at="2026-08-25T04:42:27Z" actor="primary-agent" operation_id="20260825T044227Z-taskcomplete-task-contracts"><summary>Completed task mutation contract convergence with full transition, template, OCC, and vocabulary evidence.</summary><covers>
+    <ref scope="document" target="20260825-crit-task-index" relation="covers" />
+    <ref scope="document" target="20260825-crit-task-template" relation="covers" />
+    <ref scope="document" target="20260825-crit-task-occ" relation="covers" />
+    <ref scope="document" target="20260825-crit-task-vocabulary" relation="covers" />
+  </covers></record></records>
+  </task><task id="20260825-task-dependency-scope" status="done" created_at="2026-08-25T02:48:33Z" updated_at="2026-08-25T06:48:07Z" agent="agy-gemini" started_at="2026-08-25T04:42:54Z" completed_at="2026-08-25T06:48:07Z">
+    <index><summary>Enforce cross-iteration dependency readiness and add a read-only declared-scope verifier.</summary><term key="component" value="scope" /><term key="kind" value="implementation" /></index>
+    <title>Enforce dependencies and verify repository scope</title>
+    <objective>Prevent task execution from bypassing declared dependencies and provide deterministic comparison of changed repository paths against task include and exclude declarations.</objective>
+    <rationale>Project-scoped task references are semantically valid but current selection and transition paths do not provide a complete execution gate, and task scope is not checked against repository changes.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+        <include path="src/DogdouSpec.Core/Validation/**" />
+        <include path="src/DogdouSpec.Cli/Commands/TaskCommand.cs" />
+        <include path="schemas/v1/**" />
+        <include path="tests/**" />
+        <include path=".agents/skills/dogdouspec/**" />
+        <include path="docs/**" />
+      </repository>
+    </scope>
+    <origin><ref scope="iteration" target="20260825-req-dependency-and-scope" relation="implements" /></origin>
+    <constraints>
+      <constraint id="20260825-constraint-scope-agy">Implementation and focused verification must be delegated to agy.exe with Gemini 3.7 Flash High; transfer to Terra High is allowed only after an observed agy rate-limit failure.</constraint>
+      <constraint id="20260825-constraint-scope-preserve">Preserve unrelated user work and do not commit or push without explicit owner instruction.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260825-crit-scope-dependency" status="passed">start and resume fail closed when any document-, iteration-, or project-scoped dependency is non-terminal, with focused cross-iteration tests.</criterion>
+      <criterion id="20260825-crit-scope-selection" status="passed">The documented actionable query or a public next-task helper correctly accounts for dependencies outside the current tasks.xml.</criterion>
+      <criterion id="20260825-crit-scope-scope-command" status="passed">A public read-only task scope verification command accepts an explicit changed-path source or Git ref and reports out-of-scope paths deterministically.</criterion>
+      <criterion id="20260825-crit-scope-semantics" status="passed">Repository path, include, exclude, normalization, and broad-pattern behavior are documented and tested on Windows-safe paths.</criterion>
+    </acceptance>
+    <context><summary>Enforce cross-iteration dependency readiness and add a read-only declared-scope verifier.</summary></context>
+    <records>
+      <record id="20260825T024833Z-record-dependency-scope" kind="discussion" status="informational" created_at="2026-08-25T02:48:33Z" actor="primary-agent" operation_id="20260825T024833Z-taskadd-dependency-scope"><summary>Task planned from DogdouClix dogfood findings.</summary></record>
+    <record id="20260825T024833Z-taskadd-dependency-scope-receipt" kind="discussion" status="informational" created_at="2026-08-25T02:48:33Z" actor="primary-agent" operation_id="20260825T024833Z-taskadd-dependency-scope"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="494728941a58e4f791cdf7a9b4ba2bdee460dcb8a8e2b752d319ab57c8c8ed38" /></index><summary>Task addition receipt.</summary></record><record id="20260825T044254Z-record-start-dependency-scope" kind="start" status="informational" created_at="2026-08-25T04:42:54Z" actor="primary-agent" operation_id="20260825T044254Z-taskstart-dependency-scope"><summary>Started cross-document dependency gating and repository scope verification.</summary></record><record id="20260825T064806Z-record-verify-dependency-scope" kind="verification" status="resolved" created_at="2026-08-25T06:48:06Z" actor="primary-agent" operation_id="20260825T064806Z-update-verify-dependency-scope">
+      <summary>Dependency and scope implementation passed focused, full-suite, semantic, and independent review gates.</summary>
+      <checks>
+        <check kind="command" command="dotnet test TaskDependencyAndScopeCoreTests" result="passed" exit_code="0">
+          <summary>All 23 focused Core dependency and scope tests passed.</summary>
+        </check>
+        <check kind="command" command="build.cmd" result="passed" exit_code="0">
+          <summary>Build completed with zero warnings and errors; Core 464/464 and CLI 173/173 tests passed.</summary>
+        </check>
+        <check kind="command" command="dogdouspec validate --format xml" result="passed" exit_code="0">
+          <summary>Workspace schema and semantic validation passed for all six managed documents.</summary>
+        </check>
+        <check kind="review" command="Terra High independent review" result="passed" exit_code="0">
+          <summary>No P0 or P1 findings remained after review remediation.</summary>
+        </check>
+      </checks>
+      <covers>
+        <ref scope="document" target="20260825-crit-scope-dependency" relation="covers" />
+        <ref scope="document" target="20260825-crit-scope-selection" relation="covers" />
+        <ref scope="document" target="20260825-crit-scope-scope-command" relation="covers" />
+        <ref scope="document" target="20260825-crit-scope-semantics" relation="covers" />
+      </covers>
+    </record><record id="20260825T064807Z-record-complete-dependency-scope" kind="completion" status="informational" created_at="2026-08-25T06:48:07Z" actor="primary-agent" operation_id="20260825T064807Z-update-complete-dependency-scope">
+      <summary>Cross-document dependency gates and deterministic repository scope verification are complete.</summary>
+    </record></records>
+  </task><task id="20260825-task-governance-guidance" status="done" created_at="2026-08-25T02:48:34Z" updated_at="2026-08-25T06:58:23Z" agent="agy-gemini" started_at="2026-08-25T06:49:15Z" completed_at="2026-08-25T06:58:23Z">
+    <index><summary>Define bounded workflows for backlog, knowledge, context snapshots, ADRs, and replanning smoke verification.</summary><term key="component" value="governance" /><term key="kind" value="implementation" /></index>
+    <title>Activate governance guidance and replanning drills</title>
+    <objective>Update the checked-in Skill and public workflow documentation so intended optional governance surfaces are used at the correct decision boundaries.</objective>
+    <rationale>Three DogdouClix iterations left these surfaces unused, while automatically forcing them for every exclusion or task would create noise.</rationale>
+    <scope>
+      <repository path=".">
+        <include path=".agents/skills/dogdouspec/**" />
+        <include path="skills/dogdouspec/**" />
+        <include path="docs/V1_SKILL_WORKFLOW.md" />
+        <include path="docs/V1_CLI_CONTRACT.md" />
+        <include path="docs/demos/**" />
+        <include path="templates/v1/**" />
+        <include path="tests/**" />
+      </repository>
+    </scope>
+    <origin><ref scope="iteration" target="20260825-req-governance-guidance" relation="implements" /></origin>
+    <constraints>
+      <constraint id="20260825-constraint-governance-agy">Implementation and focused verification must be delegated to agy.exe with Gemini 3.7 Flash High; transfer to Terra High is allowed only after an observed agy rate-limit failure.</constraint>
+      <constraint id="20260825-constraint-governance-preserve">Preserve unrelated user work and do not commit or push without explicit owner instruction.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260825-crit-governance-heuristics" status="passed">The Skill distinguishes exclusions from deferred obligations and defines when backlog, knowledge, design_snapshot, and formal design decisions are required or optional.</criterion>
+      <criterion id="20260825-crit-governance-replan" status="passed">A documented public-CLI replanning smoke procedure is executable and covered by a deterministic integration test.</criterion>
+      <criterion id="20260825-crit-governance-continuity" status="passed">Verification and handoff guidance captures design snapshots only when material context is needed, avoiding mandatory boilerplate.</criterion>
+    </acceptance>
+    <context><summary>Define bounded workflows for backlog, knowledge, context snapshots, ADRs, and replanning smoke verification.</summary></context>
+    <records>
+      <record id="20260825T024834Z-record-governance-guidance" kind="discussion" status="informational" created_at="2026-08-25T02:48:34Z" actor="primary-agent" operation_id="20260825T024834Z-taskadd-governance-guidance"><summary>Task planned from DogdouClix dogfood findings.</summary></record>
+    <record id="20260825T024834Z-taskadd-governance-guidance-receipt" kind="discussion" status="informational" created_at="2026-08-25T02:48:34Z" actor="primary-agent" operation_id="20260825T024834Z-taskadd-governance-guidance"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="9eba6359fbd5cb623068b2e4b2de6260da4b2b01551ce0a57af130f73d69ba0e" /></index><summary>Task addition receipt.</summary></record><record id="20260825T064915Z-record-start-governance-guidance" kind="start" status="informational" created_at="2026-08-25T06:49:15Z" actor="primary-agent" operation_id="20260825T064915Z-update-start-governance-guidance">
+      <summary>Started bounded governance guidance and replanning smoke implementation.</summary>
+    </record><record id="20260825T065822Z-record-verify-governance-guidance" kind="verification" status="resolved" created_at="2026-08-25T06:58:22Z" actor="primary-agent" operation_id="20260825T065822Z-update-verify-governance-guidance">
+      <summary>Governance boundaries and the public replanning smoke passed focused, full-suite, and independent review gates.</summary>
+      <checks>
+        <check kind="command" command="dotnet test TaskChangeWorkflowCliTests" result="passed" exit_code="0">
+          <summary>All four focused public CLI change workflow tests passed.</summary>
+        </check>
+        <check kind="command" command="build.cmd" result="passed" exit_code="0">
+          <summary>Build completed with zero warnings and errors; Core 464/464 and CLI 173/173 tests passed.</summary>
+        </check>
+        <check kind="review" command="Terra High independent review" result="passed" exit_code="0">
+          <summary>No P0 or P1 findings remained.</summary>
+        </check>
+      </checks>
+      <covers>
+        <ref scope="document" target="20260825-crit-governance-heuristics" relation="covers" />
+        <ref scope="document" target="20260825-crit-governance-replan" relation="covers" />
+        <ref scope="document" target="20260825-crit-governance-continuity" relation="covers" />
+      </covers>
+    </record><record id="20260825T065823Z-record-complete-governance-guidance" kind="completion" status="informational" created_at="2026-08-25T06:58:23Z" actor="primary-agent" operation_id="20260825T065823Z-update-complete-governance-guidance">
+      <summary>Bounded governance guidance and deterministic replanning smoke coverage are complete.</summary>
+    </record></records>
+  </task><task id="20260825-task-backlog-lifecycle" status="done" created_at="2026-08-25T02:48:35Z" updated_at="2026-08-25T07:19:48Z" agent="agy-gemini" started_at="2026-08-25T06:59:54Z" completed_at="2026-08-25T07:19:48Z">
+    <index><summary>Provide structured CLI operations for defect and deferred-obligation backlog lifecycle management.</summary><term key="component" value="backlog" /><term key="kind" value="implementation" /></index>
+    <title>Add first-class backlog lifecycle helpers</title>
+    <objective>Make the existing backlog model practical for routine create, list, schedule, and resolve flows with traceable task and iteration references.</objective>
+    <rationale>The backlog schema owns non-blocking issues, but generic append and low-level transactions are too error-prone for normal defect management.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Backlog/**" />
+        <include path="src/DogdouSpec.Cli/Commands/**" />
+        <include path="src/DogdouSpec.Cli/Program.cs" />
+        <include path="schemas/v1/backlog.xsd" />
+        <include path="schemas/v1/requests.xsd" />
+        <include path="templates/v1/backlog.item.xml" />
+        <include path="tests/**" />
+        <include path=".agents/skills/dogdouspec/**" />
+        <include path="docs/**" />
+      </repository>
+    </scope>
+    <origin><ref scope="iteration" target="20260825-req-backlog-defects" relation="implements" /></origin>
+    <dependencies>
+      <ref scope="document" target="20260825-task-governance-guidance" relation="depends-on" />
+    </dependencies>
+    <constraints>
+      <constraint id="20260825-constraint-backlog-agy">Implementation and focused verification must be delegated to agy.exe with Gemini 3.7 Flash High; transfer to Terra High is allowed only after an observed agy rate-limit failure.</constraint>
+      <constraint id="20260825-constraint-backlog-preserve">Preserve unrelated user work and do not commit or push without explicit owner instruction.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260825-crit-backlog-commands" status="passed">Public CLI helpers create, list/query, schedule, complete, and cancel backlog items under exact revision and idempotency rules.</criterion>
+      <criterion id="20260825-crit-backlog-defects" status="passed">Defect-class items carry severity and kind index terms, source iteration or task references, impact, and target or review condition.</criterion>
+      <criterion id="20260825-crit-backlog-linkage" status="passed">Scheduling and resolution can record a resolving task reference without violating task origin authority.</criterion>
+      <criterion id="20260825-crit-backlog-tests" status="passed">Core and CLI tests cover happy paths, conflicts, invalid references, and terminal immutability.</criterion>
+    </acceptance>
+    <context><summary>Provide structured CLI operations for defect and deferred-obligation backlog lifecycle management.</summary></context>
+    <records>
+      <record id="20260825T024835Z-record-backlog-lifecycle" kind="discussion" status="informational" created_at="2026-08-25T02:48:35Z" actor="primary-agent" operation_id="20260825T024835Z-taskadd-backlog-lifecycle"><summary>Task planned from DogdouClix dogfood findings.</summary></record>
+    <record id="20260825T024835Z-taskadd-backlog-lifecycle-receipt" kind="discussion" status="informational" created_at="2026-08-25T02:48:35Z" actor="primary-agent" operation_id="20260825T024835Z-taskadd-backlog-lifecycle"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="3f9b81184e9686a30b3a109859d5f4a141f6f3f8a2a54890a96dc8fde1fb3908" /></index><summary>Task addition receipt.</summary></record><record id="20260825T065954Z-record-start-backlog-lifecycle" kind="start" status="informational" created_at="2026-08-25T06:59:54Z" actor="primary-agent" operation_id="20260825T065954Z-update-start-backlog-lifecycle">
+      <summary>Started first-class backlog lifecycle CLI implementation.</summary>
+    </record><record id="20260825T071947Z-record-verify-backlog-lifecycle" kind="verification" status="resolved" created_at="2026-08-25T07:19:47Z" actor="primary-agent" operation_id="20260825T071947Z-update-verify-backlog-lifecycle">
+      <summary>Backlog lifecycle helpers passed focused, full-suite, semantic, compatibility, and independent review gates.</summary>
+      <checks>
+        <check kind="command" command="dotnet test BacklogLifecycleCoreTests and BacklogCliTests" result="passed" exit_code="0">
+          <summary>Focused Core and CLI lifecycle, conflict, reference, replay, and terminal tests passed.</summary>
+        </check>
+        <check kind="command" command="build.cmd" result="passed" exit_code="0">
+          <summary>Build completed with zero warnings and errors; Core 467/467 and CLI 175/175 tests passed.</summary>
+        </check>
+        <check kind="command" command="dogdouspec validate --format xml" result="passed" exit_code="0">
+          <summary>Workspace schema and semantic validation passed for all six managed documents.</summary>
+        </check>
+        <check kind="review" command="Terra High independent review" result="passed" exit_code="0">
+          <summary>No P0 or P1 findings remained after security and deterministic replay remediation.</summary>
+        </check>
+      </checks>
+      <covers>
+        <ref scope="document" target="20260825-crit-backlog-commands" relation="covers" />
+        <ref scope="document" target="20260825-crit-backlog-defects" relation="covers" />
+        <ref scope="document" target="20260825-crit-backlog-linkage" relation="covers" />
+        <ref scope="document" target="20260825-crit-backlog-tests" relation="covers" />
+      </covers>
+    </record><record id="20260825T071948Z-record-complete-backlog-lifecycle" kind="completion" status="informational" created_at="2026-08-25T07:19:48Z" actor="primary-agent" operation_id="20260825T071948Z-update-complete-backlog-lifecycle">
+      <summary>First-class backlog create, list, schedule, complete, and cancel lifecycle helpers are complete.</summary>
+    </record></records>
+  </task><task id="20260825-task-review-gate" status="done" created_at="2026-08-25T02:48:36Z" updated_at="2026-08-25T07:54:00Z" agent="agy-gemini" started_at="2026-08-25T07:20:51Z" completed_at="2026-08-25T07:54:00Z">
+    <index><summary>Represent review approval and changes requested as structured task state that can block completion when required.</summary><term key="component" value="review" /><term key="kind" value="implementation" /></index>
+    <title>Add configurable structured task review gates</title>
+    <objective>Implement a backward-compatible review-required policy and public review submission flow integrated with task completion and iteration readiness.</objective>
+    <rationale>DogdouClix completed before independent review found multiple high-severity issues, but actor attribution must not be misrepresented as authenticated identity.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="schemas/v1/common.xsd" />
+        <include path="schemas/v1/tasks.xsd" />
+        <include path="schemas/v1/requests.xsd" />
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+        <include path="src/DogdouSpec.Core/Iterations/**" />
+        <include path="src/DogdouSpec.Core/Validation/**" />
+        <include path="src/DogdouSpec.Cli/Commands/TaskCommand.cs" />
+        <include path="templates/v1/**" />
+        <include path="tests/**" />
+        <include path=".agents/skills/dogdouspec/**" />
+        <include path="docs/**" />
+      </repository>
+    </scope>
+    <origin><ref scope="iteration" target="20260825-req-review-gate" relation="implements" /></origin>
+    <constraints>
+      <constraint id="20260825-constraint-review-agy">Implementation and focused verification must be delegated to agy.exe with Gemini 3.7 Flash High; transfer to Terra High is allowed only after an observed agy rate-limit failure.</constraint>
+      <constraint id="20260825-constraint-review-preserve">Preserve unrelated user work and do not commit or push without explicit owner instruction.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260825-crit-review-compatibility" status="passed">Tasks without review-required retain the existing pending to done workflow.</criterion>
+      <criterion id="20260825-crit-review-approval" status="passed">A review-required task cannot complete until an approval record exists from an actor distinct from its implementer attribution.</criterion>
+      <criterion id="20260825-crit-review-changes" status="passed">A changes-requested review creates or preserves an active blocking finding and returns the task to an executable correction state.</criterion>
+      <criterion id="20260825-crit-review-readiness" status="passed">Iteration completion readiness detects missing approvals and unresolved review findings.</criterion>
+      <criterion id="20260825-crit-review-honesty" status="passed">Documentation and output explicitly state that actor separation is provenance enforcement, not cryptographic identity proof.</criterion>
+    </acceptance>
+    <context><summary>Represent review approval and changes requested as structured task state that can block completion when required.</summary></context>
+    <records>
+      <record id="20260825T024836Z-record-review-gate" kind="discussion" status="informational" created_at="2026-08-25T02:48:36Z" actor="primary-agent" operation_id="20260825T024836Z-taskadd-review-gate"><summary>Task planned from DogdouClix dogfood findings.</summary></record>
+    <record id="20260825T024836Z-taskadd-review-gate-receipt" kind="discussion" status="informational" created_at="2026-08-25T02:48:36Z" actor="primary-agent" operation_id="20260825T024836Z-taskadd-review-gate"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="15ed618ae8b720eef46e5773160946c203dd0cf788e241f98497ee0d542937cb" /></index><summary>Task addition receipt.</summary></record><record id="20260825T072051Z-record-start-review-gate" kind="start" status="informational" created_at="2026-08-25T07:20:51Z" actor="primary-agent" operation_id="20260825T072051Z-update-start-review-gate">
+      <summary>Started backward-compatible structured task review gate implementation.</summary>
+    </record><record id="20260825T075300Z-record-verify-review-gate" kind="verification" status="informational" created_at="2026-08-25T07:53:00Z" actor="primary-agent" operation_id="20260825T075300Z-update-verify-review-gate">
+      <summary>Structured review gates passed full build and independent security review.</summary>
+      <checks>
+        <check kind="command" command="build.cmd" result="passed" exit_code="0"><summary>Build completed with zero warnings and zero errors; Core 478/478 and CLI 177/177 passed.</summary></check>
+        <check kind="command" command="dogdouspec validate --format xml" result="passed" exit_code="0"><summary>Workspace schema and semantic validation passed.</summary></check>
+        <check kind="review" command="Terra High independent review" result="passed" exit_code="0"><summary>No residual P0 or P1 remained after security remediation.</summary></check>
+      </checks>
+      <covers>
+        <ref scope="document" target="20260825-crit-review-compatibility" relation="covers" />
+        <ref scope="document" target="20260825-crit-review-approval" relation="covers" />
+        <ref scope="document" target="20260825-crit-review-changes" relation="covers" />
+        <ref scope="document" target="20260825-crit-review-readiness" relation="covers" />
+        <ref scope="document" target="20260825-crit-review-honesty" relation="covers" />
+      </covers>
+    </record><record id="20260825T075400Z-record-complete-review-gate" kind="completion" status="informational" created_at="2026-08-25T07:54:00Z" actor="primary-agent" operation_id="20260825T075400Z-update-complete-review-gate">
+      <summary>Completed backward-compatible structured Task review gates and public review submission flow.</summary>
+      <covers>
+        <ref scope="document" target="20260825-crit-review-compatibility" relation="covers" />
+        <ref scope="document" target="20260825-crit-review-approval" relation="covers" />
+        <ref scope="document" target="20260825-crit-review-changes" relation="covers" />
+        <ref scope="document" target="20260825-crit-review-readiness" relation="covers" />
+        <ref scope="document" target="20260825-crit-review-honesty" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260825-task-regression-convergence" status="done" created_at="2026-08-25T02:48:37Z" updated_at="2026-08-25T08:02:00Z" agent="agy-gemini" started_at="2026-08-25T07:55:00Z" completed_at="2026-08-25T08:02:00Z">
+    <index><summary>Run full regression, audit every dogfood finding, and synchronize all public contracts.</summary><term key="component" value="converge" /><term key="kind" value="implementation" /></index>
+    <title>Converge regression evidence and public documentation</title>
+    <objective>Perform the final cross-cutting audit, repair remaining documentation drift, and prove the iteration candidate through the repository build and focused contract scans.</objective>
+    <rationale>Individual fixes are insufficient unless all identified findings, templates, schemas, Skill instructions, and CLI behavior converge without contradiction.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="AGENTS.md" />
+        <include path="README.md" />
+        <include path=".agents/skills/dogdouspec/**" />
+        <include path="skills/dogdouspec/**" />
+        <include path="docs/**" />
+        <include path="schemas/**" />
+        <include path="templates/**" />
+        <include path="src/**" />
+        <include path="tests/**" />
+        <include path="build.cmd" />
+      </repository>
+    </scope>
+    <origin><ref scope="iteration" target="20260825-req-regression-and-docs" relation="implements" /></origin>
+    <dependencies>
+      <ref scope="document" target="20260825-task-install-skill-default" relation="depends-on" />
+      <ref scope="document" target="20260825-task-time-id-list" relation="depends-on" />
+      <ref scope="document" target="20260825-task-task-contracts" relation="depends-on" />
+      <ref scope="document" target="20260825-task-dependency-scope" relation="depends-on" />
+      <ref scope="document" target="20260825-task-governance-guidance" relation="depends-on" />
+      <ref scope="document" target="20260825-task-backlog-lifecycle" relation="depends-on" />
+      <ref scope="document" target="20260825-task-review-gate" relation="depends-on" />
+    </dependencies>
+    <constraints>
+      <constraint id="20260825-constraint-converge-agy">Implementation and focused verification must be delegated to agy.exe with Gemini 3.7 Flash High; transfer to Terra High is allowed only after an observed agy rate-limit failure.</constraint>
+      <constraint id="20260825-constraint-converge-preserve">Preserve unrelated user work and do not commit or push without explicit owner instruction.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260825-crit-converge-findings" status="passed">Every ISSUE-001 through ISSUE-015 disposition is mapped to implemented behavior, explicit retained design, or bounded documentation with no silent omission.</criterion>
+      <criterion id="20260825-crit-converge-build" status="passed">The top-level build.cmd completes with zero errors, zero warnings, and all tests passing.</criterion>
+      <criterion id="20260825-crit-converge-diff" status="passed">git diff --check passes and generated or moved skill/install artifacts contain no stale default-path references.</criterion>
+      <criterion id="20260825-crit-converge-review" status="passed">An independent agy review reports no unresolved P0 or P1 findings, and all lower-priority findings are recorded before completion.</criterion>
+      <criterion id="20260825-crit-converge-docs" status="passed">Public documentation distinguishes structural validation from authenticated evidence and recommends versioning authoritative .dogdouspec state.</criterion>
+    </acceptance>
+    <context><summary>All DogdouClix findings are mapped to implemented behavior or an explicit retained design, with full regression and independent review complete.</summary><design_snapshot>The final contract keeps strict coverage, domain-specific decision tokens, exact optimistic concurrency, conditional governance artifacts, backlog-owned defect lifecycle, and optional fail-closed review gates. Structural XML provenance remains distinct from authenticated external evidence.</design_snapshot></context>
+    <records>
+      <record id="20260825T024837Z-record-convergence" kind="discussion" status="informational" created_at="2026-08-25T02:48:37Z" actor="primary-agent" operation_id="20260825T024837Z-taskadd-convergence"><summary>Task planned from DogdouClix dogfood findings.</summary></record>
+    <record id="20260825T024837Z-taskadd-convergence-receipt" kind="discussion" status="informational" created_at="2026-08-25T02:48:37Z" actor="primary-agent" operation_id="20260825T024837Z-taskadd-convergence"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="6183e4d338b177a5a5b0393bca482a6dd37f9be4e00ee9b28fee2e97e464d66e" /></index><summary>Task addition receipt.</summary></record><record id="20260825T075500Z-record-start-convergence" kind="start" status="informational" created_at="2026-08-25T07:55:00Z" actor="primary-agent" operation_id="20260825T075500Z-update-start-convergence">
+      <summary>Started final issue mapping, documentation convergence, and full regression audit.</summary>
+    </record><record id="20260825T080100Z-record-verify-convergence" kind="verification" status="informational" created_at="2026-08-25T08:01:00Z" actor="primary-agent" operation_id="20260825T080100Z-update-verify-convergence">
+      <summary>Final dogfood remediation mapping, build, path, documentation, and review checks passed.</summary>
+      <checks>
+        <check kind="command" command="build.cmd" result="passed" exit_code="0"><summary>Build completed with zero warnings and zero errors; Core 478/478 and CLI 177/177 passed.</summary></check>
+        <check kind="command" command="dogdouspec validate --format xml" result="passed" exit_code="0"><summary>Workspace schema and semantic validation passed.</summary></check>
+        <check kind="command" command="rg ISSUE mapping and legacy Skill paths" result="passed" exit_code="0"><summary>Exactly 15 issue dispositions exist; root skills references are limited to explicit compatibility migration and tests.</summary></check>
+        <check kind="command" command="git diff --check" result="passed" exit_code="0"><summary>No whitespace errors; only non-failing line-ending conversion notices were emitted.</summary></check>
+        <check kind="review" command="Terra High final independent review" result="passed" exit_code="0"><summary>No P0/P1 remained. One P2 multi-document revision wording issue was corrected before completion; no P3 was reported.</summary></check>
+      </checks>
+      <covers>
+        <ref scope="document" target="20260825-crit-converge-findings" relation="covers" />
+        <ref scope="document" target="20260825-crit-converge-build" relation="covers" />
+        <ref scope="document" target="20260825-crit-converge-diff" relation="covers" />
+        <ref scope="document" target="20260825-crit-converge-review" relation="covers" />
+        <ref scope="document" target="20260825-crit-converge-docs" relation="covers" />
+      </covers>
+    </record><record id="20260825T080200Z-record-complete-convergence" kind="completion" status="informational" created_at="2026-08-25T08:02:00Z" actor="primary-agent" operation_id="20260825T080200Z-update-complete-convergence">
+      <summary>Completed final regression convergence and public documentation audit for all DogdouClix findings.</summary>
+      <covers>
+        <ref scope="document" target="20260825-crit-converge-findings" relation="covers" />
+        <ref scope="document" target="20260825-crit-converge-build" relation="covers" />
+        <ref scope="document" target="20260825-crit-converge-diff" relation="covers" />
+        <ref scope="document" target="20260825-crit-converge-review" relation="covers" />
+        <ref scope="document" target="20260825-crit-converge-docs" relation="covers" />
+      </covers>
+    </record></records>
+  </task></tasks>

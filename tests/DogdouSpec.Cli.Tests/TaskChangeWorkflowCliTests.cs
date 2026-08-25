@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Xml.Linq;
 using DogdouSpec.Cli;
 using DogdouSpec.Core.Diagnostics;
@@ -13,16 +14,24 @@ public sealed class TaskChangeWorkflowCliTests
     [ClassInitialize]
     public static void ClassInit(TestContext context)
     {
-        var current = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
-        while (current != null)
+        foreach (var startPath in new[] { Environment.CurrentDirectory, AppDomain.CurrentDomain.BaseDirectory })
         {
-            if (File.Exists(Path.Combine(current.FullName, "DogdouSpec.slnx")) ||
-                File.Exists(Path.Combine(current.FullName, "DogdouSpec.sln")))
+            var current = new DirectoryInfo(startPath);
+            while (current != null)
             {
-                RepoRoot = current.FullName;
+                if (File.Exists(Path.Combine(current.FullName, "DogdouSpec.slnx")) ||
+                    File.Exists(Path.Combine(current.FullName, "DogdouSpec.sln")))
+                {
+                    RepoRoot = current.FullName;
+                    break;
+                }
+                current = current.Parent;
+            }
+
+            if (!string.IsNullOrEmpty(RepoRoot))
+            {
                 break;
             }
-            current = current.Parent;
         }
 
         Assert.IsNotNull(RepoRoot, "Repository root could not be located.");
@@ -177,11 +186,13 @@ public sealed class TaskChangeWorkflowCliTests
         Assert.AreEqual(0, humanDryCode, humanDryErr);
         Assert.IsTrue(humanDryOut.StartsWith("Quick task preview:", StringComparison.Ordinal));
         Assert.IsFalse(humanDryOut.Contains("<task-add", StringComparison.Ordinal));
-        var (invalidIterationCode, _, invalidIterationErr) = RunCli("task", "quick", "--title", "Bad iteration", "--scope", "src/**", "--done-when", "no", "--why", "no", "--iteration", "20260824T050002Z-invalid", "--dry-run", "--workspace-root", _tempDir, "--format", "xml");
+        var (invalidIterationCode, _, invalidIterationErr) = RunCli("task", "quick", "--title", "Bad iteration", "--scope", "src/**", "--done-when", "no", "--why", "no", "--iteration", "invalid-iteration-id", "--dry-run", "--workspace-root", _tempDir, "--format", "xml");
         Assert.AreEqual(2, invalidIterationCode);
         Assert.IsTrue(invalidIterationErr.Contains(DiagnosticCodes.InvalidArgument) || invalidIterationErr.Contains(DiagnosticCodes.InvalidIdGrammar));
 
-        var activation = $"""<iteration-confirmation id="20260824T120959Z-confirm-quick" iteration="{iterId}" action="activate" expected_spec_revision="1" expected_tasks_revision="1" actor="owner" decided_at="2026-08-24T12:09:59Z"><summary>Activate quick test.</summary><requirements><requirement target="20260824-req-cli-quick" decision="approved"/></requirements></iteration-confirmation>""";
+        var specDoc = XDocument.Load(Path.Combine(_tempDir, ".dogdouspec", iterId, "spec.xml"));
+        var updatedAtStr = specDoc.Root?.Attribute("updated_at")?.Value ?? "2026-08-24T12:09:59Z";
+        var activation = $"""<iteration-confirmation id="20260824T120959Z-confirm-quick" iteration="{iterId}" action="activate" expected_spec_revision="1" expected_tasks_revision="1" actor="owner" decided_at="{updatedAtStr}"><summary>Activate quick test.</summary><requirements><requirement target="20260824-req-cli-quick" decision="approved"/></requirements></iteration-confirmation>""";
         var (activateCode, _, activateErr) = RunCliWithStdin(activation, "iteration", "confirm", "--stdin", "--workspace-root", _tempDir, "--format", "xml");
         Assert.AreEqual(0, activateCode, activateErr);
         var args = new[] { "task", "quick", "--title", "Start quick", "--scope", "src/**", "--done-when", "started work is tracked", "--why", "test atomic start", "--iteration", iterId, "--start", "--id", "20260824-task-cli-quick-start", "--operation-id", "20260824T121001Z-quick-start", "--workspace-root", _tempDir, "--format", "xml" };
@@ -220,11 +231,14 @@ public sealed class TaskChangeWorkflowCliTests
         var (cCode, _, cErr) = RunCli("iteration", "create", "--id", iterId, "--kind", "feature", "--workspace-root", _tempDir);
         Assert.AreEqual(0, cCode, $"Create iter failed: {cErr}");
 
-        var propXml = """
+        var specDoc = XDocument.Load(Path.Combine(_tempDir, ".dogdouspec", iterId, "spec.xml"));
+        var updatedAtStr = specDoc.Root?.Attribute("updated_at")?.Value ?? "2026-08-24T10:10:00Z";
+
+        var propXml = $"""
 <requirement-propose
   id="20260824T101000Z-reqprop-cli-01"
   actor="codex"
-  occurred_at="2026-08-24T10:10:00Z">
+  occurred_at="{updatedAtStr}">
   <requirement id="20260824-req-cli-proposed" status="proposed">
     <index>
       <summary>CLI Proposed Requirement Summary.</summary>
@@ -256,8 +270,20 @@ public sealed class TaskChangeWorkflowCliTests
         var (cCode, _, cErr) = RunCli("iteration", "create", "--id", iterId, "--kind", "feature", "--workspace-root", _tempDir);
         Assert.AreEqual(0, cCode, $"Create iter failed: {cErr}");
 
+        var specDoc = XDocument.Load(Path.Combine(_tempDir, ".dogdouspec", iterId, "spec.xml"));
+        var t0 = DateTime.Parse(specDoc.Root?.Attribute("updated_at")?.Value ?? "2026-08-24T10:19:50Z", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal);
+        var t0Iso = t0.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+        var t1Iso = t0.AddSeconds(10).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+        var t2Iso = t0.AddSeconds(20).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+        var t3Iso = t0.AddSeconds(30).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+        var t4Iso = t0.AddSeconds(40).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+        var t5Iso = t0.AddSeconds(50).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+        var t6Iso = t0.AddSeconds(60).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+        var t7Iso = t0.AddSeconds(70).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+        var t8Iso = t0.AddSeconds(80).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+
         var activateXml = $"""
-<iteration-confirmation id="20260824T101950Z-conf-activate-e2e" iteration="{iterId}" action="activate" expected_spec_revision="1" expected_tasks_revision="1" actor="owner" decided_at="2026-08-24T10:19:50Z">
+<iteration-confirmation id="20260824T101950Z-conf-activate-e2e" iteration="{iterId}" action="activate" expected_spec_revision="1" expected_tasks_revision="1" actor="owner" decided_at="{t0Iso}">
   <summary>Owner activated the baseline product scope.</summary>
   <requirements><requirement target="20260824-req-cli-e2e-change" decision="approved"/></requirements>
   <acceptance><criterion target="20260824-crit-cli-e2e-change" decision="accepted"/></acceptance>
@@ -271,12 +297,12 @@ public sealed class TaskChangeWorkflowCliTests
 <task-add
   id="20260824T102000Z-taskadd-e2e"
   actor="codex"
-  occurred_at="2026-08-24T10:20:00Z">
+  occurred_at="{t1Iso}">
   <task
     id="20260824-task-to-replan"
     status="pending"
-    created_at="2026-08-24T10:20:00Z"
-    updated_at="2026-08-24T10:20:00Z">
+    created_at="{t1Iso}"
+    updated_at="{t1Iso}">
     <index>
       <summary>Task To Replan Summary.</summary>
     </index>
@@ -311,27 +337,27 @@ public sealed class TaskChangeWorkflowCliTests
             "--workspace-root", _tempDir);
         Assert.AreEqual(0, addCode, $"Task add failed: {addErr}");
 
-        var startXml = """
-<task-update id="20260824T102030Z-taskstart-e2e" transition="start" actor="codex" occurred_at="2026-08-24T10:20:30Z">
-  <records><record id="20260824T102030Z-rec-start-e2e" kind="start" status="informational" created_at="2026-08-24T10:20:30Z" actor="codex"><summary>Started implementation.</summary></record></records>
+        var startXml = $"""
+<task-update id="20260824T102030Z-taskstart-e2e" transition="start" actor="codex" occurred_at="{t2Iso}">
+  <records><record id="20260824T102030Z-rec-start-e2e" kind="start" status="informational" created_at="{t2Iso}" actor="codex"><summary>Started implementation.</summary></record></records>
 </task-update>
 """;
         var (startCode, _, startErr) = RunCliWithStdin(startXml, "task", "update", "--iteration", iterId, "--task", "20260824-task-to-replan", "--expected-revision", "2", "--stdin", "--workspace-root", _tempDir, "--format", "xml");
         Assert.AreEqual(0, startCode, $"Task start failed: {startErr}");
 
         // 2. Change Propose
-        var cpXml = """
+        var cpXml = $"""
 <change-propose
   id="20260824T102100Z-changeprop-e2e"
   actor="codex"
-  occurred_at="2026-08-24T10:21:00Z">
+  occurred_at="{t3Iso}">
   <summary>Change proposal discovered in CLI test.</summary>
   <finding_record task="20260824-task-to-replan">
     <record
       id="20260824T102100Z-rec-replan-finding"
       kind="finding"
       status="active"
-      created_at="2026-08-24T10:21:00Z"
+      created_at="{t3Iso}"
       actor="codex">
       <summary>Need architecture split.</summary>
     </record>
@@ -382,9 +408,9 @@ public sealed class TaskChangeWorkflowCliTests
         // failed public command must leave tasks.xml byte-identical.
         var tasksPath = Path.Combine(_tempDir, ".dogdouspec", iterId, "tasks.xml");
         var beforeFrozenAttempt = File.ReadAllBytes(tasksPath);
-        var frozenXml = """
-<task-update id="20260824T102120Z-taskstart-frozen" transition="start" actor="codex" occurred_at="2026-08-24T10:21:20Z">
-  <records><record id="20260824T102120Z-rec-start-frozen" kind="discussion" status="informational" created_at="2026-08-24T10:21:20Z" actor="codex"><summary>Attempt to start a change-frozen task.</summary></record></records>
+        var frozenXml = $"""
+<task-update id="20260824T102120Z-taskstart-frozen" transition="start" actor="codex" occurred_at="{t4Iso}">
+  <records><record id="20260824T102120Z-rec-start-frozen" kind="discussion" status="informational" created_at="{t4Iso}" actor="codex"><summary>Attempt to start a change-frozen task.</summary></record></records>
 </task-update>
 """;
         var (frozenCode, _, frozenErr) = RunCliWithStdin(frozenXml, "task", "update", "--iteration", iterId, "--task", "20260824-task-to-replan", "--expected-revision", "4", "--stdin", "--workspace-root", _tempDir, "--format", "xml");
@@ -392,7 +418,7 @@ public sealed class TaskChangeWorkflowCliTests
         CollectionAssert.AreEqual(beforeFrozenAttempt, File.ReadAllBytes(tasksPath));
 
         var replanXml = $"""
-<iteration-confirmation id="20260824T102130Z-conf-replan" iteration="{iterId}" action="replan" expected_spec_revision="3" expected_tasks_revision="4" actor="owner" decided_at="2026-08-24T10:21:30Z">
+<iteration-confirmation id="20260824T102130Z-conf-replan" iteration="{iterId}" action="replan" expected_spec_revision="3" expected_tasks_revision="4" actor="owner" decided_at="{t5Iso}">
   <summary>Owner accepted requirement replacement and confirmed replanning.</summary>
   <requirements>
     <requirement target="20260824-req-cli-e2e-change" decision="superseded"/>
@@ -404,11 +430,11 @@ public sealed class TaskChangeWorkflowCliTests
         Assert.AreEqual(0, replanCode, $"Owner replanning confirmation failed: {replanErr}");
 
         // 4. Change Apply during replanning
-        var caXml = """
+        var caXml = $"""
 <change-apply
   id="20260824T102200Z-changeapply-e2e"
   actor="codex"
-  occurred_at="2026-08-24T10:22:00Z">
+  occurred_at="{t6Iso}">
   <summary>Applying change adjustments.</summary>
   <resolve_findings>
     <finding task="20260824-task-to-replan" target="20260824T102100Z-rec-replan-finding"/>
@@ -419,7 +445,7 @@ public sealed class TaskChangeWorkflowCliTests
         id="20260824T102200Z-rec-disp"
         kind="discussion"
         status="informational"
-        created_at="2026-08-24T10:22:00Z"
+        created_at="{t6Iso}"
         actor="codex">
         <summary>Task superseded during replanning.</summary>
       </record>
@@ -429,8 +455,8 @@ public sealed class TaskChangeWorkflowCliTests
     <task
       id="20260824-task-modular-successor"
       status="pending"
-      created_at="2026-08-24T10:22:00Z"
-      updated_at="2026-08-24T10:22:00Z">
+      created_at="{t6Iso}"
+      updated_at="{t6Iso}">
       <index>
         <summary>Modular Successor Task Summary.</summary>
       </index>
@@ -479,17 +505,27 @@ public sealed class TaskChangeWorkflowCliTests
         var (caRationaleCode, _, _) = RunCliWithStdin(caXml.Replace("Superseded by modular successor.", "Different disposition rationale."), "change", "apply", "--iteration", iterId, "--expected-spec-revision", "4", "--expected-tasks-revision", "4", "--stdin", "--workspace-root", _tempDir, "--format", "xml");
         Assert.AreEqual(4, caRationaleCode, "Changed disposition rationale must conflict with the durable request fingerprint.");
 
+        var (readinessCode, readinessOut, readinessErr) = RunCli(
+            "iteration", "readiness",
+            "--iteration", iterId,
+            "--phase", "activation",
+            "--workspace-root", _tempDir,
+            "--format", "xml");
+        Assert.AreEqual(0, readinessCode, $"Replanning readiness failed: {readinessErr}");
+        Assert.IsTrue(readinessOut.Contains("technically_ready=\"true\"", StringComparison.Ordinal));
+        Assert.IsTrue(readinessOut.Contains("<required_action action=\"continue\"", StringComparison.Ordinal));
+
         var continueXml = $"""
-<iteration-confirmation id="20260824T102230Z-conf-continue" iteration="{iterId}" action="continue" expected_spec_revision="4" expected_tasks_revision="5" actor="owner" decided_at="2026-08-24T10:22:30Z">
+<iteration-confirmation id="20260824T102230Z-conf-continue" iteration="{iterId}" action="continue" expected_spec_revision="4" expected_tasks_revision="5" actor="owner" decided_at="{t7Iso}">
   <summary>Owner reviewed replacement coverage and resumed execution.</summary>
 </iteration-confirmation>
 """;
         var (continueCode, _, continueErr) = RunCliWithStdin(continueXml, "iteration", "confirm", "--stdin", "--workspace-root", _tempDir, "--format", "xml");
         Assert.AreEqual(0, continueCode, $"Owner continuation confirmation failed: {continueErr}");
 
-        var successorStartXml = """
-<task-update id="20260824T102240Z-taskstart-successor" transition="start" actor="codex" occurred_at="2026-08-24T10:22:40Z">
-  <records><record id="20260824T102240Z-rec-start-successor" kind="start" status="informational" created_at="2026-08-24T10:22:40Z" actor="codex"><summary>Started successor implementation.</summary></record></records>
+        var successorStartXml = $"""
+<task-update id="20260824T102240Z-taskstart-successor" transition="start" actor="codex" occurred_at="{t8Iso}">
+  <records><record id="20260824T102240Z-rec-start-successor" kind="start" status="informational" created_at="{t8Iso}" actor="codex"><summary>Started successor implementation.</summary></record></records>
 </task-update>
 """;
         var (successorCode, successorOut, successorErr) = RunCliWithStdin(successorStartXml, "task", "update", "--iteration", iterId, "--task", "20260824-task-modular-successor", "--expected-revision", "5", "--stdin", "--workspace-root", _tempDir, "--format", "xml");

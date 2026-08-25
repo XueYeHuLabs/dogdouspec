@@ -28,6 +28,28 @@
     </xs:restriction>
   </xs:simpleType>
 
+  <xs:simpleType name="TaskReviewDispositionType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="approved"/>
+      <xs:enumeration value="changes-requested"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TaskReviewSubmissionType">
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="disposition" type="TaskReviewDispositionType" use="required"/>
+    <xs:attribute name="actor" type="TokenValueType" use="required"/>
+    <xs:attribute name="reviewed_at" type="xs:dateTime" use="required"/>
+    <xs:attribute name="record" type="TimeFirstIdType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TaskReviewType">
+    <xs:sequence>
+      <xs:element name="submission" type="TaskReviewSubmissionType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="required" type="xs:boolean" use="required"/>
+  </xs:complexType>
+
   <xs:complexType name="PathEntryType">
     <xs:attribute name="path" type="xs:string" use="required"/>
   </xs:complexType>
@@ -87,6 +109,7 @@
       <xs:element name="constraints" type="ConstraintsType"/>
       <xs:element name="acceptance" type="TaskAcceptanceType"/>
       <xs:element name="context" type="TaskContextType"/>
+      <xs:element name="review" type="TaskReviewType" minOccurs="0"/>
       <xs:element name="records" type="RecordsType"/>
     </xs:sequence>
     <xs:attribute name="id" type="TimeFirstIdType" use="required"/>

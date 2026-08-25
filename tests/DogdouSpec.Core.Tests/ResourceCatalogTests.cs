@@ -46,6 +46,8 @@ public sealed class ResourceCatalogTests
     [DataRow("record.verification.xml")]
     [DataRow("task.update")]
     [DataRow("task.update.xml")]
+    [DataRow("task.review")]
+    [DataRow("task.review.xml")]
     [DataRow("transaction.apply")]
     [DataRow("transaction.apply.xml")]
     public void GetTemplateBytes_AllShippedTemplates_ReturnsExactContent(string templateName)
@@ -122,7 +124,7 @@ public sealed class ResourceCatalogTests
         var requestTemplateNames = new[]
         {
             "change.apply", "change.propose", "iteration.confirmation", "requirement.propose",
-            "task.add", "task.revise", "task.split", "task.update", "transaction.apply"
+            "task.add", "task.revise", "task.review", "task.split", "task.update", "transaction.apply"
         };
         foreach (var templateName in requestTemplateNames)
         {

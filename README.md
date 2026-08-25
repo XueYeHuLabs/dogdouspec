@@ -82,7 +82,7 @@ dogdouspec.cmd <command> [options]
    dogdouspec.cmd template show --name <NAME> [--version 1.0]
    ```
    Outputs exact template XML to standard output for inspection or redirection.
-   Available templates: `record.discussion`, `record.finding`, `record.verification`, `task.update`, `task.add`, `task.revise`, `task.split`, `requirement.propose`, `change.propose`, `change.apply`, `transaction.apply`, `iteration.confirmation`, `knowledge.entry`, `backlog.item`.
+   Available templates: `record.discussion`, `record.finding`, `record.verification`, `task.update`, `task.review`, `task.add`, `task.revise`, `task.split`, `requirement.propose`, `change.propose`, `change.apply`, `transaction.apply`, `iteration.confirmation`, `knowledge.entry`, `backlog.item`.
 
 9. **Validation**
    ```cmd
@@ -108,15 +108,17 @@ dogdouspec.cmd <command> [options]
     ```
     Atomically appends a complete schema-valid element with a project-unique time-first ID to a managed document under a single selected parent element. Enforces protected-state authority rules, prospective whole-workspace validation, deterministic root revision increment, and identity-based idempotency.
 
-13. **Task Operations (`task update`, `task add`, `task quick`, `task revise`, `task split`)**
+13. **Task Operations (`task update`, `task review`, `task add`, `task quick`, `task revise`, `task split`)**
     ```cmd
     dogdouspec.cmd task update --iteration ID --task TASK_ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
+    dogdouspec.cmd task review --iteration ID --task TASK_ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
     dogdouspec.cmd task add --iteration ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
-    dogdouspec.cmd task quick --title TEXT --scope PATH --done-when TEXT --why TEXT [--origin REQUIREMENT ...] [--depends-on TASK ...] [--term key=value ...] [--iteration ID] [--expected-revision N] [--start] [--dry-run] [--id TASK_ID] [--operation-id ID] [--workspace-root PATH] [--format xml|human]
+    dogdouspec.cmd task quick --title TEXT --scope PATH --done-when TEXT --why TEXT [--origin REQUIREMENT ...] [--depends-on TASK ...] [--term key=value ...] [--agent NAME] [--review-required] [--iteration ID] [--expected-revision N] [--start] [--dry-run] [--id TASK_ID] [--operation-id ID] [--workspace-root PATH] [--format xml|human]
     dogdouspec.cmd task revise --iteration ID --task TASK_ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
     dogdouspec.cmd task split --iteration ID --task TASK_ID --expected-revision N (--stdin|--file PATH) [--workspace-root PATH] [--format xml|human]
     ```
     High-level schema-aware task mutations. Enforces legal task state transitions, terminal task immutability, replanning execution freezes, origin requirement verification, durable record stamping, and revision concurrency.
+    A task with `review required="true"` cannot complete until its latest structured review is approved by an actor different from immutable task `@agent` attribution. This separation records provenance only; it is not cryptographic authentication or authorization proof. `changes-requested` creates an active blocking finding and returns the task to `in-progress`.
     `task quick` is only a compact input helper: it persists a normal Task. Without `--origin` it creates one operational `supports` origin to the current active iteration; with origins it creates `implements` edges to Requirements. `--start` writes the final in-progress task, start record, and receipt in one tasks.xml revision. `--dry-run` prints the generated request without writing.
 
 14. **Requirement Proposal (`requirement propose`)**
@@ -176,8 +178,11 @@ When invoking `dogdouspec.cmd` from PowerShell:
 
 To deploy and use DogdouSpec in an existing Windows Git repository, follow the verified step-by-step procedure in [docs/INSTALL_IN_OTHER_REPOSITORY.md](docs/INSTALL_IN_OTHER_REPOSITORY.md).
 
+The disposition and executable evidence for all 15 findings from the DogdouClix
+evaluation are recorded in [docs/DOGDOUCLIX_DOGFOOD_REMEDIATION.md](docs/DOGDOUCLIX_DOGFOOD_REMEDIATION.md).
+
 ## 6. Architectural Boundaries & Workflow
 
 - **Repository-Local State**: Authoritative specification and task state is stored entirely within `.dogdouspec/` XML documents and validated against embedded XSD v1 schemas.
 - **Authority Boundaries**: Technical agents manage task lifecycles, execution records, and code changes autonomously. Product requirements, design decisions, and iteration completions require explicit human owner confirmation via `iteration confirm`.
-- **Coding Agent Workflow**: See [`AGENTS.md`](AGENTS.md) and [`skills/dogdouspec/SKILL.md`](skills/dogdouspec/SKILL.md) for workflow integration rules and compact two-phase query patterns.
+- **Coding Agent Workflow**: See [`AGENTS.md`](AGENTS.md) and [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md) for workflow integration rules and compact two-phase query patterns.

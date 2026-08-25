@@ -705,4 +705,69 @@ public sealed class TaskCliTests
         Assert.AreEqual(2, exitCode);
         Assert.IsTrue(stderr.Contains("INVALID_ARGUMENT"));
     }
+
+    [TestMethod]
+    public void TaskReview_IndependentApprovalAndReplay_ReturnMutationEnvelope()
+    {
+        CreateWorkspaceCopy();
+        var tasksPath = Path.Combine(_tempDir, ".dogdouspec", "20260823-xpath-core", "tasks.xml");
+        var document = XDocument.Load(tasksPath);
+        var task = document.Root!.Elements("task")
+            .Single(t => (string?)t.Attribute("id") == "20260823-task-xpath-projection");
+        task.SetAttributeValue("status", "verification");
+        task.SetAttributeValue("agent", "implementation-agent");
+        var statusTerm = task.Element("index")!.Elements("term")
+            .FirstOrDefault(t => (string?)t.Attribute("key") == "status");
+        if (statusTerm == null)
+        {
+            task.Element("index")!.Add(new XElement("term", new XAttribute("key", "status"), new XAttribute("value", "verification")));
+        }
+        else
+        {
+            statusTerm.SetAttributeValue("value", "verification");
+        }
+        foreach (var criterion in task.Element("acceptance")!.Elements("criterion"))
+        {
+            criterion.SetAttributeValue("status", "passed");
+        }
+        task.Element("records")!.Elements("record")
+            .Where(r => (string?)r.Attribute("kind") == "finding" && (string?)r.Attribute("status") == "active")
+            .ToList().ForEach(r => r.SetAttributeValue("status", "resolved"));
+        task.Element("records")!.AddBeforeSelf(new XElement("review", new XAttribute("required", "true")));
+        document.Save(tasksPath);
+        var revision = int.Parse(document.Root.Attribute("revision")!.Value, System.Globalization.CultureInfo.InvariantCulture);
+        const string request = """
+<task-review id="20260825T120000Z-cli-review" actor="independent-reviewer" occurred_at="2026-08-25T12:00:00Z">
+  <submission id="20260825T120000Z-cli-review-submission" disposition="approved">
+    <summary>CLI review approved the task.</summary>
+  </submission>
+</task-review>
+""";
+
+        var (exitCode, stdout, stderr) = RunCliWithStdin(request,
+            "task", "review", "--iteration", "20260823-xpath-core",
+            "--task", "20260823-task-xpath-projection", "--expected-revision", revision.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            "--stdin", "--workspace-root", _tempDir, "--format", "xml");
+        Assert.AreEqual(0, exitCode, stderr);
+        Assert.IsTrue(stdout.Contains("command=\"task review\"", StringComparison.Ordinal));
+
+        var (replayCode, replayOut, replayErr) = RunCliWithStdin(request,
+            "task", "review", "--iteration", "20260823-xpath-core",
+            "--task", "20260823-task-xpath-projection", "--expected-revision", revision.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            "--stdin", "--workspace-root", _tempDir, "--format", "xml");
+        Assert.AreEqual(0, replayCode, replayErr);
+        Assert.IsTrue(replayOut.Contains("already_applied=\"true\"", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void TaskReview_RequiresExactlyOneInputSource()
+    {
+        CreateWorkspaceCopy();
+        var (exitCode, _, stderr) = RunCli(
+            "task", "review", "--iteration", "20260823-xpath-core",
+            "--task", "20260823-task-xpath-projection", "--expected-revision", "9",
+            "--workspace-root", _tempDir, "--format", "xml");
+        Assert.AreEqual(2, exitCode);
+        Assert.IsTrue(stderr.Contains("Specify exactly one of --stdin or --file.", StringComparison.Ordinal));
+    }
 }

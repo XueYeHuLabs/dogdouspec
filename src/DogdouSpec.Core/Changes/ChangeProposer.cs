@@ -497,6 +497,7 @@ public static class ChangeProposer
                 !string.Equals(currentStatus, "cancelled", StringComparison.Ordinal))
             {
                 targetTask.SetAttributeValue("status", "blocked");
+                DogdouSpec.Core.Tasks.StatusTermHelper.SynchronizeStatusTerm(targetTask, "blocked");
                 targetTask.SetAttributeValue("updated_at", occurredAt);
             }
 

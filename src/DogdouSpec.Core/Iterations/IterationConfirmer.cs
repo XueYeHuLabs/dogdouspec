@@ -112,7 +112,7 @@ public static class IterationConfirmer
         }
 
         var iterationId = reqRoot.Attribute("iteration")?.Value ?? string.Empty;
-        var (isIterValid, normIterId, iterErr) = PathSecurity.ValidateIterationId(iterationId);
+        var (isIterValid, normIterId, iterErr) = WorkspaceDiscovery.ValidateIterationId(iterationId);
         if (!isIterValid || iterErr != null)
         {
             return (false, null, new[] { iterErr ?? Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid iteration identifier '{iterationId}'.") });
@@ -682,6 +682,27 @@ public static class IterationConfirmer
         // 9.5 Validate accept-design-change constraints
         if (action == "accept-design-change")
         {
+            if (requirementsEl != null && requirementsEl.Elements("requirement").Any())
+            {
+                return (false, null, new[] { Diagnostic.Error(
+                    DiagnosticCodes.OwnerDecisionRequired,
+                    "Action 'accept-design-change' only applies to design decisions (<design>); requirements cannot be decided under accept-design-change. Allowed target for this action: <design>.") });
+            }
+
+            if (questionsEl != null && questionsEl.Elements("question").Any())
+            {
+                return (false, null, new[] { Diagnostic.Error(
+                    DiagnosticCodes.OwnerDecisionRequired,
+                    "Action 'accept-design-change' only applies to design decisions (<design>); research questions cannot be decided under accept-design-change. Allowed target for this action: <design>.") });
+            }
+
+            if (acceptanceEl != null && acceptanceEl.Elements("criterion").Any())
+            {
+                return (false, null, new[] { Diagnostic.Error(
+                    DiagnosticCodes.OwnerDecisionRequired,
+                    "Action 'accept-design-change' only applies to design decisions (<design>); acceptance criteria cannot be decided under accept-design-change. Allowed target for this action: <design>.") });
+            }
+
             if (designEl == null || !designEl.Elements("decision").Any())
             {
                 return (false, null, new[] { Diagnostic.Error(
@@ -706,14 +727,15 @@ public static class IterationConfirmer
         var reqDecisions = new Dictionary<string, string>(StringComparer.Ordinal);
         if (requirementsEl != null)
         {
-            foreach (var reqEl in requirementsEl.Elements("requirement"))
+            var targetElements = requirementsEl.Elements("requirement").Concat(requirementsEl.Elements("target"));
+            foreach (var reqEl in targetElements)
             {
                 var target = reqEl.Attribute("target")?.Value ?? string.Empty;
                 var dec = reqEl.Attribute("decision")?.Value ?? string.Empty;
                 var allowedReqDecs = new[] { "approved", "superseded", "withdrawn" };
                 if (!allowedReqDecs.Contains(dec, StringComparer.Ordinal))
                 {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid requirement decision '{dec}' for target '{target}'.") });
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid requirement decision '{dec}' for target '{target}'. Allowed requirement decisions: {string.Join(", ", allowedReqDecs)}.") });
                 }
 
                 var targetEl = specRoot.Element("product")?.Element("requirements")?.Elements("requirement")
@@ -730,14 +752,15 @@ public static class IterationConfirmer
         var qDecisions = new Dictionary<string, string>(StringComparer.Ordinal);
         if (questionsEl != null)
         {
-            foreach (var qEl in questionsEl.Elements("question"))
+            var targetElements = questionsEl.Elements("question").Concat(questionsEl.Elements("target"));
+            foreach (var qEl in targetElements)
             {
                 var target = qEl.Attribute("target")?.Value ?? string.Empty;
                 var dec = qEl.Attribute("decision")?.Value ?? string.Empty;
                 var allowedQDecs = new[] { "answered", "deferred", "withdrawn" };
                 if (!allowedQDecs.Contains(dec, StringComparer.Ordinal))
                 {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid question decision '{dec}' for target '{target}'.") });
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid question decision '{dec}' for target '{target}'. Allowed question decisions: {string.Join(", ", allowedQDecs)}.") });
                 }
 
                 var targetEl = specRoot.Element("research")?.Element("questions")?.Elements("question")
@@ -754,14 +777,15 @@ public static class IterationConfirmer
         var dDecisions = new Dictionary<string, string>(StringComparer.Ordinal);
         if (designEl != null)
         {
-            foreach (var dEl in designEl.Elements("decision"))
+            var targetElements = designEl.Elements("decision").Concat(designEl.Elements("target"));
+            foreach (var dEl in targetElements)
             {
                 var target = dEl.Attribute("target")?.Value ?? string.Empty;
                 var dec = dEl.Attribute("decision")?.Value ?? string.Empty;
                 var allowedDDecs = new[] { "accepted", "rejected", "superseded" };
                 if (!allowedDDecs.Contains(dec, StringComparer.Ordinal))
                 {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid design decision disposition '{dec}' for target '{target}'.") });
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid design decision disposition '{dec}' for target '{target}'. Allowed design decision dispositions: {string.Join(", ", allowedDDecs)}.") });
                 }
 
                 var isNewTarget = newDesignDecisionId != null && string.Equals(target, newDesignDecisionId, StringComparison.Ordinal);
@@ -779,14 +803,15 @@ public static class IterationConfirmer
         var critDecisions = new Dictionary<string, string>(StringComparer.Ordinal);
         if (acceptanceEl != null)
         {
-            foreach (var aEl in acceptanceEl.Elements("criterion"))
+            var targetElements = acceptanceEl.Elements("criterion").Concat(acceptanceEl.Elements("target"));
+            foreach (var aEl in targetElements)
             {
                 var target = aEl.Attribute("target")?.Value ?? string.Empty;
                 var dec = aEl.Attribute("decision")?.Value ?? string.Empty;
                 var allowedCritDecs = new[] { "accepted", "rejected", "waived" };
                 if (!allowedCritDecs.Contains(dec, StringComparer.Ordinal))
                 {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid acceptance criterion decision '{dec}' for target '{target}'.") });
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid acceptance criterion decision '{dec}' for target '{target}'. Allowed acceptance criterion decisions: {string.Join(", ", allowedCritDecs)}.") });
                 }
 
                 var targetEl = (specRoot.Element("product")?.Element("acceptance")?.Elements("criterion") ??
@@ -1148,12 +1173,7 @@ public static class IterationConfirmer
         workingSpecRoot.SetAttributeValue("status", targetStatus);
 
         // Update status term in <index> if present
-        var statusTerm = workingSpecRoot.Element("index")?.Elements("term")
-            .FirstOrDefault(t => string.Equals(t.Attribute("key")?.Value, "status", StringComparison.Ordinal));
-        if (statusTerm != null)
-        {
-            statusTerm.SetAttributeValue("value", targetStatus);
-        }
+        DogdouSpec.Core.Tasks.StatusTermHelper.SynchronizeStatusTerm(workingSpecRoot, targetStatus);
 
         if (string.Equals(action, "complete", StringComparison.Ordinal))
         {
@@ -1196,6 +1216,7 @@ public static class IterationConfirmer
                 new XAttribute("status", finalDecisionStatus),
                 newDesignDecisionEl.Elements());
 
+            DogdouSpec.Core.Tasks.StatusTermHelper.SynchronizeStatusTerm(decisionToAppend, finalDecisionStatus);
             decisionsContainer.Add(decisionToAppend);
         }
 
@@ -1204,21 +1225,33 @@ public static class IterationConfirmer
         foreach (var (target, dec) in reqDecisions)
         {
             var reqEl = workingReqs.FirstOrDefault(r => string.Equals(r.Attribute("id")?.Value, target, StringComparison.Ordinal));
-            reqEl?.SetAttributeValue("status", dec);
+            if (reqEl != null)
+            {
+                reqEl.SetAttributeValue("status", dec);
+                DogdouSpec.Core.Tasks.StatusTermHelper.SynchronizeStatusTerm(reqEl, dec);
+            }
         }
 
         var workingQs = workingSpecRoot.Element("research")?.Element("questions")?.Elements("question") ?? Enumerable.Empty<XElement>();
         foreach (var (target, dec) in qDecisions)
         {
             var qEl = workingQs.FirstOrDefault(q => string.Equals(q.Attribute("id")?.Value, target, StringComparison.Ordinal));
-            qEl?.SetAttributeValue("status", dec);
+            if (qEl != null)
+            {
+                qEl.SetAttributeValue("status", dec);
+                DogdouSpec.Core.Tasks.StatusTermHelper.SynchronizeStatusTerm(qEl, dec);
+            }
         }
 
         var workingDecs = workingSpecRoot.Element("design")?.Element("decisions")?.Elements("decision") ?? Enumerable.Empty<XElement>();
         foreach (var (target, dec) in dDecisions)
         {
             var dEl = workingDecs.FirstOrDefault(d => string.Equals(d.Attribute("id")?.Value, target, StringComparison.Ordinal));
-            dEl?.SetAttributeValue("status", dec);
+            if (dEl != null)
+            {
+                dEl.SetAttributeValue("status", dec);
+                DogdouSpec.Core.Tasks.StatusTermHelper.SynchronizeStatusTerm(dEl, dec);
+            }
         }
 
         var workingCrits = (workingSpecRoot.Element("product")?.Element("acceptance")?.Elements("criterion") ??

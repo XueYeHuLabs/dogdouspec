@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- This request is used only after explicit owner review. -->
+<!-- This request is used only after explicit owner review.
+     Allowed actions: activate, continue, replan, complete, cancel, supersede, accept-design-change
+     Allowed decisions by domain:
+       - requirements: approved | superseded | withdrawn
+       - questions:    answered | deferred | withdrawn
+       - design:       accepted | rejected | superseded
+       - acceptance:   accepted | rejected | waived
+-->
 <iteration-confirmation
   id="20000101T000000Z-confirmation-replace"
   iteration="20000101-replace-iteration"

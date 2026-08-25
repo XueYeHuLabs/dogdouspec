@@ -7,6 +7,7 @@ DogdouSpec enforces single-source-of-truth document integrity through structured
 | Operation | Command | Primary Use Case | Concurrency & Idempotency |
 | :--- | :--- | :--- | :--- |
 | **Task Update** | `dogdouspec task update` | Task state machine transitions (`start`, `verify`, `complete`, etc.), acceptance criteria updates, context snapshots, active record resolution, and appending execution records. | Single-document atomic commit. Persists durable `operation_id` receipts. Replays are deeply verified for idempotent success. Execution transitions fail closed when iteration is `replanning`. |
+| **Task Review** | `dogdouspec task review` | Structured approval or changes-requested submission for a Task with `review required="true"`. | Approval actor must differ from immutable Task `@agent` attribution. Changes requested creates an active finding and returns the Task to `in-progress`. Separation is provenance, not authenticated identity. |
 | **Task Add** | `dogdouspec task add` | Appending a new pending task referencing an existing requirement in `spec.xml`. | Single-document atomic commit. Revision-checked. Verified origin reference. Durable `operation_id` stamping. |
 | **Task Quick** | `dogdouspec task quick` | Compact bounded work intended to execute now. Inputs expand to a normal Task; no second task type or file exists. | `--start` creates the final in-progress Task, start history, and receipt in exactly one `tasks.xml` revision. `--dry-run` writes nothing. |
 | **Task Revise** | `dogdouspec task revise` | Elaborating constraints, dependencies, acceptance criteria, or scope on active/pending tasks. A started task cannot replace rationale and may only expand scope. Rejects terminal tasks (`TASK_IMMUTABLE`). | Single-document atomic commit. Revision-checked. Durable `operation_id` stamping. |
@@ -60,6 +61,7 @@ As specified in `docs/V1_CLI_CONTRACT.md` (Section 11):
 Use `dogdouspec template show --name <NAME>` to view exact XML templates for public requests:
 
 - `task.update`: Task update request template.
+- `task.review`: Structured Task review request template.
 - `task.add`: Task add request template.
 - `task.revise`: Task revise request template.
 - `task.split`: Task split request template.
