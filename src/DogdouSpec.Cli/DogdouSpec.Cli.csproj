@@ -4,6 +4,13 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>DogdouSpec.Cli</RootNamespace>
     <AssemblyName>dogdouspec</AssemblyName>
+    <PublishAot>true</PublishAot>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <PublishTrimmed>true</PublishTrimmed>
+    <DebuggerSupport>false</DebuggerSupport>
+    <EventSourceSupport>false</EventSourceSupport>
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+    <MetadataUpdateSupport>false</MetadataUpdateSupport>
   </PropertyGroup>
 
   <ItemGroup>

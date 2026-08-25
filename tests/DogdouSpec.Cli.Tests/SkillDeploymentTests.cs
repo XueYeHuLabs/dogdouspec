@@ -159,22 +159,6 @@ public sealed class SkillDeploymentTests
         // Clone a clean copy of the repo to serve as the clean source repository fixture
         RunProcess("git", $"clone --shared \"{RepoRoot}\" \"{_cleanSourceRepo}\"", _tempDir);
         _sourceCommitSha = RunProcess("git", "rev-parse HEAD", _cleanSourceRepo).Stdout.Trim();
-
-        // Copy current working-tree skill into clone fixture
-        var sourceSkillDir = Path.Combine(RepoRoot, ".agents", "skills", "dogdouspec");
-        var fixtureSkillDir = Path.Combine(_cleanSourceRepo, ".agents", "skills", "dogdouspec");
-        Directory.CreateDirectory(Path.Combine(fixtureSkillDir, "references"));
-        File.Copy(Path.Combine(sourceSkillDir, "SKILL.md"), Path.Combine(fixtureSkillDir, "SKILL.md"), true);
-        foreach (var file in Directory.GetFiles(Path.Combine(sourceSkillDir, "references")))
-        {
-            File.Copy(file, Path.Combine(fixtureSkillDir, "references", Path.GetFileName(file)), true);
-        }
-
-        // Add clone-local exclude so git status --porcelain remains clean on the source fixture
-        var excludeFile = Path.Combine(_cleanSourceRepo, ".git", "info", "exclude");
-        var excludeDir = Path.GetDirectoryName(excludeFile)!;
-        if (!Directory.Exists(excludeDir)) Directory.CreateDirectory(excludeDir);
-        File.AppendAllText(excludeFile, "\n.agents/\n");
     }
 
     [TestCleanup]
@@ -430,9 +414,9 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
         Assert.AreEqual(0, res.ExitCode, $"Setup workspace init failed: {res.Stderr}");
     }
 
-    private static void InstallDefaultSkillFiles(string targetPath)
+    private void InstallDefaultSkillFiles(string targetPath)
     {
-        var sourceSkillDir = Path.Combine(RepoRoot, ".agents", "skills", "dogdouspec");
+        var sourceSkillDir = Path.Combine(_cleanSourceRepo, ".agents", "skills", "dogdouspec");
         var targetSkillDir = Path.Combine(targetPath, ".agents", "skills", "dogdouspec");
         Directory.CreateDirectory(Path.Combine(targetSkillDir, "references"));
         File.Copy(Path.Combine(sourceSkillDir, "SKILL.md"), Path.Combine(targetSkillDir, "SKILL.md"), true);
@@ -442,9 +426,9 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
         }
     }
 
-    private static void InstallLegacySkillFiles(string targetPath)
+    private void InstallLegacySkillFiles(string targetPath)
     {
-        var sourceSkillDir = Path.Combine(RepoRoot, ".agents", "skills", "dogdouspec");
+        var sourceSkillDir = Path.Combine(_cleanSourceRepo, ".agents", "skills", "dogdouspec");
         var targetSkillDir = Path.Combine(targetPath, "skills", "dogdouspec");
         Directory.CreateDirectory(Path.Combine(targetSkillDir, "references"));
         File.Copy(Path.Combine(sourceSkillDir, "SKILL.md"), Path.Combine(targetSkillDir, "SKILL.md"), true);
