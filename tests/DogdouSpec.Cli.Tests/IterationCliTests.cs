@@ -628,6 +628,9 @@ public sealed class IterationCliTests
         Assert.IsTrue(readyOut.Contains("<readiness", StringComparison.Ordinal));
 
         // 5. iteration confirm activate
+        var specDoc = XDocument.Load(Path.Combine(workspace, iterId, "spec.xml"));
+        var updatedAtStr = specDoc.Root?.Attribute("updated_at")?.Value ?? "2026-08-25T14:35:00Z";
+
         var confirmXml = $"""
 <iteration-confirmation
   id="20260825T143500Z-confirm-activate"
@@ -635,7 +638,7 @@ public sealed class IterationCliTests
   action="activate"
   expected_spec_revision="1"
   actor="owner"
-  decided_at="2026-08-25T14:35:00Z">
+  decided_at="{updatedAtStr}">
   <summary>Owner activated timestamp iteration via CLI.</summary>
   <requirements>
     <requirement target="20260825T143000Z-req-timestamp-cli" decision="approved"/>

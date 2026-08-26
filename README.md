@@ -63,6 +63,7 @@ dogdouspec.cmd <command> [options]
    ```cmd
    dogdouspec.cmd iteration create --id YYYYMMDD-name --kind feature|research [--workspace-root PATH] [--format xml|human]
    ```
+   (Alias: `dogdouspec.cmd iteration new`)
    Atomically creates a new feature or research iteration directory with valid `spec.xml` and `tasks.xml` draft structures, project-unique deterministic time-first IDs, schema version 1.0, and revision 1. Employs workspace writer locking, startup recovery, prospective whole-workspace validation, and same-volume atomic publication.
 
 6. **Iteration Readiness**
@@ -167,6 +168,7 @@ When invoking `dogdouspec.cmd` from PowerShell:
 | Code | Meaning |
 |---:|---|
 | 0 | Success, including a verified idempotent retry |
+| 1 | Read-only scope verification completed with one or more out-of-scope paths |
 | 2 | Command, XML request, XPath, or argument error |
 | 3 | Schema or semantic validation failure |
 | 4 | Revision, lock, cardinality, or idempotency conflict |
