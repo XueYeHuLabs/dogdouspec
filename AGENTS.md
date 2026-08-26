@@ -53,6 +53,10 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
      ```
    - Phase 1b (If no task is in-progress, select first ready pending task):
      ```powershell
+     # Recommended (resolves cross-document and cross-iteration dependencies):
+     .\dogdouspec.cmd task next --iteration "<ITERATION_ID>" --format xml
+
+     # Alternative raw XPath (document-local dependencies only):
      .\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "ds:filter(/tasks/task[@status='pending' and not(dependencies/ref[@relation='depends-on']/@target = /tasks/task[@status!='done' and @status!='transferred' and @status!='superseded' and @status!='cancelled']/@id)][1], '@id', '@status', '@agent', 'index')" --format xml
      ```
    - Phase 2 (Load full selected task):

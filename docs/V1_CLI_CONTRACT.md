@@ -62,6 +62,7 @@ dogdouspec append --stdin|--file
 dogdouspec task update --stdin|--file
 dogdouspec task review --stdin|--file
 dogdouspec task add --stdin|--file
+dogdouspec task quick
 dogdouspec task revise --stdin|--file
 dogdouspec task split --stdin|--file
 dogdouspec task next
@@ -74,7 +75,7 @@ dogdouspec transaction apply --stdin|--file
 ```
 
 `transaction apply` is the low-level escape hatch. The Skill normally uses
-templates, `task add/revise/split`, `requirement propose`, `change propose/apply`, `append`, `task update`, and `iteration confirm`.
+templates, `task quick`, `task add/revise/split`, `requirement propose`, `change propose/apply`, `append`, `task update`, and `iteration confirm`.
 
 Every mutating command identifies itself as mutating in help output and requires
 an expected revision for each existing document it may change.
@@ -236,7 +237,7 @@ dogdouspec iteration create `
   --format xml
 ```
 
-`--id` is explicit and must follow the `TimeFirstIdType` grammar (`YYYYMMDD-name` or `YYYYMMDDTHHmmssZ-name`, e.g., `20260823-feature` or `20260825T143000Z-feature`). `kind` is
+`iteration create` (alias: `iteration new`) requires `--id` to be explicit and follow the `TimeFirstIdType` grammar (`YYYYMMDD-name` or `YYYYMMDDTHHmmssZ-name`, e.g., `20260823-feature` or `20260825T143000Z-feature`). `kind` is
 `feature` or `research`. Creation atomically creates the directory, `spec.xml`,
 and `tasks.xml`; it never chooses a suffix silently.
 
