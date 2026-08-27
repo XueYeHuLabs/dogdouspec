@@ -26,11 +26,21 @@ public sealed class PowerShellWrapperTests
         }
 
         Assert.IsNotNull(RepoRoot, "Repository root could not be located.");
-        CmdWrapperPath = Path.Combine(RepoRoot, "dogdouspec.cmd");
-        Assert.IsTrue(File.Exists(CmdWrapperPath), $"dogdouspec.cmd not found at {CmdWrapperPath}");
+        var debugExe = Path.Combine(RepoRoot, "src", "DogdouSpec.Cli", "bin", "Debug", "net10.0", "dogdouspec.exe");
+        var releaseExe = Path.Combine(RepoRoot, "src", "DogdouSpec.Cli", "bin", "Release", "net10.0", "dogdouspec.exe");
+        CmdWrapperPath = File.Exists(debugExe) ? debugExe : releaseExe;
 
         var pwshPath = FindExecutableInPath("pwsh.exe") ?? FindExecutableInPath("powershell.exe");
         PowerShellExe = pwshPath ?? "powershell.exe";
+    }
+
+    [TestInitialize]
+    public void TestInit()
+    {
+        if (string.IsNullOrWhiteSpace(CmdWrapperPath) || !File.Exists(CmdWrapperPath))
+        {
+            Assert.Inconclusive($"dogdouspec.exe not found at '{CmdWrapperPath}'. Build the CLI project before running PowerShell wrapper tests.");
+        }
     }
 
     private static string? FindExecutableInPath(string exeName)
@@ -74,7 +84,7 @@ public sealed class PowerShellWrapperTests
     [TestMethod]
     public void PowerShell_SimpleVariableInSingleQuotes_PreservesVariableAndSucceeds()
     {
-        var script = "& '.\\dogdouspec.cmd' query --workspace-root 'docs\\demos\\v1-core\\.dogdouspec' --document '20260823-xpath-core/tasks.xml' --var 'task_id=20260823-task-xpath-projection' --xpath '//task[@id=$task_id]' --format xml";
+        var script = $"& '{CmdWrapperPath}' query --workspace-root 'docs\\demos\\v1-core\\.dogdouspec' --document '20260823-xpath-core/tasks.xml' --var 'task_id=20260823-task-xpath-projection' --xpath '//task[@id=$task_id]' --format xml";
 
         var (exitCode, stdout, stderr) = RunPowerShellCommand(script);
 
@@ -85,7 +95,7 @@ public sealed class PowerShellWrapperTests
     [TestMethod]
     public void PowerShell_ComplexProjectionDoubledSingleQuotes_PreservesLiteralsAndVariables()
     {
-        var script = "& '.\\dogdouspec.cmd' query --workspace-root 'docs\\demos\\v1-core\\.dogdouspec' --document '20260823-xpath-core/tasks.xml' --var 'task_id=20260823-task-xpath-projection' --xpath 'ds:filter(//task[@id=$task_id], ''@id'', ''@status'', ''index'')' --format xml";
+        var script = $"& '{CmdWrapperPath}' query --workspace-root 'docs\\demos\\v1-core\\.dogdouspec' --document '20260823-xpath-core/tasks.xml' --var 'task_id=20260823-task-xpath-projection' --xpath 'ds:filter(//task[@id=$task_id], ''@id'', ''@status'', ''index'')' --format xml";
 
         var (exitCode, stdout, stderr) = RunPowerShellCommand(script);
 
@@ -100,7 +110,7 @@ public sealed class PowerShellWrapperTests
     [TestMethod]
     public void PowerShell_DoubleQuotesWithBacktickEscape_PreservesVariableAndSucceeds()
     {
-        var script = "& '.\\dogdouspec.cmd' query --workspace-root 'docs\\demos\\v1-core\\.dogdouspec' --document '20260823-xpath-core/tasks.xml' --var 'task_id=20260823-task-xpath-projection' --xpath \"\"\"ds:filter(//task[@id=`$task_id], '@id', '@status', 'index')\"\"\" --format xml";
+        var script = $"& '{CmdWrapperPath}' query --workspace-root 'docs\\demos\\v1-core\\.dogdouspec' --document '20260823-xpath-core/tasks.xml' --var 'task_id=20260823-task-xpath-projection' --xpath \"\"\"ds:filter(//task[@id=`$task_id], '@id', '@status', 'index')\"\"\" --format xml";
 
         var (exitCode, stdout, stderr) = RunPowerShellCommand(script);
 
@@ -112,7 +122,7 @@ public sealed class PowerShellWrapperTests
     [TestMethod]
     public void PowerShell_SearchCommandWithProjection_PreservesLiteralsAndVariables()
     {
-        var script = "& '.\\dogdouspec.cmd' search --workspace-root 'docs\\demos\\v1-core\\.dogdouspec' --scope project --var 'topic=xpath-extension' --xpath 'ds:filter(//*[@id and index/term[@key=''topic'' and @value=$topic]], ''@id'', ''index'')' --format xml";
+        var script = $"& '{CmdWrapperPath}' search --workspace-root 'docs\\demos\\v1-core\\.dogdouspec' --scope project --var 'topic=xpath-extension' --xpath 'ds:filter(//*[@id and index/term[@key=''topic'' and @value=$topic]], ''@id'', ''index'')' --format xml";
 
         var (exitCode, stdout, stderr) = RunPowerShellCommand(script);
 
@@ -125,7 +135,7 @@ public sealed class PowerShellWrapperTests
     [TestMethod]
     public void PowerShell_UnquotedNodeSetMember_FailsWithExitCode2AndEmptyStdout()
     {
-        var script = "& '.\\dogdouspec.cmd' query --workspace-root 'docs\\demos\\v1-core\\.dogdouspec' --document '20260823-xpath-core/tasks.xml' --xpath 'ds:filter(//task, @id)' --format xml";
+        var script = $"& '{CmdWrapperPath}' query --workspace-root 'docs\\demos\\v1-core\\.dogdouspec' --document '20260823-xpath-core/tasks.xml' --xpath 'ds:filter(//task, @id)' --format xml";
 
         var (exitCode, stdout, stderr) = RunPowerShellCommand(script);
 

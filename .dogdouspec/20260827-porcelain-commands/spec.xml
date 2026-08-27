@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20260827-porcelain-commands" schema_version="1.0" revision="3" kind="feature" status="completed" created_at="2026-08-27T05:59:51Z" updated_at="2026-08-27T06:14:03Z" completed_at="2026-08-27T06:14:03Z">
+  <index>
+    <summary>Draft feature iteration porcelain-commands.</summary>
+    <term key="kind" value="feature" />
+    <term key="iteration" value="20260827-porcelain-commands" />
+    <term key="status" value="completed" />
+  </index>
+  <product>
+    <objective>Objective pending definition for 20260827-porcelain-commands.</objective>
+    <deliverables>
+      <deliverable id="20260827-deliv-porcelain-commands">
+        <index>
+          <summary>Initial deliverable placeholder for 20260827-porcelain-commands.</summary>
+          <term key="kind" value="deliverable" />
+        </index>
+        <description>Deliverable pending definition.</description>
+      </deliverable>
+    </deliverables>
+    <scope>
+      <included />
+      <excluded />
+    </scope>
+    <requirements>
+      <requirement id="20260827-req-porcelain-commands" status="approved">
+        <index>
+          <summary>Initial proposed requirement for 20260827-porcelain-commands.</summary>
+          <term key="kind" value="requirement" />
+        </index>
+        <statement>Requirement statement pending definition.</statement>
+        <rationale>Rationale pending definition.</rationale>
+      </requirement>
+    </requirements>
+    <acceptance>
+      <criterion id="20260827-crit-porcelain-commands" decision="accepted">Product criterion pending definition.</criterion>
+    </acceptance>
+  </product>
+  <confirmations><confirmation id="20260827T060000Z-confirm-activate-porcelain" action="activate" decision="accepted" actor="product-owner" decided_at="2026-08-27T06:00:00Z"><summary>Owner activation of 20260827-porcelain-commands iteration.</summary><requirements>
+    <requirement target="20260827-req-porcelain-commands" decision="approved" />
+  </requirements></confirmation><confirmation id="20260827T061403Z-confirm-complete" action="complete" decision="accepted" actor="owner" decided_at="2026-08-27T06:14:03Z"><summary>Completed implementing high-level Porcelain semantic commands for iteration and task governance</summary><acceptance>
+    <criterion target="20260827-crit-porcelain-commands" decision="accepted" />
+  </acceptance></confirmation></confirmations>
+</iteration>
+
+

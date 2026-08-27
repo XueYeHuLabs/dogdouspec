@@ -52,8 +52,8 @@ When the product owner instructs `dogdouspec iteration confirm` with `action="co
 `dogdouspec iteration readiness` is a deterministic, **read-only** assessment tool:
 
 ```powershell
-.\dogdouspec.cmd iteration readiness --iteration "<ITERATION_ID>" --phase activation --format xml
-.\dogdouspec.cmd iteration readiness --iteration "<ITERATION_ID>" --phase completion --format xml
+dogdouspec iteration readiness --iteration "<ITERATION_ID>" --phase activation --format xml
+dogdouspec iteration readiness --iteration "<ITERATION_ID>" --phase completion --format xml
 ```
 
 - Reports `technically_ready="true|false"`, current revisions, passed/failed technical checks, and pending product decisions.

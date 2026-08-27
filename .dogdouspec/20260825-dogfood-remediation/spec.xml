@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<iteration id="20260825-dogfood-remediation" schema_version="1.0" revision="3" kind="feature" status="active" created_at="2026-08-25T02:45:12Z" updated_at="2026-08-25T02:54:28Z">
+<iteration id="20260825-dogfood-remediation" schema_version="1.0" revision="4" kind="feature" status="completed" created_at="2026-08-25T02:45:12Z" updated_at="2026-08-27T02:55:45Z" completed_at="2026-08-27T02:55:45Z">
   <index>
         <summary>Remediate defects and workflow gaps discovered through DogdouClix dogfooding.</summary>
         <term key="kind" value="feature" />
         <term key="iteration" value="20260825-dogfood-remediation" />
         <term key="topic" value="dogfood-remediation" />
-        <term key="status" value="active" />
+        <term key="status" value="completed" />
       </index>
   <product>
         <objective>Correct confirmed DogdouSpec defects and converge installation, task execution, governance, review, and dogfooding guidance without weakening authority or evidence boundaries.</objective>
@@ -82,12 +82,12 @@
           </requirement>
         </requirements>
         <acceptance>
-          <criterion id="20260825-crit-installation-default" decision="pending">A clean installation uses .agents/skills/dogdouspec by default and upgrade/rollback verification covers both default and legacy installations.</criterion>
-          <criterion id="20260825-crit-deterministic-build" decision="pending">The mandatory build is date-independent and all source and CLI tests pass with zero warnings and errors.</criterion>
-          <criterion id="20260825-crit-core-consistency" decision="pending">Identifier, listing, task index, completion template, revision, dependency, and scope behavior match one documented executable contract.</criterion>
-          <criterion id="20260825-crit-governance-usable" decision="pending">Backlog defect lifecycle, ADR/context guidance, knowledge capture, and replanning smoke workflow are public, queryable, and covered by tests.</criterion>
-          <criterion id="20260825-crit-review-enforced" decision="pending">A review-required task cannot complete with missing approval or active changes-requested findings, while non-review tasks retain the existing lightweight workflow.</criterion>
-          <criterion id="20260825-crit-evidence-honesty" decision="pending">Documentation consistently states that XML validates structured provenance and internal consistency but does not authenticate actors or independently prove external test execution.</criterion>
+          <criterion id="20260825-crit-installation-default" decision="accepted">A clean installation uses .agents/skills/dogdouspec by default and upgrade/rollback verification covers both default and legacy installations.</criterion>
+          <criterion id="20260825-crit-deterministic-build" decision="accepted">The mandatory build is date-independent and all source and CLI tests pass with zero warnings and errors.</criterion>
+          <criterion id="20260825-crit-core-consistency" decision="accepted">Identifier, listing, task index, completion template, revision, dependency, and scope behavior match one documented executable contract.</criterion>
+          <criterion id="20260825-crit-governance-usable" decision="accepted">Backlog defect lifecycle, ADR/context guidance, knowledge capture, and replanning smoke workflow are public, queryable, and covered by tests.</criterion>
+          <criterion id="20260825-crit-review-enforced" decision="accepted">A review-required task cannot complete with missing approval or active changes-requested findings, while non-review tasks retain the existing lightweight workflow.</criterion>
+          <criterion id="20260825-crit-evidence-honesty" decision="accepted">Documentation consistently states that XML validates structured provenance and internal consistency but does not authenticate actors or independently prove external test execution.</criterion>
         </acceptance>
       </product>
   
@@ -124,5 +124,13 @@
     <decision target="20260825-decision-agents-skill-default" decision="accepted" />
     <decision target="20260825-decision-backlog-defects" decision="accepted" />
     <decision target="20260825-decision-configurable-review" decision="accepted" />
-  </design></confirmation></confirmations></iteration>
+  </design></confirmation><confirmation id="20260827T025545Z-confirm-complete-dogfood" action="complete" decision="accepted" actor="product-owner" decided_at="2026-08-27T02:55:45Z"><summary>Owner completion approval for 20260825-dogfood-remediation. All dogfood findings, backlog lifecycle, review gates, and docs verified.</summary><acceptance>
+    <criterion target="20260825-crit-installation-default" decision="accepted" />
+    <criterion target="20260825-crit-deterministic-build" decision="accepted" />
+    <criterion target="20260825-crit-core-consistency" decision="accepted" />
+    <criterion target="20260825-crit-governance-usable" decision="accepted" />
+    <criterion target="20260825-crit-review-enforced" decision="accepted" />
+    <criterion target="20260825-crit-evidence-honesty" decision="accepted" />
+  </acceptance></confirmation></confirmations></iteration>
+
 

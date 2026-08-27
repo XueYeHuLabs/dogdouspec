@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20260827-winget-distribution" schema_version="1.0" revision="3" kind="feature" status="completed" created_at="2026-08-27T01:52:03Z" updated_at="2026-08-27T02:52:00Z" completed_at="2026-08-27T02:52:00Z">
+  <index>
+    <summary>Draft feature iteration winget-distribution.</summary>
+    <term key="kind" value="feature" />
+    <term key="iteration" value="20260827-winget-distribution" />
+    <term key="status" value="completed" />
+  </index>
+  <product>
+    <objective>Objective pending definition for 20260827-winget-distribution.</objective>
+    <deliverables>
+      <deliverable id="20260827-deliv-winget-distribution">
+        <index>
+          <summary>Initial deliverable placeholder for 20260827-winget-distribution.</summary>
+          <term key="kind" value="deliverable" />
+        </index>
+        <description>Deliverable pending definition.</description>
+      </deliverable>
+    </deliverables>
+    <scope>
+      <included />
+      <excluded />
+    </scope>
+    <requirements>
+      <requirement id="20260827-req-winget-distribution" status="approved">
+        <index>
+          <summary>Initial proposed requirement for 20260827-winget-distribution.</summary>
+          <term key="kind" value="requirement" />
+        </index>
+        <statement>Requirement statement pending definition.</statement>
+        <rationale>Rationale pending definition.</rationale>
+      </requirement>
+    </requirements>
+    <acceptance>
+      <criterion id="20260827-crit-winget-distribution" decision="accepted">Product criterion pending definition.</criterion>
+    </acceptance>
+  </product>
+  <confirmations><confirmation id="20260827T025100Z-confirm-activate-winget-distribution" action="activate" decision="accepted" actor="product-owner" decided_at="2026-08-27T02:51:00Z"><summary>Owner approval to activate iteration 20260827-winget-distribution.</summary><requirements>
+    <requirement target="20260827-req-winget-distribution" decision="approved" />
+  </requirements></confirmation><confirmation id="20260827T025200Z-confirm-complete-winget-distribution" action="complete" decision="accepted" actor="product-owner" decided_at="2026-08-27T02:52:00Z"><summary>Product owner completion approval for 20260827-winget-distribution. All deliverables, embedded skills, zero-wrapper CLI, CI/CD and WinGet distribution verified.</summary><acceptance>
+    <criterion target="20260827-crit-winget-distribution" decision="accepted" />
+  </acceptance></confirmation></confirmations>
+</iteration>
+
+

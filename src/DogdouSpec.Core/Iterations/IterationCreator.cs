@@ -26,7 +26,8 @@ public static class IterationCreator
         string kind,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool activate = false)
     {
         clock ??= SystemClock.Instance;
 
@@ -79,11 +80,11 @@ public static class IterationCreator
             string specContent;
             if (string.Equals(kind, "feature", StringComparison.Ordinal))
             {
-                specContent = GenerateFeatureSpecXml(normalizedId, timePrefix, slug, isoTime);
+                specContent = GenerateFeatureSpecXml(normalizedId, timePrefix, slug, isoTime, activate);
             }
             else
             {
-                specContent = GenerateResearchSpecXml(normalizedId, timePrefix, slug, isoTime);
+                specContent = GenerateResearchSpecXml(normalizedId, timePrefix, slug, isoTime, activate);
             }
 
             var tasksContent = GenerateTasksXml(normalizedId, timePrefix, slug);
@@ -199,22 +200,38 @@ public static class IterationCreator
         fs.Flush(true);
     }
 
-    private static string GenerateFeatureSpecXml(string id, string date, string slug, string isoTime) =>
-$"""
+    private static string GenerateFeatureSpecXml(string id, string date, string slug, string isoTime, bool activate)
+    {
+        var status = activate ? "active" : "draft";
+        var reqStatus = activate ? "approved" : "proposed";
+        var confirmationsElement = activate
+            ? $"""
+  <confirmations>
+    <confirmation id="{date}T000000Z-confirm-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="{isoTime}">
+      <summary>Initial iteration activation.</summary>
+      <requirements>
+        <requirement target="{date}-req-{slug}" decision="approved"/>
+      </requirements>
+    </confirmation>
+  </confirmations>
+"""
+            : "  <confirmations/>";
+
+        return $"""
 <?xml version="1.0" encoding="utf-8"?>
 <iteration
   id="{id}"
   schema_version="1.0"
   revision="1"
   kind="feature"
-  status="draft"
+  status="{status}"
   created_at="{isoTime}"
   updated_at="{isoTime}">
   <index>
     <summary>Draft feature iteration {slug}.</summary>
     <term key="kind" value="feature"/>
     <term key="iteration" value="{id}"/>
-    <term key="status" value="draft"/>
+    <term key="status" value="{status}"/>
   </index>
   <product>
     <objective>Objective pending definition for {id}.</objective>
@@ -232,7 +249,7 @@ $"""
       <excluded/>
     </scope>
     <requirements>
-      <requirement id="{date}-req-{slug}" status="proposed">
+      <requirement id="{date}-req-{slug}" status="{reqStatus}">
         <index>
           <summary>Initial proposed requirement for {id}.</summary>
           <term key="kind" value="requirement"/>
@@ -245,27 +262,40 @@ $"""
       <criterion id="{date}-crit-{slug}" decision="pending">Product criterion pending definition.</criterion>
     </acceptance>
   </product>
-  <confirmations/>
+{confirmationsElement}
 </iteration>
 
 """.Replace("\r\n", "\n");
+    }
 
-    private static string GenerateResearchSpecXml(string id, string date, string slug, string isoTime) =>
-$"""
+    private static string GenerateResearchSpecXml(string id, string date, string slug, string isoTime, bool activate)
+    {
+        var status = activate ? "active" : "draft";
+        var confirmationsElement = activate
+            ? $"""
+  <confirmations>
+    <confirmation id="{date}T000000Z-confirm-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="{isoTime}">
+      <summary>Initial iteration activation.</summary>
+    </confirmation>
+  </confirmations>
+"""
+            : "  <confirmations/>";
+
+        return $"""
 <?xml version="1.0" encoding="utf-8"?>
 <iteration
   id="{id}"
   schema_version="1.0"
   revision="1"
   kind="research"
-  status="draft"
+  status="{status}"
   created_at="{isoTime}"
   updated_at="{isoTime}">
   <index>
     <summary>Draft research work {slug}.</summary>
     <term key="kind" value="research"/>
     <term key="iteration" value="{id}"/>
-    <term key="status" value="draft"/>
+    <term key="status" value="{status}"/>
   </index>
   <research>
     <objective>Research objective pending definition for {id}.</objective>
@@ -286,10 +316,11 @@ $"""
       <criterion id="{date}-crit-{slug}" decision="pending">Research criterion pending definition.</criterion>
     </acceptance>
   </research>
-  <confirmations/>
+{confirmationsElement}
 </iteration>
 
 """.Replace("\r\n", "\n");
+    }
 
     private static string GenerateTasksXml(string id, string date, string slug) =>
 $"""

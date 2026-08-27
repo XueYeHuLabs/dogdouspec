@@ -17,6 +17,7 @@ public static class WorkspaceInitializer
         string startDirectory)
     {
         string targetDogdouDir;
+        string projectRoot;
 
         if (!string.IsNullOrWhiteSpace(explicitWorkspaceRoot))
         {
@@ -31,15 +32,18 @@ public static class WorkspaceInitializer
             if (string.Equals(dirName, ".dogdouspec", StringComparison.OrdinalIgnoreCase))
             {
                 targetDogdouDir = fullPath;
+                projectRoot = Path.GetDirectoryName(fullPath) ?? fullPath;
             }
             else
             {
                 targetDogdouDir = Path.Combine(fullPath, ".dogdouspec");
+                projectRoot = fullPath;
             }
         }
         else
         {
-            targetDogdouDir = Path.Combine(Path.GetFullPath(startDirectory), ".dogdouspec");
+            projectRoot = Path.GetFullPath(startDirectory);
+            targetDogdouDir = Path.Combine(projectRoot, ".dogdouspec");
         }
 
         targetDogdouDir = PathSecurity.NormalizeSeparators(targetDogdouDir);

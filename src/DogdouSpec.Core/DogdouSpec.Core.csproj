@@ -9,6 +9,9 @@
   <ItemGroup>
     <EmbeddedResource Include="..\..\schemas\v1\*.xsd" LinkBase="Schemas\v1" LogicalName="schemas.v1.%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\..\templates\v1\*.xml" LinkBase="Templates\v1" LogicalName="templates.v1.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\templates\v1\AGENTS.md" LinkBase="Templates\v1" LogicalName="templates.v1.AGENTS.md" />
+    <EmbeddedResource Include="..\..\.agents\skills\dogdouspec\SKILL.md" LinkBase="Skills\dogdouspec" LogicalName="skills.dogdouspec.SKILL.md" />
+    <EmbeddedResource Include="..\..\.agents\skills\dogdouspec\references\*.md" LinkBase="Skills\dogdouspec\references" LogicalName="skills.dogdouspec.references.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

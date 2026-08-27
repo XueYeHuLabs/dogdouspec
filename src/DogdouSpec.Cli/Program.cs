@@ -26,6 +26,7 @@ public static class Program
             rootCommand.Add(ChangeCommand.BuildCommand());
             rootCommand.Add(BacklogCommand.BuildCommand());
             rootCommand.Add(TransactionCommand.BuildCommand());
+            rootCommand.Add(SkillCommand.BuildCommand());
 
             var parseResult = rootCommand.Parse(args);
             if (parseResult.Errors.Count > 0)
