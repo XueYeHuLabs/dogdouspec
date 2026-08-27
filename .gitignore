@@ -6,3 +6,7 @@ obj/
 TestResults/
 *.log
 .dogdouspec/_tmp/
+publish-out/
+*.zip
+*.sha256
+*.pfx

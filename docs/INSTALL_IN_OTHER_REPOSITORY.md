@@ -1,6 +1,8 @@
 # Deploying DogdouSpec to Another Repository
 
-This document provides a verified, agent-executable procedure for deploying **DogdouSpec** from a source repository into an existing Windows Git repository.
+> [!TIP]
+> **Preferred Modern Distribution**: For most use cases, DogdouSpec is installed globally via **WinGet** (`winget install Vixasol.DogdouSpec`) with zero wrapper scripts.
+> This document provides the authoritative air-gapped / repository-local source build procedure for environments where global package managers or PATH aliases are not permitted.
 
 ---
 

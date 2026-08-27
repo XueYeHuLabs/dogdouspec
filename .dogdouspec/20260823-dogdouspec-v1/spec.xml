@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<iteration id="20260823-dogdouspec-v1" schema_version="1.0" revision="3" kind="feature" status="active" created_at="2026-08-23T05:15:42Z" updated_at="2026-08-23T05:30:00Z">
+<iteration id="20260823-dogdouspec-v1" schema_version="1.0" revision="4" kind="feature" status="completed" created_at="2026-08-23T05:15:42Z" updated_at="2026-08-27T02:55:30Z" completed_at="2026-08-27T02:55:30Z">
   <index>
         <summary>DogdouSpec v1 repository-local iteration-first specification and task system.</summary>
         <term key="topic" value="dogdouspec-v1" />
         <term key="kind" value="feature" />
         <term key="iteration" value="20260823-dogdouspec-v1" />
-        <term key="status" value="active" />
+        <term key="status" value="completed" />
       </index>
   <product>
         <objective>A repository-local, iteration-first specification and task management engine built with C# on .NET 10, using XML and XPath 1.0 as the authoritative store and query mechanism without requiring global catalogs, daemon services, GUI dashboards, or MCP dependencies.</objective>
@@ -128,12 +128,12 @@
           </requirement>
         </requirements>
         <acceptance>
-          <criterion id="20260823-accept-local-cli-build" decision="pending">build.cmd builds all projects and runs 541+ tests cleanly with zero warnings and zero failures.</criterion>
-          <criterion id="20260823-accept-schema-conformance" decision="pending">All workspace XML documents strictly conform to authoritative v1 schemas with prospective validation.</criterion>
-          <criterion id="20260823-accept-xpath-projection" decision="pending">XPath query and search commands support variable substitution and projections with enforced size limits.</criterion>
-          <criterion id="20260823-accept-task-idempotency" decision="pending">Task update helper enforces state machine transitions and durable idempotency receipts.</criterion>
-          <criterion id="20260823-accept-gated-lifecycle" decision="pending">Readiness assessment is read-only and deterministic; confirmation acts as the owner authority gate.</criterion>
-          <criterion id="20260823-accept-self-hosting-bootstrap" decision="pending">Root workspace operates natively through CLI with repository Skill providing interactive workflow guidance.</criterion>
+          <criterion id="20260823-accept-local-cli-build" decision="accepted">build.cmd builds all projects and runs 541+ tests cleanly with zero warnings and zero failures.</criterion>
+          <criterion id="20260823-accept-schema-conformance" decision="accepted">All workspace XML documents strictly conform to authoritative v1 schemas with prospective validation.</criterion>
+          <criterion id="20260823-accept-xpath-projection" decision="accepted">XPath query and search commands support variable substitution and projections with enforced size limits.</criterion>
+          <criterion id="20260823-accept-task-idempotency" decision="accepted">Task update helper enforces state machine transitions and durable idempotency receipts.</criterion>
+          <criterion id="20260823-accept-gated-lifecycle" decision="accepted">Readiness assessment is read-only and deterministic; confirmation acts as the owner authority gate.</criterion>
+          <criterion id="20260823-accept-self-hosting-bootstrap" decision="accepted">Root workspace operates natively through CLI with repository Skill providing interactive workflow guidance.</criterion>
         </acceptance>
       </product>
   
@@ -189,5 +189,13 @@
     <decision target="20260823-dec-xml-xpath-limits" decision="accepted" />
     <decision target="20260823-dec-durable-idempotency" decision="accepted" />
     <decision target="20260823-dec-owner-authority-boundary" decision="accepted" />
-  </design></confirmation></confirmations></iteration>
+  </design></confirmation><confirmation id="20260827T025530Z-confirm-complete-v1" action="complete" decision="accepted" actor="product-owner" decided_at="2026-08-27T02:55:30Z"><summary>Owner completion approval for 20260823-dogdouspec-v1. Core specifications, CLI, validation, XPath, and tests verified.</summary><acceptance>
+    <criterion target="20260823-accept-local-cli-build" decision="accepted" />
+    <criterion target="20260823-accept-schema-conformance" decision="accepted" />
+    <criterion target="20260823-accept-xpath-projection" decision="accepted" />
+    <criterion target="20260823-accept-task-idempotency" decision="accepted" />
+    <criterion target="20260823-accept-gated-lifecycle" decision="accepted" />
+    <criterion target="20260823-accept-self-hosting-bootstrap" decision="accepted" />
+  </acceptance></confirmation></confirmations></iteration>
+
 

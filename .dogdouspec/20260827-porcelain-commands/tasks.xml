@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20260827-tasks-porcelain-commands" iteration="20260827-porcelain-commands" schema_version="1.0" revision="17">
+  <index>
+    <summary>Tasks for iteration 20260827-porcelain-commands.</summary>
+    <term key="iteration" value="20260827-porcelain-commands" />
+  </index>
+<task id="20260827-task-iteration-high-level-commands" status="done" created_at="2026-08-27T06:01:00Z" updated_at="2026-08-27T06:03:20Z" started_at="2026-08-27T06:03:00Z" completed_at="2026-08-27T06:03:20Z">
+    <index>
+      <summary>Implement iteration create --activate, iteration activate, and iteration complete</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Implement iteration create --activate, iteration activate, and iteration complete</title>
+    <objective>iteration create --activate, iteration activate, and iteration complete are implemented and working</objective>
+    <rationale>Provide high-level Porcelain commands for iteration lifecycle governance</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Iterations/**" />
+        <include path="src/DogdouSpec.Cli/Commands/IterationCommand.cs" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260827-porcelain-commands" relation="supports" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260827-task-iteration-high-level-commands-done" status="passed">iteration create --activate, iteration activate, and iteration complete are implemented and working</criterion>
+    </acceptance>
+    <context>
+      <summary>Provide high-level Porcelain commands for iteration lifecycle governance</summary>
+    </context>
+    <records><record id="20260827T060100Z-taskadd-iter-cmds-receipt" kind="discussion" status="informational" created_at="2026-08-27T06:01:00Z" actor="quick-task" operation_id="20260827T060100Z-taskadd-iter-cmds"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="dca512dc10a4b4aec4fc47a16bfb46d14d02aa165e39200269783a4f5f565e70" /></index><summary>Task addition receipt.</summary></record><record id="20260827T060300Z-record-start-iter-cmds" kind="start" status="informational" created_at="2026-08-27T06:03:00Z" actor="antigravity" operation_id="20260827T060300Z-taskstart-iter-cmds">
+      <summary>Starting task to implement iteration create --activate, iteration activate, and iteration complete.</summary>
+    </record><record id="20260827T060310Z-record-verify-iter-cmds" kind="verification" status="informational" created_at="2026-08-27T06:03:10Z" actor="antigravity" operation_id="20260827T060310Z-taskverify-iter-cmds">
+      <summary>Verified iteration create --activate, iteration activate, and iteration complete build cleanly.</summary>
+    </record><record id="20260827T060320Z-record-complete-iter-cmds" kind="completion" status="informational" created_at="2026-08-27T06:03:20Z" actor="antigravity" operation_id="20260827T060320Z-taskcomplete-iter-cmds">
+      <summary>Completed iteration create --activate, iteration activate, and iteration complete commands implementation.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-iteration-high-level-commands-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260827-task-task-high-level-commands" status="done" created_at="2026-08-27T06:01:30Z" updated_at="2026-08-27T06:05:35Z" started_at="2026-08-27T06:04:00Z" completed_at="2026-08-27T06:05:35Z">
+    <index>
+      <summary>Implement task start, task verify, and task finish high-level Porcelain commands</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Implement task start, task verify, and task finish high-level Porcelain commands</title>
+    <objective>task start, task verify, and task finish are implemented and allow zero-XML terminal interaction</objective>
+    <rationale>Provide ergonomic Porcelain commands for task execution without raw XML payload writing</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Cli/Commands/TaskCommand.cs" />
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260827-porcelain-commands" relation="supports" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260827-task-iteration-high-level-commands" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260827-task-task-high-level-commands-done" status="passed">task start, task verify, and task finish are implemented and allow zero-XML terminal interaction</criterion>
+    </acceptance>
+    <context>
+      <summary>Provide ergonomic Porcelain commands for task execution without raw XML payload writing</summary>
+    </context>
+    <records><record id="20260827T060130Z-taskadd-task-cmds-receipt" kind="discussion" status="informational" created_at="2026-08-27T06:01:30Z" actor="quick-task" operation_id="20260827T060130Z-taskadd-task-cmds"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="c4d03bba84bc46ecc87fcacb0f2bbf5de262063c757c9fa62c68ab370e50a2b1" /></index><summary>Task addition receipt.</summary></record><record id="20260827T060400Z-record-start-task-cmds" kind="start" status="informational" created_at="2026-08-27T06:04:00Z" actor="antigravity" operation_id="20260827T060400Z-taskstart-task-cmds">
+      <summary>Starting task to implement task start, task verify, and task finish high-level Porcelain commands.</summary>
+    </record><record id="20260827T060535Z-record-verify-727118462a2a4c2dbd163abcc94aba76" kind="verification" status="informational" created_at="2026-08-27T06:05:35Z" actor="agent" operation_id="20260827T060535Z-taskverify-5cd20bfcf64d42a5b04ca8794b24e988">
+      <summary>Verified task 20260827-task-task-high-level-commands.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-task-high-level-commands-done" relation="covers" />
+      </covers>
+    </record><record id="20260827T060535Z-record-complete-65098032b1af4b81a3f8f7a1c0be5e0a" kind="completion" status="informational" created_at="2026-08-27T06:05:35Z" actor="agent" operation_id="20260827T060535Z-taskcomplete-e3fc5db91d754ffda88e320cafa5381a">
+      <summary>Implemented task start, task verify, and task finish Porcelain commands</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-task-high-level-commands-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260827-task-skill-and-docs-update" status="done" created_at="2026-08-27T06:02:00Z" updated_at="2026-08-27T06:06:45Z" started_at="2026-08-27T06:05:52Z" completed_at="2026-08-27T06:06:45Z">
+    <index>
+      <summary>Update SKILL.md, references, and README.md with high-level command usage</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Update SKILL.md, references, and README.md with high-level command usage</title>
+    <objective>SKILL.md and README.md document the high-level Porcelain commands</objective>
+    <rationale>Document ergonomic Porcelain CLI commands in agent skills and user documentation</rationale>
+    <scope>
+      <repository path=".">
+        <include path=".agents/skills/dogdouspec/**" />
+        <include path="README.md" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260827-porcelain-commands" relation="supports" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260827-task-task-high-level-commands" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260827-task-skill-and-docs-update-done" status="passed">SKILL.md and README.md document the high-level Porcelain commands</criterion>
+    </acceptance>
+    <context>
+      <summary>Document ergonomic Porcelain CLI commands in agent skills and user documentation</summary>
+    </context>
+    <records><record id="20260827T060200Z-taskadd-docs-cmds-receipt" kind="discussion" status="informational" created_at="2026-08-27T06:02:00Z" actor="quick-task" operation_id="20260827T060200Z-taskadd-docs-cmds"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="a22f5f388a0c63676616c5e6c0bdf39d47fd25baaaf60ca1b94efea8bf5d5933" /></index><summary>Task addition receipt.</summary></record><record id="20260827T060552Z-record-start-f8044962a243425495f2b1f41420cf22" kind="start" status="informational" created_at="2026-08-27T06:05:52Z" actor="agent" operation_id="20260827T060552Z-taskstart-6d999069fc614a7c8ead76037d2ef938">
+      <summary>Starting Task 3: Update SKILL.md and documentation</summary>
+    </record><record id="20260827T060645Z-record-verify-ee263ab02f6e483e974cba6987a92499" kind="verification" status="informational" created_at="2026-08-27T06:06:45Z" actor="agent" operation_id="20260827T060645Z-taskverify-6796872814d0423babc7e70ea6502a78">
+      <summary>Verified task 20260827-task-skill-and-docs-update.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-skill-and-docs-update-done" relation="covers" />
+      </covers>
+    </record><record id="20260827T060645Z-record-complete-2e69e821f15340fa885dee63b8be9072" kind="completion" status="informational" created_at="2026-08-27T06:06:45Z" actor="agent" operation_id="20260827T060645Z-taskcomplete-011f861b2b994ac79a1388b70724dcec">
+      <summary>Completed updating SKILL.md, references, and README.md with Porcelain commands</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-skill-and-docs-update-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260827-task-tests-and-verification" status="done" created_at="2026-08-27T06:02:30Z" updated_at="2026-08-27T06:13:46Z" started_at="2026-08-27T06:07:00Z" completed_at="2026-08-27T06:13:46Z">
+    <index>
+      <summary>Add unit tests for high-level semantic commands and verify whole workspace</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Add unit tests for high-level semantic commands and verify whole workspace</title>
+    <objective>All unit tests pass and build.cmd succeeds with 0 errors and 0 warnings</objective>
+    <rationale>Ensure comprehensive test coverage for all new Porcelain CLI commands</rationale>
+    <scope>
+      <repository path=".">
+        <include path="tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260827-porcelain-commands" relation="supports" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260827-task-skill-and-docs-update" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260827-task-tests-and-verification-done" status="passed">All unit tests pass and build.cmd succeeds with 0 errors and 0 warnings</criterion>
+    </acceptance>
+    <context>
+      <summary>Ensure comprehensive test coverage for all new Porcelain CLI commands</summary>
+    </context>
+    <records><record id="20260827T060230Z-taskadd-tests-cmds-receipt" kind="discussion" status="informational" created_at="2026-08-27T06:02:30Z" actor="quick-task" operation_id="20260827T060230Z-taskadd-tests-cmds"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="b24913f19debb36a705455d2cd03b879456c190f99bdca58144fe7e5b0d054fa" /></index><summary>Task addition receipt.</summary></record><record id="20260827T060700Z-record-start-159fae64269e47ce829eba8c8fcd0a75" kind="start" status="informational" created_at="2026-08-27T06:07:00Z" actor="agent" operation_id="20260827T060700Z-taskstart-a2738b56741b455981cd9ce1dda44675">
+      <summary>Starting Task 4: Add unit tests for high-level semantic commands</summary>
+    </record><record id="20260827T061345Z-record-verify-5dd16948c98e434ea11dbd25779d2cc7" kind="verification" status="informational" created_at="2026-08-27T06:13:45Z" actor="agent" operation_id="20260827T061345Z-taskverify-0df6b92de1054aa6aa8b636ff108bd14">
+      <summary>Verified task 20260827-task-tests-and-verification.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-tests-and-verification-done" relation="covers" />
+      </covers>
+    </record><record id="20260827T061346Z-record-complete-3b70350a7592457b835f11bbb98523b8" kind="completion" status="informational" created_at="2026-08-27T06:13:46Z" actor="agent" operation_id="20260827T061346Z-taskcomplete-92ad62b954184d0d8e230f64a95bb1bd">
+      <summary>Added unit tests for all Porcelain commands and verified entire test suite passes cleanly</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-tests-and-verification-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task></tasks>

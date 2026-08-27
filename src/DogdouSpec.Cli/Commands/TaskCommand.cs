@@ -1,4 +1,8 @@
 using System.CommandLine;
+using System.Globalization;
+using System.Security;
+using System.Text;
+using System.Xml.Linq;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Security;
@@ -22,6 +26,9 @@ public static class TaskCommand
         taskCmd.Add(BuildNextCommand());
         taskCmd.Add(BuildScopeCommand());
         taskCmd.Add(BuildReviewCommand());
+        taskCmd.Add(BuildStartCommand());
+        taskCmd.Add(BuildVerifyCommand());
+        taskCmd.Add(BuildFinishCommand());
 
         return taskCmd;
     }
@@ -1055,5 +1062,518 @@ public static class TaskCommand
             return 0;
         });
         return command;
+    }
+
+    private static Command BuildStartCommand()
+    {
+        var cmd = new Command("start", "Conveniently transition a pending task to in-progress (mutating)");
+        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID" };
+        var iterationOption = new Option<string?>("--iteration") { Description = "Iteration ID (omitted auto-resolves if single iteration)" };
+        var summaryOption = new Option<string?>("--summary") { Description = "Start record summary rationale (optional)" };
+        var actorOption = new Option<string?>("--actor") { Description = "Actor attribution (defaults to 'agent')" };
+        var expectedRevOption = new Option<int?>("--expected-revision") { Description = "Expected tasks.xml revision (omitted auto-resolves current revision)" };
+        var workspaceOption = new Option<string?>("--workspace-root");
+        var formatOption = new Option<string?>("--format");
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { taskOption, iterationOption, summaryOption, actorOption, expectedRevOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, findErr) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || findErr != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task start", findErr!).Format(format));
+                return 2;
+            }
+
+            var iterId = IterationCommand.ResolveIterationId(parse.GetValue(iterationOption), root);
+            if (string.IsNullOrWhiteSpace(iterId))
+            {
+                var diagEnv = new DiagnosticsEnvelope("task start", Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "--iteration is required when multiple or zero candidate iterations exist."));
+                Console.Error.Write(diagEnv.Format(format));
+                return 2;
+            }
+
+            var taskId = parse.GetValue(taskOption)!;
+            var tasksPath = Path.Combine(root, iterId, "tasks.xml");
+            if (!File.Exists(tasksPath))
+            {
+                var diagEnv = new DiagnosticsEnvelope("task start", Diagnostic.Error(
+                    DiagnosticCodes.DocumentNotFound,
+                    $"tasks.xml not found for iteration '{iterId}'."));
+                Console.Error.Write(diagEnv.Format(format));
+                return 2;
+            }
+
+            XDocument tasksDoc;
+            try { tasksDoc = XDocument.Load(tasksPath); }
+            catch (Exception ex)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task start", Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to load tasks.xml: {ex.Message}")).Format(format));
+                return 2;
+            }
+
+            var expectedRev = parse.GetValue(expectedRevOption);
+            if (!expectedRev.HasValue)
+            {
+                if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev))
+                    expectedRev = rev;
+                else
+                    expectedRev = 1;
+            }
+
+            var nowUtc = DateTimeOffset.UtcNow;
+            var taskElem = tasksDoc.Descendants("task").FirstOrDefault(t => string.Equals((string?)t.Attribute("id"), taskId, StringComparison.Ordinal));
+            var taskCreatedAtStr = (string?)taskElem?.Attribute("created_at");
+            if (!string.IsNullOrWhiteSpace(taskCreatedAtStr) && DateTimeOffset.TryParse(taskCreatedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var parsedCreated) && nowUtc < parsedCreated)
+            {
+                nowUtc = parsedCreated;
+            }
+            var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+            var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-taskstart-{Guid.NewGuid():N}";
+            var recId = $"{nowUtc:yyyyMMddTHHmmssZ}-record-start-{Guid.NewGuid():N}";
+            var actor = parse.GetValue(actorOption) ?? "agent";
+            var summary = parse.GetValue(summaryOption) ?? $"Started task {taskId}.";
+
+            var requestXml = $"""
+<?xml version="1.0" encoding="utf-8"?>
+<task-update
+  id="{opId}"
+  transition="start"
+  actor="{actor}"
+  occurred_at="{isoTime}">
+  <records>
+    <record
+      id="{recId}"
+      kind="start"
+      status="informational"
+      created_at="{isoTime}"
+      actor="{actor}"
+      operation_id="{opId}">
+      <summary>{SecurityElement.Escape(summary)}</summary>
+    </record>
+  </records>
+</task-update>
+""";
+
+            var (success, envelope, diagnostics) = TaskUpdater.Update(
+                root,
+                iterId,
+                taskId,
+                expectedRev.Value,
+                requestXml);
+
+            if (!success || diagnostics.Count > 0 || envelope == null)
+            {
+                var d = new DiagnosticsEnvelope("task start", diagnostics);
+                Console.Error.Write(d.Format(format));
+                return d.GetExitCode();
+            }
+
+            Console.Out.Write(envelope.Format(format));
+            return 0;
+        });
+
+        return cmd;
+    }
+
+    private static Command BuildVerifyCommand()
+    {
+        var cmd = new Command("verify", "Conveniently transition an in-progress task to verification (mutating)");
+        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID" };
+        var iterationOption = new Option<string?>("--iteration") { Description = "Iteration ID (omitted auto-resolves if single iteration)" };
+        var coversOption = new Option<string[]>("--covers") { AllowMultipleArgumentsPerToken = true, Description = "Repeatable criterion target ID covered by this verification" };
+        var summaryOption = new Option<string?>("--summary") { Description = "Verification record summary rationale (optional)" };
+        var actorOption = new Option<string?>("--actor") { Description = "Actor attribution (defaults to 'agent')" };
+        var expectedRevOption = new Option<int?>("--expected-revision") { Description = "Expected tasks.xml revision (omitted auto-resolves current revision)" };
+        var workspaceOption = new Option<string?>("--workspace-root");
+        var formatOption = new Option<string?>("--format");
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { taskOption, iterationOption, coversOption, summaryOption, actorOption, expectedRevOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, findErr) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || findErr != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task verify", findErr!).Format(format));
+                return 2;
+            }
+
+            var iterId = IterationCommand.ResolveIterationId(parse.GetValue(iterationOption), root);
+            if (string.IsNullOrWhiteSpace(iterId))
+            {
+                var diagEnv = new DiagnosticsEnvelope("task verify", Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "--iteration is required when multiple or zero candidate iterations exist."));
+                Console.Error.Write(diagEnv.Format(format));
+                return 2;
+            }
+
+            var taskId = parse.GetValue(taskOption)!;
+            var tasksPath = Path.Combine(root, iterId, "tasks.xml");
+            if (!File.Exists(tasksPath))
+            {
+                var diagEnv = new DiagnosticsEnvelope("task verify", Diagnostic.Error(
+                    DiagnosticCodes.DocumentNotFound,
+                    $"tasks.xml not found for iteration '{iterId}'."));
+                Console.Error.Write(diagEnv.Format(format));
+                return 2;
+            }
+
+            XDocument tasksDoc;
+            try { tasksDoc = XDocument.Load(tasksPath); }
+            catch (Exception ex)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task verify", Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to load tasks.xml: {ex.Message}")).Format(format));
+                return 2;
+            }
+
+            var expectedRev = parse.GetValue(expectedRevOption);
+            if (!expectedRev.HasValue)
+            {
+                if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev))
+                    expectedRev = rev;
+                else
+                    expectedRev = 1;
+            }
+
+            var taskElem = tasksDoc.Descendants("task").FirstOrDefault(t => string.Equals((string?)t.Attribute("id"), taskId, StringComparison.Ordinal));
+            var taskCriteria = taskElem?.Descendants("criterion").Select(c => (string?)c.Attribute("id")).Where(id => !string.IsNullOrWhiteSpace(id)).ToList() ?? new List<string?>();
+
+            var coversList = (parse.GetValue(coversOption) ?? Array.Empty<string>()).ToList();
+            if (coversList.Count == 0 && taskCriteria.Count > 0)
+            {
+                coversList = taskCriteria!;
+            }
+
+            var nowUtc = DateTimeOffset.UtcNow;
+            var taskCreatedAtStr = (string?)taskElem?.Attribute("created_at");
+            if (!string.IsNullOrWhiteSpace(taskCreatedAtStr) && DateTimeOffset.TryParse(taskCreatedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var parsedCreated) && nowUtc < parsedCreated)
+            {
+                nowUtc = parsedCreated;
+            }
+            var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+            var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-taskverify-{Guid.NewGuid():N}";
+            var recId = $"{nowUtc:yyyyMMddTHHmmssZ}-record-verify-{Guid.NewGuid():N}";
+            var actor = parse.GetValue(actorOption) ?? "agent";
+            var summary = parse.GetValue(summaryOption) ?? $"Verified task {taskId}.";
+
+            var coversSb = new StringBuilder();
+            if (coversList.Count > 0)
+            {
+                coversSb.AppendLine("      <covers>");
+                foreach (var cov in coversList)
+                {
+                    coversSb.AppendLine(CultureInfo.InvariantCulture, $"        <ref scope=\"document\" target=\"{cov}\" relation=\"covers\"/>");
+                }
+                coversSb.AppendLine("      </covers>");
+            }
+
+            var requestXml = $"""
+<?xml version="1.0" encoding="utf-8"?>
+<task-update
+  id="{opId}"
+  transition="verify"
+  actor="{actor}"
+  occurred_at="{isoTime}">
+  <records>
+    <record
+      id="{recId}"
+      kind="verification"
+      status="informational"
+      created_at="{isoTime}"
+      actor="{actor}"
+      operation_id="{opId}">
+      <summary>{SecurityElement.Escape(summary)}</summary>
+{coversSb}    </record>
+  </records>
+</task-update>
+""";
+
+            var (success, envelope, diagnostics) = TaskUpdater.Update(
+                root,
+                iterId,
+                taskId,
+                expectedRev.Value,
+                requestXml);
+
+            if (!success || diagnostics.Count > 0 || envelope == null)
+            {
+                var d = new DiagnosticsEnvelope("task verify", diagnostics);
+                Console.Error.Write(d.Format(format));
+                return d.GetExitCode();
+            }
+
+            Console.Out.Write(envelope.Format(format));
+            return 0;
+        });
+
+        return cmd;
+    }
+
+    private static Command BuildFinishCommand()
+    {
+        var cmd = new Command("finish", "Conveniently complete a task from any active state and mark criteria passed (mutating)");
+        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID" };
+        var iterationOption = new Option<string?>("--iteration") { Description = "Iteration ID (omitted auto-resolves if single iteration)" };
+        var coversOption = new Option<string[]>("--covers") { AllowMultipleArgumentsPerToken = true, Description = "Repeatable criterion target ID covered by completion" };
+        var summaryOption = new Option<string?>("--summary") { Description = "Completion summary rationale (optional)" };
+        var actorOption = new Option<string?>("--actor") { Description = "Actor attribution (defaults to 'agent')" };
+        var expectedRevOption = new Option<int?>("--expected-revision") { Description = "Expected tasks.xml revision (omitted auto-resolves current revision)" };
+        var workspaceOption = new Option<string?>("--workspace-root");
+        var formatOption = new Option<string?>("--format");
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { taskOption, iterationOption, coversOption, summaryOption, actorOption, expectedRevOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, findErr) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || findErr != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task finish", findErr!).Format(format));
+                return 2;
+            }
+
+            var iterId = IterationCommand.ResolveIterationId(parse.GetValue(iterationOption), root);
+            if (string.IsNullOrWhiteSpace(iterId))
+            {
+                var diagEnv = new DiagnosticsEnvelope("task finish", Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "--iteration is required when multiple or zero candidate iterations exist."));
+                Console.Error.Write(diagEnv.Format(format));
+                return 2;
+            }
+
+            var taskId = parse.GetValue(taskOption)!;
+            var tasksPath = Path.Combine(root, iterId, "tasks.xml");
+            if (!File.Exists(tasksPath))
+            {
+                var diagEnv = new DiagnosticsEnvelope("task finish", Diagnostic.Error(
+                    DiagnosticCodes.DocumentNotFound,
+                    $"tasks.xml not found for iteration '{iterId}'."));
+                Console.Error.Write(diagEnv.Format(format));
+                return 2;
+            }
+
+            XDocument tasksDoc;
+            try { tasksDoc = XDocument.Load(tasksPath); }
+            catch (Exception ex)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task finish", Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to load tasks.xml: {ex.Message}")).Format(format));
+                return 2;
+            }
+
+            var expectedRev = parse.GetValue(expectedRevOption);
+            if (!expectedRev.HasValue)
+            {
+                if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev))
+                    expectedRev = rev;
+                else
+                    expectedRev = 1;
+            }
+
+            var taskElem = tasksDoc.Descendants("task").FirstOrDefault(t => string.Equals((string?)t.Attribute("id"), taskId, StringComparison.Ordinal));
+            if (taskElem == null)
+            {
+                var diagEnv = new DiagnosticsEnvelope("task finish", Diagnostic.Error(
+                    DiagnosticCodes.DocumentNotFound,
+                    $"Task '{taskId}' not found in iteration '{iterId}'."));
+                Console.Error.Write(diagEnv.Format(format));
+                return 2;
+            }
+
+            var currentStatus = (string?)taskElem.Attribute("status") ?? "pending";
+            var taskCriteria = taskElem.Descendants("criterion").Select(c => (string?)c.Attribute("id")).Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
+
+            var coversList = (parse.GetValue(coversOption) ?? Array.Empty<string>()).ToList();
+            if (coversList.Count == 0 && taskCriteria.Count > 0)
+            {
+                coversList = taskCriteria!;
+            }
+
+            var curRev = expectedRev.Value;
+            var actor = parse.GetValue(actorOption) ?? "agent";
+            var summary = parse.GetValue(summaryOption) ?? $"Completed task {taskId}.";
+
+            var taskCreatedAtStr = (string?)taskElem.Attribute("created_at");
+            var nowUtc = DateTimeOffset.UtcNow;
+            if (!string.IsNullOrWhiteSpace(taskCreatedAtStr) && DateTimeOffset.TryParse(taskCreatedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var parsedCreated) && nowUtc < parsedCreated)
+            {
+                nowUtc = parsedCreated;
+            }
+
+            // Step 1: If pending, transition to in-progress (start)
+            if (string.Equals(currentStatus, "pending", StringComparison.OrdinalIgnoreCase))
+            {
+                var stepTime = nowUtc;
+                var isoTime = stepTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+                var opId = $"{stepTime:yyyyMMddTHHmmssZ}-taskstart-{Guid.NewGuid():N}";
+                var recId = $"{stepTime:yyyyMMddTHHmmssZ}-record-start-{Guid.NewGuid():N}";
+
+                var startReqXml = $"""
+<?xml version="1.0" encoding="utf-8"?>
+<task-update
+  id="{opId}"
+  transition="start"
+  actor="{actor}"
+  occurred_at="{isoTime}">
+  <records>
+    <record
+      id="{recId}"
+      kind="start"
+      status="informational"
+      created_at="{isoTime}"
+      actor="{actor}"
+      operation_id="{opId}">
+      <summary>Started task {taskId}.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+                var (startSuccess, _, startDiags) = TaskUpdater.Update(root, iterId, taskId, curRev, startReqXml);
+                if (!startSuccess || startDiags.Count > 0)
+                {
+                    var d = new DiagnosticsEnvelope("task finish", startDiags);
+                    Console.Error.Write(d.Format(format));
+                    return d.GetExitCode();
+                }
+                curRev++;
+                currentStatus = "in-progress";
+                nowUtc = nowUtc.AddSeconds(1);
+            }
+
+            // Step 2: If in-progress, transition to verification (verify)
+            if (string.Equals(currentStatus, "in-progress", StringComparison.OrdinalIgnoreCase))
+            {
+                var stepTime = nowUtc;
+                var isoTime = stepTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+                var opId = $"{stepTime:yyyyMMddTHHmmssZ}-taskverify-{Guid.NewGuid():N}";
+                var recId = $"{stepTime:yyyyMMddTHHmmssZ}-record-verify-{Guid.NewGuid():N}";
+
+                var verifyCovers = new StringBuilder();
+                if (coversList.Count > 0)
+                {
+                    verifyCovers.AppendLine("      <covers>");
+                    foreach (var cov in coversList)
+                    {
+                        verifyCovers.AppendLine(CultureInfo.InvariantCulture, $"        <ref scope=\"document\" target=\"{cov}\" relation=\"covers\"/>");
+                    }
+                    verifyCovers.AppendLine("      </covers>");
+                }
+
+                var verifyReqXml = $"""
+<?xml version="1.0" encoding="utf-8"?>
+<task-update
+  id="{opId}"
+  transition="verify"
+  actor="{actor}"
+  occurred_at="{isoTime}">
+  <records>
+    <record
+      id="{recId}"
+      kind="verification"
+      status="informational"
+      created_at="{isoTime}"
+      actor="{actor}"
+      operation_id="{opId}">
+      <summary>Verified task {taskId}.</summary>
+{verifyCovers}    </record>
+  </records>
+</task-update>
+""";
+                var (verifySuccess, _, verifyDiags) = TaskUpdater.Update(root, iterId, taskId, curRev, verifyReqXml);
+                if (!verifySuccess || verifyDiags.Count > 0)
+                {
+                    var d = new DiagnosticsEnvelope("task finish", verifyDiags);
+                    Console.Error.Write(d.Format(format));
+                    return d.GetExitCode();
+                }
+                curRev++;
+                currentStatus = "verification";
+                nowUtc = nowUtc.AddSeconds(1);
+            }
+
+            // Step 3: Transition verification to done (complete)
+            {
+                var stepTime = nowUtc;
+                var isoTime = stepTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+                var opId = $"{stepTime:yyyyMMddTHHmmssZ}-taskcomplete-{Guid.NewGuid():N}";
+                var compRecId = $"{stepTime:yyyyMMddTHHmmssZ}-record-complete-{Guid.NewGuid():N}";
+
+                var criteriaSb = new StringBuilder();
+                if (taskCriteria.Count > 0)
+                {
+                    criteriaSb.AppendLine("  <acceptance>");
+                    foreach (var crit in taskCriteria)
+                    {
+                        criteriaSb.AppendLine(CultureInfo.InvariantCulture, $"    <criterion target=\"{crit}\" result=\"passed\"/>");
+                    }
+                    criteriaSb.AppendLine("  </acceptance>");
+                }
+
+                var compCovers = new StringBuilder();
+                if (coversList.Count > 0)
+                {
+                    compCovers.AppendLine("      <covers>");
+                    foreach (var cov in coversList)
+                    {
+                        compCovers.AppendLine(CultureInfo.InvariantCulture, $"        <ref scope=\"document\" target=\"{cov}\" relation=\"covers\"/>");
+                    }
+                    compCovers.AppendLine("      </covers>");
+                }
+
+                var compReqXml = $"""
+<?xml version="1.0" encoding="utf-8"?>
+<task-update
+  id="{opId}"
+  transition="complete"
+  actor="{actor}"
+  occurred_at="{isoTime}">
+{criteriaSb}  <records>
+    <record
+      id="{compRecId}"
+      kind="completion"
+      status="informational"
+      created_at="{isoTime}"
+      actor="{actor}"
+      operation_id="{opId}">
+      <summary>{SecurityElement.Escape(summary)}</summary>
+{compCovers}    </record>
+  </records>
+</task-update>
+""";
+
+                var (success, envelope, diagnostics) = TaskUpdater.Update(
+                    root,
+                    iterId,
+                    taskId,
+                    curRev,
+                    compReqXml);
+
+                if (!success || diagnostics.Count > 0 || envelope == null)
+                {
+                    var d = new DiagnosticsEnvelope("task finish", diagnostics);
+                    Console.Error.Write(d.Format(format));
+                    return d.GetExitCode();
+                }
+
+                Console.Out.Write(envelope.Format(format));
+                return 0;
+            }
+        });
+
+        return cmd;
     }
 }

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20260827-tasks-winget-distribution" iteration="20260827-winget-distribution" schema_version="1.0" revision="17">
+  <index>
+    <summary>Tasks for iteration 20260827-winget-distribution.</summary>
+    <term key="iteration" value="20260827-winget-distribution" />
+  </index>
+<task id="20260827-task-embed-skills-and-scaffold" status="done" created_at="2026-08-27T01:54:00Z" updated_at="2026-08-27T01:58:30Z" started_at="2026-08-27T01:55:00Z" completed_at="2026-08-27T01:58:30Z">
+    <index>
+      <summary>Embed skill and guidelines in DogdouSpec.Core and enhance workspace init</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Embed skill and guidelines in DogdouSpec.Core and enhance workspace init</title>
+    <objective>EmbeddedResources embeds SKILL.md, references, and AGENTS.md template, and WorkspaceInitializer scaffolds .agents/skills/dogdouspec and merges AGENTS.md.</objective>
+    <rationale>Enable dogdouspec workspace init to autonomously unpack skills and AGENTS.md directly without repo-local binary or external copy scripts.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/**" />
+        <include path="src/DogdouSpec.Cli/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260827-winget-distribution" relation="supports" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260827-task-embed-skills-and-scaffold-done" status="passed">EmbeddedResources embeds SKILL.md, references, and AGENTS.md template, and WorkspaceInitializer scaffolds .agents/skills/dogdouspec and merges AGENTS.md.</criterion>
+    </acceptance>
+    <context>
+      <summary>Enable dogdouspec workspace init to autonomously unpack skills and AGENTS.md directly without repo-local binary or external copy scripts.</summary>
+    </context>
+    <records><record id="20260827T015400Z-taskadd-embed-skills-receipt" kind="discussion" status="informational" created_at="2026-08-27T01:54:00Z" actor="quick-task" operation_id="20260827T015400Z-taskadd-embed-skills"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="8f18586200cf8b1545ff7ddd11abe040736dba7b2d4150121ec658cbd636cb84" /></index><summary>Task addition receipt.</summary></record><record id="20260827T015500Z-record-start-embed-skills" kind="start" status="informational" created_at="2026-08-27T01:55:00Z" actor="antigravity" operation_id="20260827T015500Z-taskstart-embed-skills">
+      <summary>Starting task to embed skill and AGENTS.md template into DogdouSpec.Core and enhance workspace init.</summary>
+    </record><record id="20260827T015800Z-record-verify-embed-skills" kind="verification" status="informational" created_at="2026-08-27T01:58:00Z" actor="antigravity" operation_id="20260827T015800Z-taskverify-embed-skills">
+      <summary>Embedded skill resources, AGENTS.md template, WorkspaceInitializer scaffolding, and SkillCommand sync/export verified with unit and CLI tests.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-embed-skills-and-scaffold-done" relation="covers" />
+      </covers>
+    </record><record id="20260827T015830Z-record-complete-embed-skills" kind="completion" status="informational" created_at="2026-08-27T01:58:30Z" actor="antigravity" operation_id="20260827T015830Z-taskcomplete-embed-skills">
+      <summary>Successfully embedded Skill and AGENTS.md template in DogdouSpec.Core and enhanced WorkspaceInitializer to scaffold .agents/skills/dogdouspec and merge AGENTS.md.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-embed-skills-and-scaffold-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260827-task-zero-wrapper-and-skill-preflight" status="done" created_at="2026-08-27T01:54:10Z" updated_at="2026-08-27T02:01:30Z" started_at="2026-08-27T01:59:00Z" completed_at="2026-08-27T02:01:30Z">
+    <index>
+      <summary>Remove dogdouspec.cmd and implement Fail-Closed pre-flight check in SKILL.md</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Remove dogdouspec.cmd and implement Fail-Closed pre-flight check in SKILL.md</title>
+    <objective>SKILL.md specifies Phase 0 preflight check with winget install prompt, AGENTS.md reflects global CLI, and dogdouspec.cmd is removed from repo root and docs.</objective>
+    <rationale>Transition to global dogdouspec CLI, eliminate dogdouspec.cmd from target repos, and ensure agents fail closed with winget guidance when CLI is missing.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="AGENTS.md" />
+        <include path=".agents/skills/dogdouspec/**" />
+        <include path="docs/**" />
+        <include path="README.md" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260827-winget-distribution" relation="supports" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260827-task-embed-skills-and-scaffold" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260827-task-zero-wrapper-and-skill-preflight-done" status="passed">SKILL.md specifies Phase 0 preflight check with winget install prompt, AGENTS.md reflects global CLI, and dogdouspec.cmd is removed from repo root and docs.</criterion>
+    </acceptance>
+    <context>
+      <summary>Transition to global dogdouspec CLI, eliminate dogdouspec.cmd from target repos, and ensure agents fail closed with winget guidance when CLI is missing.</summary>
+    </context>
+    <records><record id="20260827T015410Z-taskadd-zero-wrapper-receipt" kind="discussion" status="informational" created_at="2026-08-27T01:54:10Z" actor="quick-task" operation_id="20260827T015410Z-taskadd-zero-wrapper"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="fa02d0bff30935553de9ab5464a0f4efad19513f633141ec795340e07dca24fb" /></index><summary>Task addition receipt.</summary></record><record id="20260827T015900Z-record-start-zero-wrapper" kind="start" status="informational" created_at="2026-08-27T01:59:00Z" actor="antigravity" operation_id="20260827T015900Z-taskstart-zero-wrapper">
+      <summary>Starting task to update SKILL.md with Phase 0 preflight check, update AGENTS.md, docs, and remove dogdouspec.cmd from repo root.</summary>
+    </record><record id="20260827T020100Z-record-verify-zero-wrapper" kind="verification" status="informational" created_at="2026-08-27T02:01:00Z" actor="antigravity" operation_id="20260827T020100Z-taskverify-zero-wrapper">
+      <summary>Verified SKILL.md Phase 0 preflight check and winget prompt, AGENTS.md global CLI rules, README.md, and removal of dogdouspec.cmd from repo root.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-zero-wrapper-and-skill-preflight-done" relation="covers" />
+      </covers>
+    </record><record id="20260827T020130Z-record-complete-zero-wrapper" kind="completion" status="informational" created_at="2026-08-27T02:01:30Z" actor="antigravity" operation_id="20260827T020130Z-taskcomplete-zero-wrapper">
+      <summary>Completed Task 2: Standardized on global dogdouspec CLI, added Phase 0 preflight check and winget prompt in SKILL.md, updated AGENTS.md, and cleaned dogdouspec.cmd from repository root.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-zero-wrapper-and-skill-preflight-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260827-task-winget-release-and-ci" status="done" created_at="2026-08-27T01:54:20Z" updated_at="2026-08-27T02:02:45Z" started_at="2026-08-27T02:01:45Z" completed_at="2026-08-27T02:02:45Z">
+    <index>
+      <summary>Configure GitHub Actions release workflow and WinGet manifest generation</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Configure GitHub Actions release workflow and WinGet manifest generation</title>
+    <objective>GitHub Actions workflow builds AOT artifacts for win-x64, packages portable zip, and generates WinGet manifest.</objective>
+    <rationale>Automate native AOT binary packaging and WinGet manifest publication on GitHub release tags.</rationale>
+    <scope>
+      <repository path=".">
+        <include path=".github/workflows/**" />
+        <include path="docs/**" />
+        <include path="tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260827-winget-distribution" relation="supports" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260827-task-zero-wrapper-and-skill-preflight" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260827-task-winget-release-and-ci-done" status="passed">GitHub Actions workflow builds AOT artifacts for win-x64, packages portable zip, and generates WinGet manifest.</criterion>
+    </acceptance>
+    <context>
+      <summary>Automate native AOT binary packaging and WinGet manifest publication on GitHub release tags.</summary>
+    </context>
+    <records><record id="20260827T015420Z-taskadd-winget-release-receipt" kind="discussion" status="informational" created_at="2026-08-27T01:54:20Z" actor="quick-task" operation_id="20260827T015420Z-taskadd-winget-release"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="855728601999dce6673754652ddd9674f6ac06e0e6adb71c4ce02e029324e7c0" /></index><summary>Task addition receipt.</summary></record><record id="20260827T020145Z-record-start-winget-release" kind="start" status="informational" created_at="2026-08-27T02:01:45Z" actor="antigravity" operation_id="20260827T020145Z-taskstart-winget-release">
+      <summary>Starting task to create GitHub Actions release workflow and WinGet manifest package configuration.</summary>
+    </record><record id="20260827T020215Z-record-verify-winget-release" kind="verification" status="informational" created_at="2026-08-27T02:02:15Z" actor="antigravity" operation_id="20260827T020215Z-taskverify-winget-release">
+      <summary>Verified CI workflow, Release Native AOT packaging workflow, and WinGet YAML manifests.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-winget-release-and-ci-done" relation="covers" />
+      </covers>
+    </record><record id="20260827T020245Z-record-complete-winget-release" kind="completion" status="informational" created_at="2026-08-27T02:02:45Z" actor="antigravity" operation_id="20260827T020245Z-taskcomplete-winget-release">
+      <summary>Completed Task 3: Created GitHub Actions CI/CD workflows and WinGet portable manifest templates.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-winget-release-and-ci-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260827-task-test-and-verify" status="done" created_at="2026-08-27T01:54:30Z" updated_at="2026-08-27T02:16:00Z" started_at="2026-08-27T02:03:00Z" completed_at="2026-08-27T02:16:00Z">
+    <index>
+      <summary>Update test suites and verify whole workspace</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Update test suites and verify whole workspace</title>
+    <objective>build.cmd passes all test suites and dogdouspec validate passes with 0 errors.</objective>
+    <rationale>Ensure all unit tests and integration tests pass with 0 errors and 0 warnings, and workspace validation passes.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260827-winget-distribution" relation="supports" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260827-task-winget-release-and-ci" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260827-task-test-and-verify-done" status="passed">build.cmd passes all test suites and dogdouspec validate passes with 0 errors.</criterion>
+    </acceptance>
+    <context>
+      <summary>Ensure all unit tests and integration tests pass with 0 errors and 0 warnings, and workspace validation passes.</summary>
+    </context>
+    <records><record id="20260827T015430Z-taskadd-test-verify-receipt" kind="discussion" status="informational" created_at="2026-08-27T01:54:30Z" actor="quick-task" operation_id="20260827T015430Z-taskadd-test-verify"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="a9982dc9700405a5cc9c0f64b01d85295f5b7ce32ef92dd9325bf1265ef7efa4" /></index><summary>Task addition receipt.</summary></record><record id="20260827T020300Z-record-start-test-verify" kind="start" status="informational" created_at="2026-08-27T02:03:00Z" actor="antigravity" operation_id="20260827T020300Z-taskstart-test-verify">
+      <summary>Starting task to update test suites, fix any flaky tests, and verify the whole workspace.</summary>
+    </record><record id="20260827T021545Z-record-verify-test-verify" kind="verification" status="informational" created_at="2026-08-27T02:15:45Z" actor="antigravity" operation_id="20260827T021545Z-taskverify-test-verify">
+      <summary>Verified all 657 tests pass in build.cmd with 0 errors and 0 warnings, and dogdouspec validate reports valid=true across all 8 documents.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-test-and-verify-done" relation="covers" />
+      </covers>
+    </record><record id="20260827T021600Z-record-complete-test-verify" kind="completion" status="informational" created_at="2026-08-27T02:16:00Z" actor="antigravity" operation_id="20260827T021600Z-taskcomplete-test-verify">
+      <summary>Completed Task 4: Verified all test suites pass with 0 errors and 0 warnings and whole-workspace validation passes.</summary>
+      <covers>
+        <ref scope="document" target="20260827-task-test-and-verify-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task></tasks>

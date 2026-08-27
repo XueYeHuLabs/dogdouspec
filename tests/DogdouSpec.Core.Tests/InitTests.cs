@@ -64,6 +64,15 @@ public sealed class InitTests
         Assert.IsTrue(File.Exists(knowledgePath));
         Assert.IsTrue(File.Exists(backlogPath));
 
+        // Check EmbeddedResources methods
+        Assert.IsNotNull(EmbeddedResources.GetAgentsTemplateText());
+        Assert.IsTrue(EmbeddedResources.GetAgentsTemplateText()!.Contains("DogdouSpec Workflow", StringComparison.OrdinalIgnoreCase));
+        foreach (var relPath in EmbeddedResources.SkillFilePaths)
+        {
+            var content = EmbeddedResources.GetSkillText(relPath);
+            Assert.IsNotNull(content, $"Skill resource {relPath} must exist in EmbeddedResources");
+        }
+
         // Validate created files against embedded schemas
         var validationResult = SchemaValidator.Validate(root);
         Assert.IsTrue(validationResult.IsValid, "Newly initialized workspace must pass schema validation");

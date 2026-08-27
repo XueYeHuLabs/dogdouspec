@@ -1,20 +1,36 @@
 ---
 name: dogdouspec
-description: Comprehensive workflow instructions for managing project iterations, specifications, and tasks in DogdouSpec workspaces using the repo-local CLI. Activate when planning or executing complex, long-cycle iterations, or when explicitly requested by the user to use DogdouSpec; do not use for routine ad-hoc coding or lightweight tasks.
+description: Comprehensive workflow instructions for managing project iterations, specifications, and tasks in DogdouSpec workspaces using the global CLI. Activate when planning or executing complex, long-cycle iterations, or when explicitly requested by the user to use DogdouSpec; do not use for routine ad-hoc coding or lightweight tasks.
 ---
 
 # DogdouSpec Workflow Guide
 
-DogdouSpec is a repository-local, iteration-first specification and task management system designed to keep multi-step, complex engineering tasks structured, token-efficient, and resilient across AI coding sessions. Authoritative state is stored in XML documents under `.dogdouspec/` and validated against XSD v1 schemas.
+DogdouSpec is an iteration-first specification and task management system designed to keep multi-step, complex engineering tasks structured, token-efficient, and resilient across AI coding sessions. Authoritative state is stored in XML documents under `.dogdouspec/` and validated against XSD v1 schemas.
 
-## When to Use DogdouSpec
+---
 
-- **Recommended**: Complex features, multi-step iterations, formal spec/requirement governance, architectural changes, or when cross-session/multi-agent task handoff is needed.
-- **Bypass / Do Not Use**: Routine bug fixes, minor documentation updates, single-commit refactorings, or lightweight ad-hoc tasks. For those, make code changes directly and rely on standard Git commit messages without creating or mutating DogdouSpec iterations.
+## 1. Design Philosophy & When to Use DogdouSpec
 
-## Core Invariants (When Using DogdouSpec)
+### The Core Problem DogdouSpec Solves
+Traditional monolithic markdown files (e.g., `TODO.md`, `PLAN.md`, `TASKS.md`) impose a severe cognitive and token burden on AI coding agents. As sessions grow, repeatedly loading and parsing large markdown task graphs causes **context drift**, **lost constraints**, **hallucinated checkboxes**, and **massive token waste**.
 
-1. **Repository-Local Execution**: Use `.\dogdouspec.cmd` (Windows) or `dotnet run --project src/DogdouSpec.Cli/DogdouSpec.Cli.csproj --` (cross-platform). No global tools, background daemons, or MCP servers are required.
+DogdouSpec replaces unstructured markdown tracking with **schema-validated XML artifacts, deterministic concurrency locks, and two-phase XPath queries (`ds:filter`)**, loading only the active task's minimal context (saving ~90% tokens per step) and preventing context corruption across multi-session or multi-agent handoffs.
+
+### Two Explicit Operating Modes (Avoid False Friction)
+
+| Mode | Applicable Scenarios | Workflow & Overhead |
+|---|---|---|
+| ⚡ **Mode A: Direct Execution** *(Default for Minor Work)* | Standalone bug fixes, single-file refactorings, script tweaks, typo corrections, or bounded changes completed in a single commit. | **Zero DogdouSpec Overhead**: Do **NOT** create, query, or mutate `.dogdouspec/` iterations or tasks. Make code changes directly, run tests, and record full rationale in the Git Commit Message (Title + numbered details). |
+| 🛡️ **Mode B: Governed Iterations** *(Complex & Multi-Step)* | Multi-step feature roadmaps, architectural overhauls, formal spec/acceptance gating, cross-session handoffs, or multi-agent collaboration. | **Full DogdouSpec Governance**: Follow the two-phase query pattern, task state transitions (`pending` -> `in-progress` -> `verification` -> `done`), and owner confirmation gates. |
+
+> [!IMPORTANT]
+> **Anti-Pattern Guard**: Never create or mutate DogdouSpec iterations for trivial single-commit tasks. Standard Git commit messages already explain bounded changes with zero friction. Use DogdouSpec when durable iteration governance and token-efficient state tracking are truly required.
+
+---
+
+## 2. Core Invariants (When Using DogdouSpec)
+
+1. **Global CLI Execution & Pre-flight**: Use the global `dogdouspec <command>`. Before running commands, verify `dogdouspec --version`. If `dogdouspec` is missing, fail closed and prompt the user to install via `winget install Vixasol.DogdouSpec`. No repository-local wrapper scripts (`dogdouspec.cmd`) or background daemons are required.
 2. **Never Edit Managed XML Directly**: Never edit, write, or copy `.dogdouspec/*.xml` using text editors or scripts. All mutations must pass through the public CLI (`task update`, `task review`, `task add`, `task revise`, `task split`, `requirement propose`, `change propose`, `change apply`, `append`, `transaction apply`, `iteration confirm`).
 3. **Two-Phase Query Pattern**: Query compact indexes first (`ds:filter`), then load full task details only for the active task. Never load whole task graphs into context.
 4. **Exact Revisions & Post-Mutation Re-Query**: Always pass exact expected revisions to mutating commands. After each mutation, validate the workspace with `dogdouspec validate` and re-query target documents.
@@ -24,25 +40,44 @@ DogdouSpec is a repository-local, iteration-first specification and task managem
 
 ---
 
-## Standard Agent Workflow Loop
+## 3. Standard Agent Workflow Loop (When in Mode B)
 
 ```mermaid
 flowchart TD
-    A["1. Workspace Discovery & Validation"] --> B["2. Index-First Task Selection"]
+    Z["0. Environment Pre-flight (dogdouspec --version)"] --> A["1. Workspace Discovery & Validation"]
+    A --> B["2. Index-First Task Selection"]
     B --> C["3. Load Full Selected Task"]
     C --> D["4. Execute & Verify Code (build.cmd)"]
     D --> E["5. Task Update (verify -> complete)"]
     E --> F["6. Validate Workspace & Check Next Task"]
 ```
 
+### 0. Environment Pre-flight (Discovery & Fail-Closed Guard)
+
+Before executing DogdouSpec commands, verify that `dogdouspec` is available in PATH:
+
+```powershell
+dogdouspec --version
+```
+
+> [!IMPORTANT]
+> **Fail-Closed Guard**: If `dogdouspec` is not found or fails to execute:
+> 1. **STOP immediately**. Do NOT attempt to read or edit `.dogdouspec/*.xml` directly.
+> 2. Output the following user instruction:
+>    > ⚠️ **DogdouSpec CLI is not installed on this system.**
+>    > Please install it via WinGet:
+>    > ```powershell
+>    > winget install Vixasol.DogdouSpec
+>    > ```
+
 ### 1. Workspace Discovery & Validation
 
 Verify workspace health and list active iterations:
 
 ```powershell
-.\dogdouspec.cmd workspace discover --format xml
-.\dogdouspec.cmd validate --format xml
-.\dogdouspec.cmd iteration list --format xml
+dogdouspec workspace discover --format xml
+dogdouspec validate --format xml
+dogdouspec iteration list --format xml
 ```
 
 ### 2. Index-First Task Selection (Two-Phase Query)
@@ -51,101 +86,81 @@ Use two explicit compact queries to derive the next actionable task:
 
 1. **Resume In-Progress or Verification Task** (Highest Priority):
    ```powershell
-   .\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "ds:filter(/tasks/task[@status='in-progress' or @status='verification'][1], '@id', '@status', '@agent', 'index')" --format xml
+   dogdouspec query --document "<ITERATION_ID>/tasks.xml" --xpath "ds:filter(/tasks/task[@status='in-progress' or @status='verification'][1], '@id', '@status', '@agent', 'index')" --format xml
    ```
 
 2. **Next Ready Pending Task** (If no task is in-progress or in verification):
    ```powershell
-   .\dogdouspec.cmd task next --iteration "<ITERATION_ID>" --format xml
+   dogdouspec task next --iteration "<ITERATION_ID>" --format xml
    ```
 
    This public read-only helper is mandatory whenever the active-task query is
    empty. A pending-task XPath is document-local and cannot prove readiness for
    `depends-on` references in another iteration or document.
 
-*Note: Blocked tasks (`@status='blocked'`) are reported separately to resolve blockers or escalate.*
-
 ### 3. Load Full Selected Task
 
 Load the complete task document by ID:
 
 ```powershell
-.\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id='<TASK_ID>']" --format xml
+dogdouspec query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id='<TASK_ID>']" --format xml
 ```
 
 Identify objectives, scope includes/excludes, origin requirement, acceptance criteria, constraints, and previous records before modifying code.
 
 ### 4. Technical Execution & State Transitions
 
+#### ⚡ Fast-Path: High-Level Porcelain Commands (Zero-XML in Terminal — Recommended)
+
 1. **Start Task** (transitions `pending` -> `in-progress`):
    ```powershell
-   Get-Content update_start.xml -Raw | .\dogdouspec.cmd task update --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin --format xml
+   dogdouspec task start --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--summary "..."] --format xml
    ```
 2. **Implement & Build**:
    - Make necessary code and test changes.
-   - Run `.\build.cmd` to compile and execute all tests.
+   - Run `.\build.cmd` (or project build command) to compile and execute all tests.
 3. **Verify Task** (transitions `in-progress` -> `verification`):
    ```powershell
-   Get-Content update_verify.xml -Raw | .\dogdouspec.cmd task update --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin --format xml
+   dogdouspec task verify --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--covers "<CRITERION_ID>"] [--summary "..."] --format xml
    ```
-4. **Review Gate, When Required**: If the selected Task contains `<review required="true">`, submit `task review` while it is in `verification`. Approval actor must differ from Task `@agent`; this is provenance separation, not authenticated identity. `changes-requested` creates an active finding and returns the Task to `in-progress`, so correct it, resolve the finding, verify again, and obtain fresh approval.
+4. **Review Gate, When Required**: If the selected Task contains `<review required="true">`, submit `task review` while it is in `verification`.
    ```powershell
-   Get-Content task_review.xml -Raw | .\dogdouspec.cmd task review --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin --format xml
+   Get-Content task_review.xml -Raw | dogdouspec task review --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin --format xml
    ```
-5. **Complete Task** (transitions `verification` -> `done`):
+5. **Complete Task** (transitions `verification` -> `done` or atomic finish):
    ```powershell
-   Get-Content update_complete.xml -Raw | .\dogdouspec.cmd task update --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin --format xml
+   # Standard finish:
+   dogdouspec task finish --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--summary "..."] --format xml
    ```
+
+#### 🛡️ Low-Level Plumbing Fallback (Raw XML Payload)
+If detailed manual record payloads are required:
+- `dogdouspec task update --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin/--file <PATH> --format xml`
 
 ### 5. Task & Requirement Change Decision Tree
 
 When requirements, scope, or architecture need adjustment during an iteration:
 
-- **Elaborating an Active or Pending Task**: Use `dogdouspec task revise` to add constraints, acceptance criteria, or dependencies, and append discussion records without modifying decided product scope. Once a task has started, retain its rationale and only submit an additive scope expansion; record changed reasoning as discussion.
-- **Adding Bounded Work for Immediate Execution**: Use `dogdouspec task quick --title ... --scope ... --done-when ... --why ... [--start]`. It remains a normal Task; omit `--origin` only for operational maintenance. Deferred work belongs in backlog.
+- **Elaborating an Active or Pending Task**: Use `dogdouspec task revise` to add constraints, acceptance criteria, or dependencies.
+- **Adding Bounded Work for Immediate Execution**: Use `dogdouspec task quick --title ... --scope ... --done-when ... --why ... [--start]`.
 - **Adding a New Planned Technical Task**: Use `dogdouspec task add` to add a pending task referencing an existing approved requirement.
-- **Deferred or Material Work**: Put work not ready to execute in backlog. If it changes product behavior, architecture, requirements, or owner acceptance boundaries, use `change propose`, not `task quick` or `task revise`.
-- **Backlog Lifecycle**: Use `dogdouspec backlog add` for a credible non-blocking obligation, `backlog list` to inspect it, and `backlog schedule|complete|cancel` for its governed disposition. Supply the exact `backlog.xml` revision and stable replay IDs. A `--resolving-task` link is backlog evidence only and never changes that Task's origin.
+- **Deferred or Material Work**: Put work not ready to execute in backlog (`dogdouspec backlog add`). If it changes product behavior, architecture, requirements, or owner acceptance boundaries, use `change propose`.
 - **Splitting a Complex Task**: Use `dogdouspec task split` to mark the parent task `superseded`, `transferred`, or `cancelled` and add 2+ focused pending subtasks atomically.
-- **Proposing a New Requirement**: Use `dogdouspec requirement propose` to add a requirement with `status="proposed"`. (Technical agents cannot self-approve; owner confirmation via `iteration confirm` is required).
-- **Handling Mid-Flight Surprises / Material Scope Gaps**:
-  1. Use `dogdouspec change propose` to attach an active finding record to the task, freeze target tasks to `blocked`, and add proposed requirements to `spec.xml`.
-  2. Ask the human product owner to confirm replanning (`dogdouspec iteration confirm --stdin` with `action="replan"`).
-  3. During `status="replanning"`, use `dogdouspec change apply` to resolve active findings, apply task dispositions (`superseded`/`transferred`/`cancelled`), and add successor tasks.
-  4. Ask the product owner to confirm continuation (`dogdouspec iteration confirm --stdin` with `action="continue"`).
-
-### Governance boundaries
-
-An excluded path or concern only limits the current Task's scope. It is **not**
-evidence that work was deferred, accepted as risk, or no longer required. Do
-not create governance records merely because a Task has an exclusion.
-
-| Surface | Required when | Optional / do not use when |
-|---|---|---|
-| Backlog | A credible non-blocking obligation remains after the current Task: record its source, impact, why it is not current acceptance, and a review or scheduling condition. Deferring currently required work or accepting product risk remains an owner gate. | A scope exclusion is only a boundary, the concern has been resolved, or no future obligation is known. |
-| Knowledge | A stable, reusable fact is likely to affect future Tasks or Iterations and its source can be stated. | One-off command output, raw investigation notes, a transient failed attempt, or a fact already captured by the Task record. |
-| `design_snapshot` | A handoff or verification cannot be safely resumed without concise Task-local technical context: the chosen approach, its constraint, and the next consequence. | Routine status, implementation boilerplate, or a formal product/design choice already represented elsewhere. Omit it rather than restating the Task. |
-| Formal design decision | A choice changes product behavior, an external/compatibility or security boundary, or materially constrains other Tasks and therefore needs owner disposition. Propose it and stop for the owner; a snapshot never substitutes for this decision. | Reversible implementation mechanics wholly inside an accepted boundary. Record only the material rationale needed by the next executor. |
-
-Verification records and handoffs use the same rule: include a
-`design_snapshot` only when that material context is needed to verify or resume
-the Task. A concise check result and next step are normally sufficient.
+- **Proposing a New Requirement**: Use `dogdouspec requirement propose` to add a requirement with `status="proposed"` (owner confirmation via `iteration confirm` is required).
 
 ### 6. Post-Mutation Re-query & Validation
 
 Always re-validate the workspace and re-query after writing:
 
 ```powershell
-.\dogdouspec.cmd validate --format xml
-.\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id='<TASK_ID>']/@status" --format xml
+dogdouspec validate --format xml
+dogdouspec query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id='<TASK_ID>']/@status" --format xml
 ```
 
 ---
 
-## Supporting References
+## 4. Supporting References
 
-Read these dedicated reference guides for specialized operations:
-
-- **[XPath Query & Projection Reference](references/xpath.md)**: Read when writing XPath queries, using variables, or applying `ds:filter` / `ds:filter-out` member projections.
-- **[Mutation Operations Reference](references/mutations.md)**: Read when choosing between `task update`, `task add`, `task revise`, `task split`, `requirement propose`, `change propose`, `change apply`, `append`, and `transaction apply`.
-- **[Authority & Lifecycle Reference](references/authority.md)**: Read when checking iteration readiness, processing owner confirmations, or handling surprises and replanning.
+- **[XPath Query & Projection Reference](references/xpath.md)**: Query optimization and `ds:filter` projections.
+- **[Mutation Operations Reference](references/mutations.md)**: Detailed semantics for all CLI mutation operations.
+- **[Authority & Lifecycle Reference](references/authority.md)**: Iteration readiness, owner gates, and replanning.

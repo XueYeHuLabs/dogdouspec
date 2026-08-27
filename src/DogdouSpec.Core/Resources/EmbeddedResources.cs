@@ -46,6 +46,14 @@ public static class EmbeddedResources
         "transaction.apply"
     };
 
+    public static readonly IReadOnlyList<string> SkillFilePaths = new[]
+    {
+        "SKILL.md",
+        "references/authority.md",
+        "references/mutations.md",
+        "references/xpath.md"
+    };
+
     private static readonly ConcurrentDictionary<(string SchemaName, string Version), XmlSchemaSet> CachedSchemaSets = new();
 
     public static bool IsVersionSupported(string version) =>
@@ -131,6 +139,31 @@ public static class EmbeddedResources
     {
         var bytes = GetTemplateBytes(name, version);
         return bytes != null ? Encoding.UTF8.GetString(bytes) : null;
+    }
+
+    public static Stream? GetSkillStream(string relativePath)
+    {
+        var normalized = relativePath.Replace('\\', '/').TrimStart('/');
+        var resourceName = $"skills.dogdouspec.{normalized.Replace('/', '.')}";
+        return CoreAssembly.GetManifestResourceStream(resourceName);
+    }
+
+    public static string? GetSkillText(string relativePath)
+    {
+        using var stream = GetSkillStream(relativePath);
+        if (stream == null) return null;
+        using var ms = new MemoryStream();
+        stream.CopyTo(ms);
+        return Encoding.UTF8.GetString(ms.ToArray());
+    }
+
+    public static string? GetAgentsTemplateText()
+    {
+        using var stream = CoreAssembly.GetManifestResourceStream("templates.v1.AGENTS.md");
+        if (stream == null) return null;
+        using var ms = new MemoryStream();
+        stream.CopyTo(ms);
+        return Encoding.UTF8.GetString(ms.ToArray());
     }
 
     public static XmlSchemaSet GetCompiledSchemaSet(string schemaName, string version = "1.0")

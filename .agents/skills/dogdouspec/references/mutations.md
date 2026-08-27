@@ -78,7 +78,7 @@ Use `dogdouspec template show --name <NAME>` to view exact XML templates for pub
 
 Example:
 ```powershell
-.\dogdouspec.cmd template show --name task.add
-.\dogdouspec.cmd template show --name change.propose
-.\dogdouspec.cmd template show --name change.apply
+dogdouspec template show --name task.add
+dogdouspec template show --name change.propose
+dogdouspec template show --name change.apply
 ```

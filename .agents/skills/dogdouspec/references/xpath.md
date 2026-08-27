@@ -9,17 +9,17 @@ Agents must always follow the two-phase query pattern:
 1. **Phase 1: Compact Index Selection**:
    Query minimal attributes and index metadata across candidate tasks:
    ```powershell
-   .\dogdouspec.cmd query --document "20260823-dogdouspec-v1/tasks.xml" --xpath "ds:filter(/tasks/task[@status='in-progress' or @status='verification'][1], '@id', '@status', '@agent', 'index')" --format xml
+   dogdouspec query --document "20260823-dogdouspec-v1/tasks.xml" --xpath "ds:filter(/tasks/task[@status='in-progress' or @status='verification'][1], '@id', '@status', '@agent', 'index')" --format xml
    ```
    If empty, query the first ready pending task whose dependencies are satisfied:
    ```powershell
-   .\dogdouspec.cmd query --document "20260823-dogdouspec-v1/tasks.xml" --xpath "ds:filter(/tasks/task[@status='pending' and not(dependencies/ref[@relation='depends-on']/@target = /tasks/task[@status!='done' and @status!='transferred' and @status!='superseded' and @status!='cancelled']/@id)][1], '@id', '@status', '@agent', 'index')" --format xml
+   dogdouspec query --document "20260823-dogdouspec-v1/tasks.xml" --xpath "ds:filter(/tasks/task[@status='pending' and not(dependencies/ref[@relation='depends-on']/@target = /tasks/task[@status!='done' and @status!='transferred' and @status!='superseded' and @status!='cancelled']/@id)][1], '@id', '@status', '@agent', 'index')" --format xml
    ```
 
 2. **Phase 2: Full Document Loading**:
    Load complete details only for the single selected task:
    ```powershell
-   .\dogdouspec.cmd query --document "20260823-dogdouspec-v1/tasks.xml" --xpath "/tasks/task[@id='20260823-task-dogfood-review']" --format xml
+   dogdouspec query --document "20260823-dogdouspec-v1/tasks.xml" --xpath "/tasks/task[@id='20260823-task-dogfood-review']" --format xml
    ```
 
 ## Projection Functions: `ds:filter` and `ds:filter-out`
@@ -62,7 +62,7 @@ ds:filter(/tasks/task[@status='pending' and not(dependencies/ref[@relation='depe
 In `query` and `search` CLI commands, use `--var name=value` (repeatable) to bind variables securely. In shell invocations, always quote the `--xpath` argument with single quotes so the shell does not expand `$variable`:
 
 ```powershell
-.\dogdouspec.cmd query --document "20260823-dogdouspec-v1/tasks.xml" --xpath '/tasks/task[@id=$task_id]/@status' --var task_id=20260823-task-dogfood-review --format xml
+dogdouspec query --document "20260823-dogdouspec-v1/tasks.xml" --xpath '/tasks/task[@id=$task_id]/@status' --var task_id=20260823-task-dogfood-review --format xml
 ```
 
 In `transaction apply` request XML, variables are declared in `<variables><variable name="task_id">value</variable></variables>` and referenced as `$task_id`.
@@ -73,9 +73,9 @@ Use `dogdouspec search` to evaluate XPath across multiple documents in a scope:
 
 - **Iteration Scope**:
   ```powershell
-  .\dogdouspec.cmd search --scope iteration --iteration "20260823-dogdouspec-v1" --xpath "//term[@key='component']" --format xml
+  dogdouspec search --scope iteration --iteration "20260823-dogdouspec-v1" --xpath "//term[@key='component']" --format xml
   ```
 - **Project Scope**:
   ```powershell
-  .\dogdouspec.cmd search --scope project --xpath "//record[@actor='primary-agent']" --format xml
+  dogdouspec search --scope project --xpath "//record[@actor='primary-agent']" --format xml
   ```
