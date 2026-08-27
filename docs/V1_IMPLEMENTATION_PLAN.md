@@ -167,7 +167,7 @@ Dependencies: B1-T2, B1-T3.
 
 Deliverables:
 
-- `global.json` pinning .NET SDK 10.0.303 with latest-patch roll-forward.
+- `global.json` pinning .NET SDK `10.0.*` (`10.0.100` base with `latestFeature` roll-forward).
 - `DogdouSpec.slnx`, Core and CLI projects, and three test projects defined in Section 16.1 of `V1_DESIGN.md`.
 - Central build, analyzer, formatting, and package-version properties.
 - Pinned `System.CommandLine` 2.0.11 and MSTest 4.3.3 dependencies with committed NuGet lock files.

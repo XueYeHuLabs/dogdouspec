@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.Workspace;
@@ -739,7 +740,7 @@ public sealed class SemanticValidationTests
       </acceptance>
     </confirmation>
 """;
-        specContent = specContent.Replace("id=\"20260823-accept-no-truncation\"\n        decision=\"pending\"", "id=\"20260823-accept-no-truncation\"\n        decision=\"waived\"")
+        specContent = Regex.Replace(specContent, @"id=""20260823-accept-no-truncation""\s+decision=""pending""", "id=\"20260823-accept-no-truncation\"\n        decision=\"waived\"")
                                  .Replace("</confirmations>", waiverConf + "\n  </confirmations>");
         File.WriteAllText(specPath, specContent);
 
