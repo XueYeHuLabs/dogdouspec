@@ -20,7 +20,7 @@ DogdouSpec is designed as a portable, native-first tool targeting .NET 10 and C#
 ## 2. Building from Source
 
 ### Prerequisites
-- .NET 10 SDK (`10.0.303` or later).
+- .NET 10 SDK (`10.0.100` or compatible `10.0.*`).
 - Native AOT prerequisites:
   - **Linux (Ubuntu/Debian)**: `clang`, `zlib1g-dev`, `build-essential`
     ```bash

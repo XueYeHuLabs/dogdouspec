@@ -158,6 +158,12 @@ public sealed class SkillDeploymentTests
 
         // Clone a clean copy of the repo to serve as the clean source repository fixture
         RunProcess("git", $"clone --shared \"{RepoRoot}\" \"{_cleanSourceRepo}\"", _tempDir);
+        var globalJsonPath = Path.Combine(RepoRoot, "global.json");
+        if (File.Exists(globalJsonPath))
+        {
+            File.Copy(globalJsonPath, Path.Combine(_cleanSourceRepo, "global.json"), true);
+            RunProcess("git", "update-index --assume-unchanged global.json", _cleanSourceRepo);
+        }
         _sourceCommitSha = RunProcess("git", "rev-parse HEAD", _cleanSourceRepo).Stdout.Trim();
     }
 

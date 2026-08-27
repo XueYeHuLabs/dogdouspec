@@ -7,12 +7,15 @@ param(
     [string]$CertSubject = "",
 
     [Parameter(Mandatory = $false)]
+    [string]$CertThumbprint = "",
+
+    [Parameter(Mandatory = $false)]
     [string]$TimestampUrl = "http://timestamp.globalsign.com/tsa/r6advanced1"
 )
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "== DogdouSpec GlobalSign USB Key Code Signing ==" -ForegroundColor Cyan
+Write-Host "== DogdouSpec Code Signing ==" -ForegroundColor Cyan
 
 # 1. Check ExePath
 if (-not (Test-Path $ExePath)) {
@@ -29,26 +32,78 @@ if (-not $signtool) {
 }
 Write-Host "[OK] Found SignTool: $signtool"
 
-# 3. Prepare sign arguments
-Write-Host "Please ensure your GlobalSign USB Token is inserted and SafeNet Authentication Client is running." -ForegroundColor Yellow
-
-$signArgs = @("sign", "/fd", "SHA256", "/tr", $TimestampUrl, "/td", "SHA256", "/a")
-if (![string]::IsNullOrWhiteSpace($CertSubject)) {
-    $signArgs += @("/n", $CertSubject)
+# 3. Resolve signing certificate (explicit parameter, environment variable, or automatic discovery)
+if ([string]::IsNullOrWhiteSpace($CertSubject) -and $env:DOGDOUSPEC_SIGN_SUBJECT) {
+    $CertSubject = $env:DOGDOUSPEC_SIGN_SUBJECT
 }
+if ([string]::IsNullOrWhiteSpace($CertThumbprint) -and $env:DOGDOUSPEC_SIGN_THUMBPRINT) {
+    $CertThumbprint = $env:DOGDOUSPEC_SIGN_THUMBPRINT
+}
+if ([string]::IsNullOrWhiteSpace($TimestampUrl) -and $env:DOGDOUSPEC_SIGN_TIMESTAMP) {
+    $TimestampUrl = $env:DOGDOUSPEC_SIGN_TIMESTAMP
+}
+
+$signArgs = @("sign", "/fd", "SHA256", "/tr", $TimestampUrl, "/td", "SHA256", "/u", "1.3.6.1.5.5.7.3.3")
+
+if (-not [string]::IsNullOrWhiteSpace($CertThumbprint)) {
+    Write-Host "[OK] Using configured certificate thumbprint: $CertThumbprint"
+    $signArgs += @("/sha1", $CertThumbprint)
+} elseif (-not [string]::IsNullOrWhiteSpace($CertSubject)) {
+    Write-Host "[OK] Using configured certificate subject: $CertSubject"
+    $signArgs += @("/n", $CertSubject)
+} else {
+    # Automatic Discovery: Filter store for valid, unexpired End-Entity Code Signing certificates with private keys
+    $validCerts = @(Get-ChildItem Cert:\CurrentUser\My, Cert:\LocalMachine\My -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.HasPrivateKey -and
+            ($_.NotAfter -gt (Get-Date)) -and
+            # Must contain Code Signing EKU (1.3.6.1.5.5.7.3.3)
+            ($_.Extensions | Where-Object {
+                $_.Oid.Value -eq "2.5.29.37" -and
+                ($_.EnhancedKeyUsages.Value -contains "1.3.6.1.5.5.7.3.3" -or $_.EnhancedKeyUsages.FriendlyName -contains "Code Signing")
+            }) -and
+            # Must NOT be a CA certificate (BasicConstraints: IsCA = false)
+            (-not ($_.Extensions | Where-Object {
+                $_.Oid.Value -eq "2.5.29.19" -and
+                $_.CertificateAuthority -eq $true
+            }))
+        })
+
+    if ($validCerts.Count -eq 0) {
+        Write-Warning "No unexpired End-Entity Code Signing certificate with private keys found in CurrentUser/LocalMachine store."
+        Write-Host "Falling back to automatic signtool search (/a)..."
+        $signArgs += @("/a")
+    } else {
+        # Prioritize commercial CA-issued certificates over self-signed test certificates
+        $chosenCert = $validCerts |
+            Sort-Object -Property @{ Expression = { if ($_.Subject -ne $_.Issuer) { 0 } else { 1 } } },
+                                  @{ Expression = { $_.NotAfter }; Descending = $true } |
+            Select-Object -First 1
+
+        Write-Host "[OK] Auto-detected Code Signing certificate:" -ForegroundColor Green
+        Write-Host "     Subject   : $($chosenCert.Subject)"
+        Write-Host "     Issuer    : $($chosenCert.Issuer)"
+        Write-Host "     Thumbprint: $($chosenCert.Thumbprint)"
+        Write-Host "     Expires   : $($chosenCert.NotAfter)"
+        $signArgs += @("/sha1", $chosenCert.Thumbprint)
+    }
+}
+
 $signArgs += (Resolve-Path $ExePath).Path
 
-Write-Host "Executing signtool (a PIN prompt will pop up from SafeNet driver if required)..."
+# 4. Execute SignTool
+Write-Host "`nPlease ensure your hardware token (if using USB Key) is inserted and CSP/SafeNet client is running." -ForegroundColor Yellow
+Write-Host "Executing signtool (a PIN prompt will pop up if hardware token requires authentication)..."
 & $signtool $signArgs
 if ($LASTEXITCODE -ne 0) {
     throw "SignTool failed with exit code $LASTEXITCODE"
 }
 
-# 4. Verify signature
+# 5. Verify signature
 Write-Host "`nVerifying signature on $ExePath..."
 & $signtool verify /pa (Resolve-Path $ExePath).Path
 if ($LASTEXITCODE -ne 0) {
     throw "Signature verification failed."
 }
 
-Write-Host "`n[SUCCESS] $ExePath has been successfully signed with your GlobalSign EV USB Key!" -ForegroundColor Green
+Write-Host "`n[SUCCESS] $ExePath has been successfully signed and verified!" -ForegroundColor Green
