@@ -23,7 +23,7 @@ This automatically sets up:
 
 ## 2. Developer Build and Test (From Source)
 
-- .NET SDK `10.0.303`, target framework `net10.0`, C# 14.
+- .NET SDK `10.0.*` (`10.0.100` or compatible), target framework `net10.0`, C# 14.
 - `System.CommandLine` 2.0.11 for CLI parsing.
 - Built-in `System.Xml`, `System.Xml.XPath`, and `XmlSchemaSet`.
 - MSTest 4.0.2 for unit and integration testing.
