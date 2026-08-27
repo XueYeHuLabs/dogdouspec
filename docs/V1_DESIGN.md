@@ -427,7 +427,7 @@ The following choices are fixed for v1. Changing one requires an explicit design
 
 - Runtime target: .NET 10 (`net10.0`).
 - Language: C# 14 with nullable reference types enabled.
-- Bootstrap SDK: `10.0.303`, pinned by `global.json` with latest-patch roll-forward.
+- Bootstrap SDK: `10.0.*` (`10.0.100` base with `latestFeature` roll-forward in `global.json`).
 - Supported v1 operating system: Windows 11 x64.
 - First runtime identifier: `win-x64`.
 - Release packaging: self-contained Native AOT executable named `dogdouspec.exe`.
