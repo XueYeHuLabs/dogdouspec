@@ -23,6 +23,7 @@ public static class IterationCommand
         var confirmCmd = BuildConfirmCommand();
         var activateCmd = BuildActivateCommand();
         var completeCmd = BuildCompleteCommand();
+        var summaryCmd = SummaryCommand.BuildCommand();
 
         iterationCmd.Add(listCmd);
         iterationCmd.Add(createCmd);
@@ -30,6 +31,7 @@ public static class IterationCommand
         iterationCmd.Add(confirmCmd);
         iterationCmd.Add(activateCmd);
         iterationCmd.Add(completeCmd);
+        iterationCmd.Add(summaryCmd);
 
         return iterationCmd;
     }
