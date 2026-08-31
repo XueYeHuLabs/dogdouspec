@@ -2,22 +2,36 @@
 
 DogdouSpec is an iteration-first structured XML/XPath specification and technical execution engine designed for human and AI pairing.
 
-## 1. Quick Start & Installation (WinGet)
+## 1. Quick Start & Adoption Guide
 
-### Install globally on Windows:
-```powershell
-winget install Vixasol.DogdouSpec
-```
+### Standard Global Installation (Recommended for Most Projects)
 
-### Initialize in any repository:
-Navigate to your project root and run:
-```powershell
-dogdouspec workspace init
-```
-This automatically sets up:
-- `.dogdouspec/` (managed XML specifications, schemas, backlog, and knowledge).
-- `.agents/skills/dogdouspec/` (agent workflow skills and query references).
-- `AGENTS.md` (agent rules and governance boundaries).
+For standard development environments with a global package manager:
+
+1. **Install DogdouSpec globally on Windows**:
+   ```powershell
+   winget install Vixasol.DogdouSpec
+   ```
+2. **Initialize workspace & skill in your repository**:
+   Navigate to your project root and run:
+   ```powershell
+   # 1. Initialize XML workspace (.dogdouspec/ schemas, backlog, knowledge)
+   dogdouspec workspace init
+
+   # 2. Synchronize agent skill (.agents/skills/dogdouspec/)
+   dogdouspec skill sync
+   ```
+3. **Configure Agent Guidelines (`AGENTS.md`)**:
+   - `AGENTS.md` establishes governance boundaries, mode selection (Mode A direct commit vs Mode B governed iteration), and authority rules for AI coding agents.
+   - Maintainers or coding agents should configure `AGENTS.md` tailored to the target project's specific tech stack, build scripts (e.g. `npm test`, `cargo build`, `dotnet test`), and verification commands, referencing [`templates/v1/AGENTS.md`](templates/v1/AGENTS.md) as a structural baseline.
+
+---
+
+### Air-Gapped & Source-Based Deployment (Repo-Local Vendoring)
+
+For isolated, air-gapped, or hermetic environments where global tools, PATH modifications, or external package managers are prohibited:
+
+- Follow the authoritative [Air-Gapped / Vendored Deployment Guide](docs/INSTALL_IN_OTHER_REPOSITORY.md) to compile a self-contained ~9.5 MB `dogdouspec.exe` into `<TARGET_REPO>/tools/dogdouspec/` with a root `dogdouspec.cmd` wrapper.
 
 ---
 
@@ -136,7 +150,7 @@ All commands run directly through `dogdouspec <command> [options]`:
 
 ## 5. Documentation & References
 
-- **Installation in Other Repositories**: See [docs/INSTALL_IN_OTHER_REPOSITORY.md](docs/INSTALL_IN_OTHER_REPOSITORY.md) for source-based deployment procedures.
+- **Air-Gapped & Vendored Deployment Guide**: See [docs/INSTALL_IN_OTHER_REPOSITORY.md](docs/INSTALL_IN_OTHER_REPOSITORY.md) for self-contained, source-based repo-local deployment in isolated environments.
 - **Cross-Platform Build & Packaging**: See [docs/CROSS_PLATFORM.md](docs/CROSS_PLATFORM.md) for Linux and macOS compilation and packaging guidance.
 - **Dogfood Remediation Evidence**: See [docs/DOGDOUCLIX_DOGFOOD_REMEDIATION.md](docs/DOGDOUCLIX_DOGFOOD_REMEDIATION.md) for background analysis and remediation evidence.
 - **Agent Guidelines & Skills**: See [`AGENTS.md`](AGENTS.md) and [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md) for workflow integration rules and compact two-phase query patterns.
