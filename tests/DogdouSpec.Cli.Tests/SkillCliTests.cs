@@ -62,4 +62,50 @@ public sealed class SkillCliTests
 
         Assert.IsTrue(File.Exists(Path.Combine(targetSkillDir, "SKILL.md")));
     }
+
+    private static readonly string[] SkillGuideMarkdownArgs = new[] { "skill", "guide", "--format", "markdown" };
+    private static readonly string[] SkillGuideXmlArgs = new[] { "skill", "guide", "--format", "xml" };
+
+    [TestMethod]
+    public void SkillGuide_MarkdownFormat_OutputsGuideContent()
+    {
+        using var sw = new StringWriter();
+        var originalOut = Console.Out;
+        try
+        {
+            Console.SetOut(sw);
+            var exitCode = Program.Main(SkillGuideMarkdownArgs);
+            Assert.AreEqual(0, exitCode);
+
+            var output = sw.ToString();
+            Assert.IsTrue(output.Contains("DogdouSpec"));
+            Assert.IsTrue(output.Contains("Mode A: Direct Execution"));
+            Assert.IsTrue(output.Contains("Mode B: Governed Iterations"));
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
+
+    [TestMethod]
+    public void SkillGuide_XmlFormat_OutputsXmlStructure()
+    {
+        using var sw = new StringWriter();
+        var originalOut = Console.Out;
+        try
+        {
+            Console.SetOut(sw);
+            var exitCode = Program.Main(SkillGuideXmlArgs);
+            Assert.AreEqual(0, exitCode);
+
+            var output = sw.ToString();
+            Assert.IsTrue(output.Contains("<skill-guide name=\"dogdouspec\">"));
+            Assert.IsTrue(output.Contains("<file path=\"SKILL.md\">"));
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+    }
 }

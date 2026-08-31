@@ -11,10 +11,21 @@ public static class Program
     {
         try
         {
-            var rootCommand = new RootCommand("DogdouSpec CLI - iteration-first XML/XPath project workspace engine");
+            var rootDescription = """
+DogdouSpec CLI - iteration-first XML/XPath project workspace engine
+
+AI AGENT QUICKSTART & PARADIGM:
+  1. View complete AI agent instructions : dogdouspec skill guide
+  2. Sync skills to workspace (.agents/)  : dogdouspec skill sync
+  3. View instant progress summary card   : dogdouspec summary --format markdown
+  4. Select next ready task to implement  : dogdouspec task next --format xml
+""";
+
+            var rootCommand = new RootCommand(rootDescription);
 
             rootCommand.Add(WorkspaceCommand.BuildCommand());
             rootCommand.Add(IterationCommand.BuildCommand());
+            rootCommand.Add(SummaryCommand.BuildCommand());
             rootCommand.Add(SchemaCommand.BuildCommand());
             rootCommand.Add(TemplateCommand.BuildCommand());
             rootCommand.Add(ValidateCommand.BuildCommand());

@@ -10,3 +10,4 @@ publish-out/
 *.zip
 *.sha256
 *.pfx
+.reviews/
