@@ -1,8 +1,11 @@
-# Deploying DogdouSpec to Another Repository
+# Deploying DogdouSpec to Another Repository (Air-Gapped & Vendored Source Deployment)
 
-> [!TIP]
-> **Preferred Modern Distribution**: For most use cases, DogdouSpec is installed globally via **WinGet** (`winget install Vixasol.DogdouSpec`) with zero wrapper scripts.
-> This document provides the authoritative air-gapped / repository-local source build procedure for environments where global package managers or PATH aliases are not permitted.
+> [!IMPORTANT]
+> **When to Use This Guide**: This document provides the authoritative air-gapped / repository-local vendoring and source build procedure for environments where global package managers, global binaries, or PATH aliases are not permitted (e.g. strict air-gapped CI/CD runners, isolated sandboxes, or hermetic monorepos).
+>
+> **Standard Adoption (Recommended for Most Projects)**: For standard development environments, DogdouSpec should be installed globally via **WinGet** (`winget install Vixasol.DogdouSpec`) and initialized using `dogdouspec workspace init` and `dogdouspec skill sync` with zero repository-local binaries or wrapper scripts.
+>
+> **Agent Guidelines (`AGENTS.md`)**: In both deployment modes, `AGENTS.md` should be adapted and tailored contextually by the coding agent or project maintainer to match the target project's build and verification tooling, rather than blindly copied.
 
 ---
 
