@@ -18,12 +18,25 @@ For standard development environments with a global package manager:
    # 1. Initialize XML workspace (.dogdouspec/ schemas, backlog, knowledge)
    dogdouspec workspace init
 
-   # 2. Synchronize agent skill (.agents/skills/dogdouspec/)
-   dogdouspec skill sync
+   # 2. Synchronize agent skill and bootstrap a starter AGENTS.md if not present
+   dogdouspec skill sync --agents
    ```
+   The `--agents` flag writes a project-tailored `AGENTS.md` template to your repo root if one does not already exist.
 3. **Configure Agent Guidelines (`AGENTS.md`)**:
    - `AGENTS.md` establishes governance boundaries, mode selection (Mode A direct commit vs Mode B governed iteration), and authority rules for AI coding agents.
    - Maintainers or coding agents should configure `AGENTS.md` tailored to the target project's specific tech stack, build scripts (e.g. `npm test`, `cargo build`, `dotnet test`), and verification commands, referencing [`templates/v1/AGENTS.md`](templates/v1/AGENTS.md) as a structural baseline.
+4. **Provide installation guidance to AI agents (optional)**:
+   If an AI coding agent is missing DogdouSpec or needs to understand the correct workflow, you can surface the embedded guide directly:
+   ```powershell
+   # Display SKILL.md workflow guidance for the agent (default: markdown output)
+   dogdouspec skill guide
+
+   # Include all supporting reference documents (authority, mutations, xpath)
+   dogdouspec skill guide --all
+
+   # Machine-readable XML output for agent tool consumption
+   dogdouspec skill guide --format xml
+   ```
 
 ---
 
@@ -67,11 +80,19 @@ All commands run directly through `dogdouspec <command> [options]`:
   ```powershell
   dogdouspec workspace init [--workspace-root PATH] [--format xml|human]
   ```
+- **Workspace Unlock** (release stale writer locks and run startup recovery)
+  ```powershell
+  dogdouspec workspace unlock [--force] [--workspace-root PATH] [--format xml|human]
+  ```
 
 ### 2. Skill Management
+- **Skill Guide** (AI agent install & workflow guidance)
+  ```powershell
+  dogdouspec skill guide [--all] [--format markdown|human|xml]
+  ```
 - **Skill Sync**
   ```powershell
-  dogdouspec skill sync [--output-dir PATH] [--format xml|human]
+  dogdouspec skill sync [--output-dir PATH] [--agents] [--format xml|human]
   ```
 - **Skill Export**
   ```powershell
@@ -130,6 +151,12 @@ All commands run directly through `dogdouspec <command> [options]`:
   - `requirement propose`, `change propose`, `change apply`
   - `backlog add`, `backlog list`, `backlog schedule`, `backlog complete`, `backlog cancel`
   - `append`, `transaction apply`
+
+### 6. Reporting
+- **Iteration Summary** (instant progress card and task breakdown)
+  ```powershell
+  dogdouspec summary [--iteration ID] [--workspace-root PATH] [--format markdown|json|xml|human]
+  ```
 
 ---
 
