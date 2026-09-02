@@ -18,45 +18,84 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$tag = if ($Version.StartsWith("v")) { $Version } else { "v$Version" }
-$zipName = "dogdouspec-win-x64.zip"
-$winOutDir = "publish-out/win-x64"
+$tag          = if ($Version.StartsWith("v")) { $Version } else { "v$Version" }
+$cleanVersion = $tag.TrimStart("v")   # e.g. "1.0.1"
+$zipName      = "dogdouspec-win-x64.zip"
+$winOutDir    = "publish-out/win-x64"
 
 Write-Host "== DogdouSpec Release & Sign Pipeline ($tag) ==" -ForegroundColor Cyan
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Push-Location $repoRoot
 try {
-    # 1. Clean and Publish win-x64 Native AOT
-    Write-Host "`n[Step 1/4] Compiling Native AOT win-x64 binary..." -ForegroundColor Yellow
+    # 1. Clean and Publish win-x64 Native AOT (version stamped into the binary)
+    Write-Host "`n[Step 1/5] Compiling Native AOT win-x64 binary (Version=$cleanVersion)..." -ForegroundColor Yellow
     if (Test-Path $winOutDir) { Remove-Item $winOutDir -Recurse -Force }
-    dotnet publish src/DogdouSpec.Cli/DogdouSpec.Cli.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o $winOutDir
+    dotnet publish src/DogdouSpec.Cli/DogdouSpec.Cli.csproj `
+        -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true `
+        -p:VersionPrefix=$cleanVersion `
+        -o $winOutDir
     if ($LASTEXITCODE -ne 0) { throw "Native AOT compilation failed." }
 
     # 2. Sign binary
-    Write-Host "`n[Step 2/4] Signing binary with code signing certificate..." -ForegroundColor Yellow
-    $signParams = @{
-        ExePath = "$winOutDir/dogdouspec.exe"
-    }
-    if (-not [string]::IsNullOrWhiteSpace($CertSubject)) { $signParams["CertSubject"] = $CertSubject }
+    Write-Host "`n[Step 2/5] Signing binary with code signing certificate..." -ForegroundColor Yellow
+    $signParams = @{ ExePath = "$winOutDir/dogdouspec.exe" }
+    if (-not [string]::IsNullOrWhiteSpace($CertSubject))    { $signParams["CertSubject"]    = $CertSubject }
     if (-not [string]::IsNullOrWhiteSpace($CertThumbprint)) { $signParams["CertThumbprint"] = $CertThumbprint }
-    if (-not [string]::IsNullOrWhiteSpace($TimestampUrl)) { $signParams["TimestampUrl"] = $TimestampUrl }
+    if (-not [string]::IsNullOrWhiteSpace($TimestampUrl))   { $signParams["TimestampUrl"]   = $TimestampUrl }
     & (Join-Path $PSScriptRoot "sign-local.ps1") @signParams
 
     # 3. Package and compute SHA256
-    Write-Host "`n[Step 3/4] Packaging signed zip and computing SHA256..." -ForegroundColor Yellow
+    Write-Host "`n[Step 3/5] Packaging signed zip and computing SHA256..." -ForegroundColor Yellow
     if (Test-Path $zipName) { Remove-Item $zipName -Force }
     Compress-Archive -Path "$winOutDir/dogdouspec.exe" -DestinationPath $zipName
     $hash = (Get-FileHash -Path $zipName -Algorithm SHA256).Hash
     "$hash  $zipName" | Out-File -FilePath "$zipName.sha256" -Encoding ascii
     Write-Host "[OK] Package SHA256: $hash"
 
-    # 4. Automated Upload via GitHub CLI (Optional / Automatic)
+    # 4. Update winget manifests
+    Write-Host "`n[Step 4/5] Updating winget manifests to $cleanVersion..." -ForegroundColor Yellow
+    $manifestDir    = Join-Path $repoRoot "manifests/winget"
+    $installerUrl   = "https://github.com/XueYeHuLabs/dogdouspec/releases/download/$tag/dogdouspec-win-x64.zip"
+
+    # Helper: update a single YAML field value in-place (line-based, no external YAML parser needed)
+    function Update-YamlField([string]$FilePath, [string]$Field, [string]$Value) {
+        $lines = Get-Content $FilePath
+        $lines = $lines | ForEach-Object {
+            if ($_ -match "^$Field\s*:") { "$Field`: $Value" } else { $_ }
+        }
+        $lines | Set-Content $FilePath -Encoding utf8
+    }
+
+    # Vixasol.DogdouSpec.yaml
+    $versionYaml = Join-Path $manifestDir "Vixasol.DogdouSpec.yaml"
+    Update-YamlField $versionYaml "PackageVersion" $cleanVersion
+    Write-Host "[OK] Updated $versionYaml"
+
+    # Vixasol.DogdouSpec.locale.en-US.yaml
+    $localeYaml = Join-Path $manifestDir "Vixasol.DogdouSpec.locale.en-US.yaml"
+    Update-YamlField $localeYaml "PackageVersion" $cleanVersion
+    Write-Host "[OK] Updated $localeYaml"
+
+    # Vixasol.DogdouSpec.installer.yaml
+    # InstallerUrl and InstallerSha256 are indented inside the Installers list,
+    # so handle them with a dedicated line-by-line rewrite.
+    $installerYaml  = Join-Path $manifestDir "Vixasol.DogdouSpec.installer.yaml"
+    $installerLines = Get-Content $installerYaml
+    $installerLines = $installerLines | ForEach-Object {
+        if      ($_ -match "^PackageVersion\s*:")    { "PackageVersion: $cleanVersion" }
+        elseif  ($_ -match "^(\s+InstallerUrl):")    { "$($Matches[1]): $installerUrl" }
+        elseif  ($_ -match "^(\s+InstallerSha256):") { "$($Matches[1]): $hash" }
+        else    { $_ }
+    }
+    $installerLines | Set-Content $installerYaml -Encoding utf8
+    Write-Host "[OK] Updated $installerYaml"
+
+    # 5. Automated Upload via GitHub CLI (Optional / Automatic)
     $ghCli = Get-Command "gh" -ErrorAction SilentlyContinue
     if ($AutoUpload -or $ghCli) {
-        Write-Host "`n[Step 4/4] Automated GitHub Release Upload via GitHub CLI..." -ForegroundColor Yellow
+        Write-Host "`n[Step 5/5] Automated GitHub Release Upload via GitHub CLI..." -ForegroundColor Yellow
         try {
-            # Check if release exists
             $releaseCheck = & gh release view $tag 2>&1
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "Uploading signed assets to existing release $tag..."
@@ -73,14 +112,16 @@ try {
     }
 
     # Manual instructions fallback
-    Write-Host "`n[Step 4/4] Release Package Ready!" -ForegroundColor Green
+    Write-Host "`n[Step 5/5] Release Package Ready!" -ForegroundColor Green
     Write-Host "---------------------------------------------------------"
-    Write-Host "Artifact: $zipName"
-    Write-Host "Checksum: $hash"
-    Write-Host "`nTo publish this release to GitHub and trigger WinGet:"
+    Write-Host "Artifact : $zipName"
+    Write-Host "Checksum : $hash"
+    Write-Host "Version  : $cleanVersion"
+    Write-Host "`nManifests updated. Remaining manual steps:"
     Write-Host "  1. git tag $tag"
     Write-Host "  2. git push origin $tag"
     Write-Host "  3. gh release create $tag $zipName $zipName.sha256 --title `"$tag`" --generate-notes"
+    Write-Host "  4. Submit a PR to https://github.com/microsoft/winget-pkgs with the updated manifests/winget/ files."
     Write-Host "---------------------------------------------------------"
 } finally {
     Pop-Location
