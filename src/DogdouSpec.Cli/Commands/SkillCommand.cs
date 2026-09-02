@@ -126,16 +126,16 @@ public static class SkillCommand
 
     private static Command BuildSyncCommand()
     {
-        var syncCmd = new Command("sync", "Synchronize guidance that keeps semantic results in Task records and Git writes caller-controlled");
+        var syncCmd = new Command("sync", "Synchronize skill files with the version embedded in this CLI binary. Pass --force to overwrite existing files upon upgrade.");
+
+        var forceOption = new Option<bool>("--force")
+        {
+            Description = "Force overwrite existing skill files in target directory"
+        };
 
         var outputDirOption = new Option<string?>("--output-dir")
         {
-            Description = "Output directory for skill files (default: .agents/skills/dogdouspec)"
-        };
-
-        var includeAgentsOption = new Option<bool>("--agents")
-        {
-            Description = "Also synchronize root AGENTS.md instructions if not present"
+            Description = "Output directory for skill files (default: .agents/skills/dogdouspec relative to current directory)"
         };
 
         var formatOption = new Option<string?>("--format")
@@ -144,18 +144,18 @@ public static class SkillCommand
         };
         formatOption.AcceptOnlyFromAmong("xml", "human");
 
+        syncCmd.Add(forceOption);
         syncCmd.Add(outputDirOption);
-        syncCmd.Add(includeAgentsOption);
         syncCmd.Add(formatOption);
 
         syncCmd.SetAction(parseResult =>
         {
+            var force = parseResult.GetValue(forceOption);
             var outputDir = parseResult.GetValue(outputDirOption) ?? Path.Combine(Environment.CurrentDirectory, ".agents", "skills", "dogdouspec");
-            var includeAgents = parseResult.GetValue(includeAgentsOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
 
-            return ExportSkillFiles(outputDir, includeAgents, format, "skill sync");
+            return ExportSkillFiles(outputDir, force, format, "skill sync");
         });
 
         return syncCmd;
@@ -186,16 +186,33 @@ public static class SkillCommand
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
 
-            return ExportSkillFiles(outputDir, false, format, "skill export");
+            return ExportSkillFiles(outputDir, true, format, "skill export");
         });
 
         return exportCmd;
     }
 
-    private static int ExportSkillFiles(string targetDir, bool includeAgents, OutputFormat format, string commandName)
+    private static int ExportSkillFiles(string targetDir, bool force, OutputFormat format, string commandName)
     {
         try
         {
+            if (!force)
+            {
+                var existingFiles = EmbeddedResources.SkillFilePaths
+                    .Select(rel => Path.Combine(targetDir, rel.Replace('/', Path.DirectorySeparatorChar)))
+                    .Where(File.Exists)
+                    .ToList();
+
+                if (existingFiles.Count > 0)
+                {
+                    var envelope = new DiagnosticsEnvelope(commandName, Diagnostic.Error(
+                        DiagnosticCodes.ManagedStateExists,
+                        $"Skill files already exist at '{targetDir}'. Pass --force to overwrite existing skill files."));
+                    Console.Error.Write(envelope.Format(format));
+                    return 2;
+                }
+            }
+
             var exportedFiles = new List<string>();
             foreach (var relPath in EmbeddedResources.SkillFilePaths)
             {
@@ -218,24 +235,6 @@ public static class SkillCommand
 
                 File.WriteAllText(fullPath, content, new UTF8Encoding(false));
                 exportedFiles.Add(fullPath);
-            }
-
-            if (includeAgents)
-            {
-                var agentsContent = EmbeddedResources.GetAgentsTemplateText();
-                if (agentsContent != null)
-                {
-                    var agentsPath = Path.Combine(Environment.CurrentDirectory, "AGENTS.md");
-                    if (!File.Exists(agentsPath))
-                    {
-                        File.WriteAllText(agentsPath, agentsContent, new UTF8Encoding(false));
-                        exportedFiles.Add(agentsPath);
-                    }
-                    else if (format != OutputFormat.Xml)
-                    {
-                        Console.Out.WriteLine($"Skipped AGENTS.md (already exists at '{agentsPath}'). Delete it and re-run to regenerate.");
-                    }
-                }
             }
 
             if (format == OutputFormat.Xml)

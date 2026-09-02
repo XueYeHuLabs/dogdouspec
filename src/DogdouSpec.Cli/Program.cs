@@ -14,14 +14,14 @@ public static class Program
             var rootDescription = """
 DogdouSpec CLI - iteration-first XML/XPath project workspace engine
 
-AI AGENT QUICKSTART & PARADIGM:
-  1. Initialize authoritative workspace   : dogdouspec workspace init
-  2. View complete AI agent instructions  : dogdouspec skill guide
-  3. Sync skills to workspace (.agents/)   : dogdouspec skill sync
-  4. View instant progress summary card    : dogdouspec summary --format markdown
-  5. Select next ready task to implement   : dogdouspec task next --format xml
+AI AGENT SETUP & WORKFLOW:
+  1. Print agent setup & workflow guide   : dogdouspec skill guide
+  2. Initialize workspace & skills        : dogdouspec workspace init
+  3. Upgrade / overwrite skill files      : dogdouspec skill sync --force
+  4. Select next ready task to implement  : dogdouspec task next --format xml
+  5. View instant progress summary card   : dogdouspec summary --format markdown
 
-PERSISTENCE:
+PERSISTENCE & GOVERNANCE:
   Semantic agent results belong in tasks.xml records, not external report folders.
   In Git-backed governed work, validate and checkpoint managed .dogdouspec state;
   DogdouSpec never stages or commits repository files on your behalf.

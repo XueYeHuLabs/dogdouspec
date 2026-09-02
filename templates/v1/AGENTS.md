@@ -102,3 +102,5 @@ Title
   * Each line MUST be in all lowercase (except technical proper nouns, contains the first letter of a sentence).
   * Each line MUST end with a period (`.`).
   * Describes the detailed changes and rationale.
+* **Line Endings:**
+  * Use LF line endings only, no CRLF.
