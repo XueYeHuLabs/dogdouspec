@@ -82,4 +82,8 @@ public static class DiagnosticCodes
     public const string FilesystemError = "FILESYSTEM_ERROR";
     public const string RecoveryFailed = "RECOVERY_FAILED";
     public const string CommitFailed = "COMMIT_FAILED";
+
+    // Informational
+    public const string Informational = "INFORMATIONAL";
+    public const string IterationAutoSelected = "ITERATION_AUTO_SELECTED";
 }

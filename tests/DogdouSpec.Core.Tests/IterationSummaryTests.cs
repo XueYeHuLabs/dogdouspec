@@ -196,4 +196,23 @@ public sealed class IterationSummaryTests
         Assert.IsTrue(md.Contains("Pending / Next (1)", StringComparison.Ordinal));
         Assert.IsTrue(md.Contains("`20260831-md-status-02`", StringComparison.Ordinal));
     }
+
+    [TestMethod]
+    public void IterationSummary_AutoSelectIteration_EmitsInfoDiagnostic()
+    {
+        var iterId = "20260831-draft-only";
+        // Create draft (not active) iteration
+        IterationCreator.Create(_wsRoot, iterId, "feature", activate: false);
+
+        // Generate without explicit iteration ID
+        var (summarySuccess, summaryResult, diags) = IterationSummaryGenerator.Generate(_wsRoot, null);
+        Assert.IsTrue(summarySuccess);
+        Assert.IsNotNull(summaryResult);
+        Assert.AreEqual(iterId, summaryResult.Summary.IterationId);
+
+        var infoDiag = diags.FirstOrDefault(d => d.Code == DiagnosticCodes.IterationAutoSelected);
+        Assert.IsNotNull(infoDiag);
+        Assert.AreEqual("info", infoDiag.Severity);
+        Assert.IsTrue(infoDiag.Message.Contains("Auto-selected iteration '20260831-draft-only'"));
+    }
 }

@@ -6,6 +6,13 @@ using DogdouSpec.Core.Formatting;
 
 namespace DogdouSpec.Core.Tasks;
 
+public sealed record ScopePathExplanation(
+    string Path,
+    bool InScope,
+    string? MatchedRule = null,
+    string? RuleKind = null,
+    string? Reason = null);
+
 /// <summary>
 /// Result container for task repository scope verification.
 /// </summary>
@@ -16,6 +23,7 @@ public sealed class TaskScopeResult
     public XElement? DeclaredScopeElement { get; }
     public IReadOnlyList<string> InScopePaths { get; }
     public IReadOnlyList<string> OutOfScopePaths { get; }
+    public IReadOnlyList<ScopePathExplanation> Explanations { get; }
     public bool IsValid => OutOfScopePaths.Count == 0;
 
     public TaskScopeResult(
@@ -23,13 +31,15 @@ public sealed class TaskScopeResult
         string iterationId,
         XElement? declaredScopeElement,
         IReadOnlyList<string> inScopePaths,
-        IReadOnlyList<string> outOfScopePaths)
+        IReadOnlyList<string> outOfScopePaths,
+        IReadOnlyList<ScopePathExplanation>? explanations = null)
     {
         TaskId = taskId ?? string.Empty;
         IterationId = iterationId ?? string.Empty;
         DeclaredScopeElement = declaredScopeElement;
         InScopePaths = inScopePaths ?? Array.Empty<string>();
         OutOfScopePaths = outOfScopePaths ?? Array.Empty<string>();
+        Explanations = explanations ?? Array.Empty<ScopePathExplanation>();
     }
 
     public string ToXmlString()
@@ -79,6 +89,31 @@ public sealed class TaskScopeResult
             }
             writer.WriteEndElement();
 
+            if (Explanations.Count > 0)
+            {
+                writer.WriteStartElement("explanations");
+                foreach (var exp in Explanations)
+                {
+                    writer.WriteStartElement("explanation");
+                    writer.WriteAttributeString("path", exp.Path);
+                    writer.WriteAttributeString("in_scope", exp.InScope ? "true" : "false");
+                    if (!string.IsNullOrWhiteSpace(exp.MatchedRule))
+                    {
+                        writer.WriteAttributeString("matched_rule", exp.MatchedRule);
+                    }
+                    if (!string.IsNullOrWhiteSpace(exp.RuleKind))
+                    {
+                        writer.WriteAttributeString("rule_kind", exp.RuleKind);
+                    }
+                    if (!string.IsNullOrWhiteSpace(exp.Reason))
+                    {
+                        writer.WriteString(exp.Reason);
+                    }
+                    writer.WriteEndElement();
+                }
+                writer.WriteEndElement();
+            }
+
             writer.WriteEndElement(); // </task-scope>
             writer.WriteEndDocument();
         }
@@ -102,7 +137,9 @@ public sealed class TaskScopeResult
         {
             foreach (var path in InScopePaths)
             {
-                sb.AppendLine(CultureInfo.InvariantCulture, $"  - {path}");
+                var exp = Explanations.FirstOrDefault(e => string.Equals(e.Path, path, StringComparison.Ordinal));
+                var matchInfo = exp?.MatchedRule != null ? $" [matched: {exp.MatchedRule}]" : string.Empty;
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  + {path}{matchInfo}");
             }
         }
 
@@ -116,7 +153,9 @@ public sealed class TaskScopeResult
         {
             foreach (var path in OutOfScopePaths)
             {
-                sb.AppendLine(CultureInfo.InvariantCulture, $"  - {path}");
+                var exp = Explanations.FirstOrDefault(e => string.Equals(e.Path, path, StringComparison.Ordinal));
+                var reasonInfo = exp?.Reason != null ? $" ({exp.Reason})" : string.Empty;
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  ! {path}{reasonInfo}");
             }
         }
 

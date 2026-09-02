@@ -18,6 +18,9 @@ public static class TaskCommand
     {
         var taskCmd = new Command("task", "Manage and update tasks in DogdouSpec workspace");
 
+        taskCmd.Add(BuildListCommand());
+        taskCmd.Add(BuildShowCommand());
+        taskCmd.Add(BuildSummaryCommand());
         taskCmd.Add(BuildUpdateCommand());
         taskCmd.Add(BuildAddCommand());
         taskCmd.Add(BuildQuickCommand());
@@ -31,6 +34,117 @@ public static class TaskCommand
         taskCmd.Add(BuildFinishCommand());
 
         return taskCmd;
+    }
+
+    private static Command BuildListCommand()
+    {
+        var cmd = new Command("list", "List tasks in an iteration (read-only)");
+        var iterOption = new Option<string?>("--iteration") { Description = "Iteration ID; omitted auto-discovers active iteration" };
+        var statusOption = new Option<string?>("--status") { Description = "Filter by status (e.g. pending, in-progress, verification, done)" };
+        var workspaceOption = new Option<string?>("--workspace-root") { Description = "Workspace root or project directory" };
+        var formatOption = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { iterOption, statusOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, err) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || err != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task list", err!).Format(format));
+                return 2;
+            }
+
+            var (success, result, diagnostics) = TaskList.List(root, parse.GetValue(iterOption), parse.GetValue(statusOption));
+            if (!success || diagnostics.Count > 0 || result == null)
+            {
+                var envelope = new DiagnosticsEnvelope("task list", diagnostics);
+                Console.Error.Write(envelope.Format(format));
+                return envelope.GetExitCode();
+            }
+
+            Console.Out.Write(result.Format(format));
+            return 0;
+        });
+
+        return cmd;
+    }
+
+    private static Command BuildShowCommand()
+    {
+        var cmd = new Command("show", "Show detailed information about a task (read-only)");
+        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID" };
+        var iterOption = new Option<string?>("--iteration") { Description = "Iteration ID (optional)" };
+        var workspaceOption = new Option<string?>("--workspace-root") { Description = "Workspace root or project directory" };
+        var formatOption = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { taskOption, iterOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var taskId = parse.GetValue(taskOption)!;
+            var (found, root, err) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || err != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task show", err!).Format(format));
+                return 2;
+            }
+
+            var (success, result, diagnostics) = TaskShow.Show(root, taskId, parse.GetValue(iterOption));
+            if (!success || diagnostics.Count > 0 || result == null)
+            {
+                var envelope = new DiagnosticsEnvelope("task show", diagnostics);
+                Console.Error.Write(envelope.Format(format));
+                return envelope.GetExitCode();
+            }
+
+            Console.Out.Write(result.Format(format));
+            return 0;
+        });
+
+        return cmd;
+    }
+
+    private static Command BuildSummaryCommand()
+    {
+        var cmd = new Command("summary", "Show summary breakdown of tasks in an iteration (read-only)");
+        var iterOption = new Option<string?>("--iteration") { Description = "Iteration ID; omitted auto-discovers active iteration" };
+        var workspaceOption = new Option<string?>("--workspace-root") { Description = "Workspace root or project directory" };
+        var formatOption = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { iterOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, err) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || err != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task summary", err!).Format(format));
+                return 2;
+            }
+
+            var (success, result, diagnostics) = TaskSummary.Summarize(root, parse.GetValue(iterOption));
+            if (!success || diagnostics.Count > 0 || result == null)
+            {
+                var envelope = new DiagnosticsEnvelope("task summary", diagnostics);
+                Console.Error.Write(envelope.Format(format));
+                return envelope.GetExitCode();
+            }
+
+            Console.Out.Write(result.Format(format));
+            return 0;
+        });
+
+        return cmd;
     }
 
     private static Command BuildQuickCommand()
@@ -248,22 +362,54 @@ public static class TaskCommand
     {
         var reviseCmd = new Command("revise", "Elaborate task scope, constraints, dependencies, or acceptance criteria (mutating)");
 
-        var iterationOption = new Option<string?>("--iteration")
-        {
-            Description = "Iteration identifier following YYYYMMDD-name grammar",
-            Required = true
-        };
-
-        var taskOption = new Option<string?>("--task")
+        var taskOption = new Option<string>("--task")
         {
             Description = "Task identifier following time-first grammar",
             Required = true
         };
 
+        var iterationOption = new Option<string?>("--iteration")
+        {
+            Description = "Iteration identifier; omitted auto-discovers active iteration"
+        };
+
         var expectedRevisionOption = new Option<int?>("--expected-revision")
         {
-            Description = "Expected positive integer revision of the target tasks.xml document",
-            Required = true
+            Description = "Expected positive integer revision of the target tasks.xml document (omitted auto-resolves)"
+        };
+
+        var addConstraintOption = new Option<string[]>("--add-constraint")
+        {
+            Description = "Add constraint to task (repeatable)",
+            AllowMultipleArgumentsPerToken = true
+        };
+
+        var addCriterionOption = new Option<string[]>("--add-criterion")
+        {
+            Description = "Add acceptance criterion to task (repeatable)",
+            AllowMultipleArgumentsPerToken = true
+        };
+
+        var addScopeOption = new Option<string[]>("--add-scope")
+        {
+            Description = "Add repository include path to scope (repeatable)",
+            AllowMultipleArgumentsPerToken = true
+        };
+
+        var addDepOption = new Option<string[]>("--add-dependency")
+        {
+            Description = "Add prerequisite task dependency (repeatable)",
+            AllowMultipleArgumentsPerToken = true
+        };
+
+        var summaryOption = new Option<string?>("--summary")
+        {
+            Description = "Revision rationale summary"
+        };
+
+        var actorOption = new Option<string?>("--actor")
+        {
+            Description = "Actor attribution (defaults to 'agent')"
         };
 
         var stdinOption = new Option<bool>("--stdin")
@@ -287,9 +433,15 @@ public static class TaskCommand
         };
         formatOption.AcceptOnlyFromAmong("xml", "human");
 
-        reviseCmd.Add(iterationOption);
         reviseCmd.Add(taskOption);
+        reviseCmd.Add(iterationOption);
         reviseCmd.Add(expectedRevisionOption);
+        reviseCmd.Add(addConstraintOption);
+        reviseCmd.Add(addCriterionOption);
+        reviseCmd.Add(addScopeOption);
+        reviseCmd.Add(addDepOption);
+        reviseCmd.Add(summaryOption);
+        reviseCmd.Add(actorOption);
         reviseCmd.Add(stdinOption);
         reviseCmd.Add(fileOption);
         reviseCmd.Add(workspaceRootOption);
@@ -297,15 +449,43 @@ public static class TaskCommand
 
         reviseCmd.SetAction(parseResult =>
         {
+            var taskId = parseResult.GetValue(taskOption)!;
             var iterationId = parseResult.GetValue(iterationOption);
-            var taskId = parseResult.GetValue(taskOption);
             var expectedRevision = parseResult.GetValue(expectedRevisionOption);
             var hasStdin = parseResult.GetValue(stdinOption);
             var filePath = parseResult.GetValue(fileOption);
+            var addConstraints = parseResult.GetValue(addConstraintOption);
+            var addCriteria = parseResult.GetValue(addCriterionOption);
+            var addScopes = parseResult.GetValue(addScopeOption);
+            var addDeps = parseResult.GetValue(addDepOption);
+            var summary = parseResult.GetValue(summaryOption);
+            var actor = parseResult.GetValue(actorOption) ?? "agent";
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
 
+            var (discoverSuccess, discoveredRoot, discoverError) = WorkspaceDiscovery.FindWorkspaceRoot(
+                workspaceRoot,
+                Environment.CurrentDirectory);
+
+            if (!discoverSuccess || discoverError != null)
+            {
+                var envelope = new DiagnosticsEnvelope("task revise", discoverError!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var iterId = IterationCommand.ResolveIterationId(iterationId, discoveredRoot);
+            if (string.IsNullOrWhiteSpace(iterId))
+            {
+                var envelope = new DiagnosticsEnvelope("task revise", Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "--iteration is required when multiple or zero active iterations exist."));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            string requestXml;
             if (hasStdin && !string.IsNullOrWhiteSpace(filePath))
             {
                 var envelope = new DiagnosticsEnvelope("task revise", Diagnostic.Error(
@@ -315,21 +495,11 @@ public static class TaskCommand
                 return 2;
             }
 
-            if (!hasStdin && string.IsNullOrWhiteSpace(filePath))
-            {
-                var envelope = new DiagnosticsEnvelope("task revise", Diagnostic.Error(
-                    DiagnosticCodes.InvalidArgument,
-                    "Either --stdin or --file must be specified."));
-                Console.Error.Write(envelope.Format(format));
-                return 2;
-            }
-
-            string requestXml;
             if (hasStdin)
             {
                 requestXml = Console.In.ReadToEnd();
             }
-            else
+            else if (!string.IsNullOrWhiteSpace(filePath))
             {
                 if (!File.Exists(filePath))
                 {
@@ -353,67 +523,122 @@ public static class TaskCommand
                     return 2;
                 }
             }
-
-            if (string.IsNullOrWhiteSpace(iterationId))
+            else
             {
-                var envelope = new DiagnosticsEnvelope("task revise", Diagnostic.Error(
-                    DiagnosticCodes.InvalidArgument,
-                    "--iteration option is required."));
-                Console.Error.Write(envelope.Format(format));
-                return 2;
+                bool hasAdditive = (addConstraints != null && addConstraints.Length > 0) ||
+                                   (addCriteria != null && addCriteria.Length > 0) ||
+                                   (addScopes != null && addScopes.Length > 0) ||
+                                   (addDeps != null && addDeps.Length > 0);
+
+                if (!hasAdditive)
+                {
+                    var envelope = new DiagnosticsEnvelope("task revise", Diagnostic.Error(
+                        DiagnosticCodes.InvalidArgument,
+                        "Specify --stdin, --file, or at least one of --add-constraint, --add-criterion, --add-scope, --add-dependency."));
+                    Console.Error.Write(envelope.Format(format));
+                    return 2;
+                }
+
+                var nowUtc = DateTimeOffset.UtcNow;
+                var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+                var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-taskrev-{Guid.NewGuid():N}";
+                var recId = $"{nowUtc:yyyyMMddTHHmmssZ}-record-revise-{Guid.NewGuid():N}";
+                var revSummary = summary ?? $"Revised task {taskId}.";
+
+                var scopeSb = new StringBuilder();
+                if (addScopes is { Length: > 0 })
+                {
+                    scopeSb.AppendLine("  <scope>");
+                    scopeSb.AppendLine("    <repository path=\".\">");
+                    foreach (var s in addScopes)
+                    {
+                        scopeSb.AppendLine(CultureInfo.InvariantCulture, $"      <include path=\"{SecurityElement.Escape(s)}\"/>");
+                    }
+                    scopeSb.AppendLine("    </repository>");
+                    scopeSb.AppendLine("  </scope>");
+                }
+
+                var depsSb = new StringBuilder();
+                if (addDeps is { Length: > 0 })
+                {
+                    depsSb.AppendLine("  <add_dependencies>");
+                    foreach (var d in addDeps)
+                    {
+                        depsSb.AppendLine(CultureInfo.InvariantCulture, $"    <ref target=\"{SecurityElement.Escape(d)}\" relation=\"depends-on\"/>");
+                    }
+                    depsSb.AppendLine("  </add_dependencies>");
+                }
+
+                var constraintsSb = new StringBuilder();
+                if (addConstraints is { Length: > 0 })
+                {
+                    constraintsSb.AppendLine("  <add_constraints>");
+                    for (int i = 0; i < addConstraints.Length; i++)
+                    {
+                        var conId = $"{nowUtc:yyyyMMddTHHmmssZ}-con-{Guid.NewGuid():N}";
+                        constraintsSb.AppendLine(CultureInfo.InvariantCulture, $"    <constraint id=\"{conId}\">{SecurityElement.Escape(addConstraints[i])}</constraint>");
+                    }
+                    constraintsSb.AppendLine("  </add_constraints>");
+                }
+
+                var criteriaSb = new StringBuilder();
+                if (addCriteria is { Length: > 0 })
+                {
+                    criteriaSb.AppendLine("  <add_acceptance>");
+                    for (int i = 0; i < addCriteria.Length; i++)
+                    {
+                        var critId = $"{nowUtc:yyyyMMddTHHmmssZ}-crit-{Guid.NewGuid():N}";
+                        criteriaSb.AppendLine(CultureInfo.InvariantCulture, $"    <criterion id=\"{critId}\" status=\"pending\">{SecurityElement.Escape(addCriteria[i])}</criterion>");
+                    }
+                    criteriaSb.AppendLine("  </add_acceptance>");
+                }
+
+                var recordsSb = new StringBuilder();
+                recordsSb.AppendLine("  <records>");
+                recordsSb.AppendLine(CultureInfo.InvariantCulture, $"    <record id=\"{recId}\" kind=\"decision\" status=\"informational\" created_at=\"{isoTime}\" actor=\"{actor}\" operation_id=\"{opId}\">");
+                recordsSb.AppendLine(CultureInfo.InvariantCulture, $"      <summary>{SecurityElement.Escape(revSummary)}</summary>");
+                recordsSb.AppendLine("    </record>");
+                recordsSb.AppendLine("  </records>");
+
+                requestXml = $"""
+<?xml version="1.0" encoding="utf-8"?>
+<task-revise id="{opId}" actor="{actor}" occurred_at="{isoTime}">
+  <rationale>{SecurityElement.Escape(revSummary)}</rationale>
+{scopeSb}{depsSb}{constraintsSb}{criteriaSb}{recordsSb}</task-revise>
+""";
             }
 
-            var (isIterValid, _, iterErr) = PathSecurity.ValidateIterationId(iterationId);
-            if (!isIterValid || iterErr != null)
+            if (!expectedRevision.HasValue || expectedRevision.Value <= 0)
             {
-                var envelope = new DiagnosticsEnvelope("task revise", iterErr ?? Diagnostic.Error(
-                    DiagnosticCodes.InvalidArgument,
-                    $"Invalid iteration identifier '{iterationId}'."));
-                Console.Error.Write(envelope.Format(format));
-                return 2;
-            }
-
-            if (string.IsNullOrWhiteSpace(taskId))
-            {
-                var envelope = new DiagnosticsEnvelope("task revise", Diagnostic.Error(
-                    DiagnosticCodes.InvalidArgument,
-                    "--task option is required."));
-                Console.Error.Write(envelope.Format(format));
-                return 2;
-            }
-
-            if (!ProjectSemanticIndex.IsValidTimeFirstId(taskId))
-            {
-                var envelope = new DiagnosticsEnvelope("task revise", Diagnostic.Error(
-                    DiagnosticCodes.InvalidIdGrammar,
-                    $"Task identifier '{taskId}' does not conform to the time-first ID grammar."));
-                Console.Error.Write(envelope.Format(format));
-                return 2;
+                var tasksPath = Path.Combine(discoveredRoot, iterId, "tasks.xml");
+                if (File.Exists(tasksPath))
+                {
+                    try
+                    {
+                        var tasksDoc = XDocument.Load(tasksPath);
+                        if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev))
+                        {
+                            expectedRevision = rev;
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
             }
 
             if (!expectedRevision.HasValue || expectedRevision.Value <= 0)
             {
                 var envelope = new DiagnosticsEnvelope("task revise", Diagnostic.Error(
                     DiagnosticCodes.InvalidArgument,
-                    "--expected-revision must be a positive integer."));
-                Console.Error.Write(envelope.Format(format));
-                return 2;
-            }
-
-            var (discoverSuccess, discoveredRoot, discoverError) = WorkspaceDiscovery.FindWorkspaceRoot(
-                workspaceRoot,
-                Environment.CurrentDirectory);
-
-            if (!discoverSuccess || discoverError != null)
-            {
-                var envelope = new DiagnosticsEnvelope("task revise", discoverError!);
+                    "--expected-revision must be specified or resolvable."));
                 Console.Error.Write(envelope.Format(format));
                 return 2;
             }
 
             var (success, mutationEnvelope, diagnostics) = TaskReviser.Revise(
                 discoveredRoot,
-                iterationId,
+                iterId,
                 taskId,
                 expectedRevision.Value,
                 requestXml);
@@ -916,6 +1141,11 @@ public static class TaskCommand
             Description = "Explicit two-reference Git diff range (e.g. main..HEAD, base...head)"
         };
 
+        var worktreeOption = new Option<bool>("--worktree")
+        {
+            Description = "Verify all working tree changed and untracked files against declared scope"
+        };
+
         var workspaceRootOption = new Option<string?>("--workspace-root")
         {
             Description = "Explicit path to workspace root or project directory containing .dogdouspec"
@@ -932,8 +1162,13 @@ public static class TaskCommand
         scopeCmd.Add(pathOption);
         scopeCmd.Add(gitRefOption);
         scopeCmd.Add(gitRangeOption);
+        scopeCmd.Add(worktreeOption);
         scopeCmd.Add(workspaceRootOption);
         scopeCmd.Add(formatOption);
+
+        // Add explain subcommand
+        var explainCmd = BuildScopeExplainCommand();
+        scopeCmd.Add(explainCmd);
 
         scopeCmd.SetAction(parseResult =>
         {
@@ -945,6 +1180,7 @@ public static class TaskCommand
                 : null;
             var gitRef = parseResult.GetValue(gitRefOption);
             var gitRange = parseResult.GetValue(gitRangeOption);
+            var worktree = parseResult.GetValue(worktreeOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
@@ -975,7 +1211,8 @@ public static class TaskCommand
                 iterationId,
                 explicitPaths,
                 gitRef,
-                gitRange);
+                gitRange,
+                worktree);
 
             if (!success || diagnostics.Count > 0)
             {
@@ -996,12 +1233,82 @@ public static class TaskCommand
         return scopeCmd;
     }
 
+    private static Command BuildScopeExplainCommand()
+    {
+        var explainCmd = new Command("explain", "Explain effective task scope rules and matched paths (read-only)");
+
+        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID" };
+        var iterationOption = new Option<string?>("--iteration") { Description = "Iteration ID" };
+        var pathOption = new Option<string[]>("--path") { AllowMultipleArgumentsPerToken = true, Description = "Explicit repository-relative path" };
+        var gitRefOption = new Option<string?>("--git-ref") { Description = "Git reference" };
+        var gitRangeOption = new Option<string?>("--git-range") { Description = "Git range" };
+        var worktreeOption = new Option<bool>("--worktree") { Description = "Working tree changed and untracked files" };
+        var workspaceRootOption = new Option<string?>("--workspace-root");
+        var formatOption = new Option<string?>("--format");
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { taskOption, iterationOption, pathOption, gitRefOption, gitRangeOption, worktreeOption, workspaceRootOption, formatOption })
+            explainCmd.Add(opt);
+
+        explainCmd.SetAction(parseResult =>
+        {
+            var taskId = parseResult.GetValue(taskOption);
+            var iterationId = parseResult.GetValue(iterationOption);
+            var parsedPaths = parseResult.GetValue(pathOption);
+            IReadOnlyList<string>? explicitPaths = parsedPaths is { Length: > 0 } ? parsedPaths : null;
+            var gitRef = parseResult.GetValue(gitRefOption);
+            var gitRange = parseResult.GetValue(gitRangeOption);
+            var worktree = parseResult.GetValue(worktreeOption);
+            var workspaceRoot = parseResult.GetValue(workspaceRootOption);
+            var formatArg = parseResult.GetValue(formatOption);
+            var format = WorkspaceCommand.ResolveFormat(formatArg);
+
+            var (discoverSuccess, discoveredRoot, discoverError) = WorkspaceDiscovery.FindWorkspaceRoot(workspaceRoot, Environment.CurrentDirectory);
+            if (!discoverSuccess || discoverError != null)
+            {
+                var envelope = new DiagnosticsEnvelope("task scope explain", discoverError!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var (success, result, diagnostics) = TaskScopeVerifier.VerifyScope(
+                discoveredRoot,
+                taskId!,
+                iterationId,
+                explicitPaths,
+                gitRef,
+                gitRange,
+                worktree);
+
+            if (!success || diagnostics.Count > 0)
+            {
+                var envelope = new DiagnosticsEnvelope("task scope explain", diagnostics);
+                Console.Error.Write(envelope.Format(format));
+                return envelope.GetExitCode();
+            }
+
+            if (result != null)
+            {
+                Console.Out.Write(result.Format(format));
+                return 0;
+            }
+
+            return 0;
+        });
+
+        return explainCmd;
+    }
+
     private static Command BuildReviewCommand()
     {
         var command = new Command("review", "Submit a structured task review (mutating; actor separation is provenance, not authenticated identity)");
-        var iteration = new Option<string>("--iteration") { Required = true, Description = "Iteration ID" };
-        var task = new Option<string>("--task") { Required = true, Description = "Task ID" };
-        var expectedRevision = new Option<int?>("--expected-revision") { Required = true, Description = "Exact tasks.xml revision" };
+
+        command.Add(BuildReviewApproveCommand());
+        command.Add(BuildReviewRequestChangesCommand());
+
+        var iteration = new Option<string?>("--iteration") { Description = "Iteration ID" };
+        var task = new Option<string?>("--task") { Description = "Task ID" };
+        var expectedRevision = new Option<int?>("--expected-revision") { Description = "Exact tasks.xml revision" };
         var stdin = new Option<bool>("--stdin") { Description = "Read task-review XML from standard input" };
         var file = new Option<string?>("--file") { Description = "Path to task-review XML" };
         var workspace = new Option<string?>("--workspace-root") { Description = "Workspace root or project directory" };
@@ -1016,6 +1323,14 @@ public static class TaskCommand
             var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
             var useStdin = parse.GetValue(stdin);
             var filePath = parse.GetValue(file);
+            var iterVal = parse.GetValue(iteration);
+            var taskVal = parse.GetValue(task);
+            if (string.IsNullOrWhiteSpace(iterVal) || string.IsNullOrWhiteSpace(taskVal))
+            {
+                var diagnostic = Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Options --iteration and --task are required for raw task review.");
+                Console.Error.Write(new DiagnosticsEnvelope("task review", diagnostic).Format(format));
+                return 2;
+            }
             if (useStdin == !string.IsNullOrWhiteSpace(filePath))
             {
                 var diagnostic = Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Specify exactly one of --stdin or --file.");
@@ -1051,7 +1366,7 @@ public static class TaskCommand
                 return 2;
             }
             var (success, envelope, diagnostics) = TaskReviewer.Submit(
-                root, parse.GetValue(iteration)!, parse.GetValue(task)!, revision.Value, xml);
+                root, iterVal, taskVal, revision.Value, xml);
             if (!success || diagnostics.Count > 0 || envelope == null)
             {
                 var diagnosticEnvelope = new DiagnosticsEnvelope("task review", diagnostics);
@@ -1062,6 +1377,181 @@ public static class TaskCommand
             return 0;
         });
         return command;
+    }
+
+    private static Command BuildReviewApproveCommand()
+    {
+        var cmd = new Command("approve", "Submit a structured approval for a task with review required (mutating)");
+        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID" };
+        var iterationOption = new Option<string?>("--iteration") { Description = "Iteration ID (omitted auto-resolves active iteration)" };
+        var expectedRevOption = new Option<int?>("--expected-revision") { Description = "Expected tasks.xml revision (omitted auto-resolves)" };
+        var actorOption = new Option<string?>("--actor") { Description = "Reviewer actor attribution (defaults to 'reviewer')" };
+        var summaryOption = new Option<string?>("--summary") { Description = "Approval summary (defaults to 'Approved task review')" };
+        var workspaceOption = new Option<string?>("--workspace-root");
+        var formatOption = new Option<string?>("--format"); formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { taskOption, iterationOption, expectedRevOption, actorOption, summaryOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, findErr) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || findErr != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task review approve", findErr!).Format(format));
+                return 2;
+            }
+
+            var iterId = IterationCommand.ResolveIterationId(parse.GetValue(iterationOption), root);
+            if (string.IsNullOrWhiteSpace(iterId))
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task review approve", Diagnostic.Error(DiagnosticCodes.InvalidArgument, "--iteration is required when multiple or zero active iterations exist.")).Format(format));
+                return 2;
+            }
+
+            var taskId = parse.GetValue(taskOption)!;
+            var tasksPath = Path.Combine(root, iterId, "tasks.xml");
+            if (!File.Exists(tasksPath))
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task review approve", Diagnostic.Error(DiagnosticCodes.DocumentNotFound, $"tasks.xml not found for iteration '{iterId}'.")).Format(format));
+                return 2;
+            }
+
+            XDocument tasksDoc;
+            try { tasksDoc = XDocument.Load(tasksPath); }
+            catch (Exception ex)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task review approve", Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to load tasks.xml: {ex.Message}")).Format(format));
+                return 2;
+            }
+
+            var expectedRev = parse.GetValue(expectedRevOption);
+            if (!expectedRev.HasValue)
+            {
+                if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev)) expectedRev = rev;
+                else expectedRev = 1;
+            }
+
+            var nowUtc = DateTimeOffset.UtcNow;
+            var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+            var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-taskrev-{Guid.NewGuid():N}";
+            var subId = $"{nowUtc:yyyyMMddTHHmmssZ}-sub-{Guid.NewGuid():N}";
+            var actor = parse.GetValue(actorOption) ?? "reviewer";
+            var summary = parse.GetValue(summaryOption) ?? $"Approved task review for {taskId}.";
+
+            var xml = $"""
+<?xml version="1.0" encoding="utf-8"?>
+<task-review id="{opId}" actor="{actor}" occurred_at="{isoTime}">
+  <submission id="{subId}" disposition="approved">
+    <summary>{SecurityElement.Escape(summary)}</summary>
+  </submission>
+</task-review>
+""";
+
+            var (success, envelope, diagnostics) = TaskReviewer.Submit(root, iterId, taskId, expectedRev.Value, xml);
+            if (!success || diagnostics.Count > 0 || envelope == null)
+            {
+                var diagEnv = new DiagnosticsEnvelope("task review approve", diagnostics);
+                Console.Error.Write(diagEnv.Format(format));
+                return diagEnv.GetExitCode();
+            }
+
+            Console.Out.Write(envelope.Format(format));
+            return 0;
+        });
+
+        return cmd;
+    }
+
+    private static Command BuildReviewRequestChangesCommand()
+    {
+        var cmd = new Command("request-changes", "Submit changes-requested for a task under review (mutating)");
+        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID" };
+        var iterationOption = new Option<string?>("--iteration") { Description = "Iteration ID (omitted auto-resolves active iteration)" };
+        var expectedRevOption = new Option<int?>("--expected-revision") { Description = "Expected tasks.xml revision (omitted auto-resolves)" };
+        var actorOption = new Option<string?>("--actor") { Description = "Reviewer actor attribution (defaults to 'reviewer')" };
+        var summaryOption = new Option<string>("--summary") { Required = true, Description = "Summary of requested changes" };
+        var impactOption = new Option<string?>("--impact") { Description = "Impact of requested changes (optional)" };
+        var findingIdOption = new Option<string?>("--finding-id") { Description = "Finding record ID (optional)" };
+        var workspaceOption = new Option<string?>("--workspace-root");
+        var formatOption = new Option<string?>("--format"); formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { taskOption, iterationOption, expectedRevOption, actorOption, summaryOption, impactOption, findingIdOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, findErr) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || findErr != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task review request-changes", findErr!).Format(format));
+                return 2;
+            }
+
+            var iterId = IterationCommand.ResolveIterationId(parse.GetValue(iterationOption), root);
+            if (string.IsNullOrWhiteSpace(iterId))
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task review request-changes", Diagnostic.Error(DiagnosticCodes.InvalidArgument, "--iteration is required when multiple or zero active iterations exist.")).Format(format));
+                return 2;
+            }
+
+            var taskId = parse.GetValue(taskOption)!;
+            var tasksPath = Path.Combine(root, iterId, "tasks.xml");
+            if (!File.Exists(tasksPath))
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task review request-changes", Diagnostic.Error(DiagnosticCodes.DocumentNotFound, $"tasks.xml not found for iteration '{iterId}'.")).Format(format));
+                return 2;
+            }
+
+            XDocument tasksDoc;
+            try { tasksDoc = XDocument.Load(tasksPath); }
+            catch (Exception ex)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task review request-changes", Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to load tasks.xml: {ex.Message}")).Format(format));
+                return 2;
+            }
+
+            var expectedRev = parse.GetValue(expectedRevOption);
+            if (!expectedRev.HasValue)
+            {
+                if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev)) expectedRev = rev;
+                else expectedRev = 1;
+            }
+
+            var nowUtc = DateTimeOffset.UtcNow;
+            var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+            var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-taskrev-{Guid.NewGuid():N}";
+            var subId = $"{nowUtc:yyyyMMddTHHmmssZ}-sub-{Guid.NewGuid():N}";
+            var findingId = parse.GetValue(findingIdOption) ?? $"{nowUtc:yyyyMMddTHHmmssZ}-finding-{Guid.NewGuid():N}";
+            var actor = parse.GetValue(actorOption) ?? "reviewer";
+            var summary = parse.GetValue(summaryOption)!;
+            var impact = parse.GetValue(impactOption) ?? summary;
+
+            var xml = $"""
+<?xml version="1.0" encoding="utf-8"?>
+<task-review id="{opId}" actor="{actor}" occurred_at="{isoTime}">
+  <submission id="{subId}" disposition="changes-requested" finding_id="{findingId}">
+    <summary>{SecurityElement.Escape(summary)}</summary>
+    <impact>{SecurityElement.Escape(impact)}</impact>
+  </submission>
+</task-review>
+""";
+
+            var (success, envelope, diagnostics) = TaskReviewer.Submit(root, iterId, taskId, expectedRev.Value, xml);
+            if (!success || diagnostics.Count > 0 || envelope == null)
+            {
+                var diagEnv = new DiagnosticsEnvelope("task review request-changes", diagnostics);
+                Console.Error.Write(diagEnv.Format(format));
+                return diagEnv.GetExitCode();
+            }
+
+            Console.Out.Write(envelope.Format(format));
+            return 0;
+        });
+
+        return cmd;
     }
 
     private static Command BuildStartCommand()

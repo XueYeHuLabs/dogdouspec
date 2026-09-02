@@ -285,6 +285,15 @@ public static class IterationReadiness
 
         bool technicallyReady = lifecycleOk && elementsOk;
 
+        var dimensions = new List<ReadinessDimension>
+        {
+            new("execution_terminality", "passed", "Activation phase (tasks pending or draft)"),
+            new("verification_completeness", elementsOk ? "passed" : "failed", elementsOk ? "Specification baseline structural checks passed" : "Structural elements missing"),
+            new("unresolved_findings", "passed", "No active findings blocking activation"),
+            new("product_confirmation", productDecisions.Total > 0 ? "pending" : "passed", $"Owner confirmation required ({productDecisions.Total} pending items)"),
+            new("vcs_checkpoint", "passed", "Advisory: checkpoint before activation")
+        };
+
         var result = new IterationReadinessResult(
             iterId,
             "activation",
@@ -294,7 +303,8 @@ public static class IterationReadiness
             ownerConfirmationRequired: true,
             technicalChecks,
             productDecisions,
-            new ReadinessRequiredAction(requiredAction));
+            new ReadinessRequiredAction(requiredAction),
+            dimensions);
 
         return (true, result, Array.Empty<Diagnostic>());
     }
@@ -487,6 +497,19 @@ public static class IterationReadiness
             pendingCriteria,
             pendingQuestions);
 
+        var termCheck = technicalChecks.FirstOrDefault(c => c.Name == "tasks_terminal");
+        var critCheck = technicalChecks.FirstOrDefault(c => c.Name == "task_criteria_and_records_terminal");
+        var activeFindingCheck = technicalChecks.FirstOrDefault(c => c.Name == "task_criteria_and_records_terminal" && c.Result == "failed" && (c.Message?.Contains("finding") ?? false));
+
+        var dimensions = new List<ReadinessDimension>
+        {
+            new("execution_terminality", termCheck?.Result ?? (allChecksPassed ? "passed" : "failed"), termCheck?.Message ?? (allChecksPassed ? "All tasks are in a terminal state" : "Non-terminal tasks exist")),
+            new("verification_completeness", critCheck?.Result ?? (allChecksPassed ? "passed" : "failed"), critCheck?.Message ?? "Verification completeness assessed"),
+            new("unresolved_findings", activeFindingCheck != null ? "failed" : "passed", activeFindingCheck != null ? "Unresolved active findings exist" : "No unresolved blocking findings"),
+            new("product_confirmation", productDecisions.Total > 0 ? "pending" : "passed", $"Owner confirmation required ({productDecisions.Total} pending items)"),
+            new("vcs_checkpoint", "passed", "Authoritative documents ready for governance checkpoint")
+        };
+
         var result = new IterationReadinessResult(
             iterId,
             "completion",
@@ -496,7 +519,8 @@ public static class IterationReadiness
             ownerConfirmationRequired: true,
             technicalChecks,
             productDecisions,
-            new ReadinessRequiredAction("complete"));
+            new ReadinessRequiredAction("complete"),
+            dimensions);
 
         return (true, result, Array.Empty<Diagnostic>());
     }

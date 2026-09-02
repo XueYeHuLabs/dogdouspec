@@ -231,6 +231,10 @@ public static class SkillCommand
                         File.WriteAllText(agentsPath, agentsContent, new UTF8Encoding(false));
                         exportedFiles.Add(agentsPath);
                     }
+                    else if (format != OutputFormat.Xml)
+                    {
+                        Console.Out.WriteLine($"Skipped AGENTS.md (already exists at '{agentsPath}'). Delete it and re-run to regenerate.");
+                    }
                 }
             }
 
