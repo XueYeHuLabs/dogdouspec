@@ -121,8 +121,14 @@ public static class WorkspaceCommand
             }
             else
             {
+                var agentSkillDir = Path.Combine(Path.GetDirectoryName(initializedRoot)!, ".agents", "skills", "dogdouspec");
                 Console.Out.WriteLine($"Initialized DogdouSpec workspace at: {initializedRoot}");
-                Console.Out.WriteLine("Managed .dogdouspec state is authoritative. In Git-backed governed work, ignore only .dogdouspec/_tmp/ and checkpoint managed files explicitly.");
+                Console.Out.WriteLine($"Skill files written to:              {agentSkillDir}");
+                Console.Out.WriteLine($".gitignore updated:                  /.dogdouspec/_tmp/ added (if not already present)");
+                Console.Out.WriteLine();
+                Console.Out.WriteLine("Next steps:");
+                Console.Out.WriteLine("  Run 'dogdouspec skill guide' to view setup guidance and AGENTS.md recommendations.");
+                Console.Out.WriteLine("  Checkpoint managed .dogdouspec/ files in Git when ready (DogdouSpec never commits automatically).");
             }
 
             return 0;

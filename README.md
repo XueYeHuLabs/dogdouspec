@@ -12,35 +12,39 @@ For standard development environments with a global package manager:
    ```powershell
    winget install Vixasol.DogdouSpec
    ```
-2. **Initialize workspace & skill in your repository**:
+2. **Initialize workspace in your repository**:
    Navigate to your project root and run:
    ```powershell
-   # 1. Initialize XML workspace (.dogdouspec/ schemas, backlog, knowledge)
    dogdouspec workspace init
-
-   # 2. Synchronize agent skill and bootstrap a starter AGENTS.md if not present
-   dogdouspec skill sync --agents
    ```
-   The `--agents` flag writes a project-tailored `AGENTS.md` template to your repo root if one does not already exist.
-3. **Checkpoint the initialized governed state in Git-backed repositories**:
-   - Managed `.dogdouspec/` documents are authoritative project state. Version them when Mode B governance is adopted; ignore only `.dogdouspec/_tmp/`.
-   - DogdouSpec does not run `git add`, `git commit`, or `git push`. Inspect `git status --short -- .dogdouspec` and create a checkpoint only with repository-write authority.
-   - Semantic agent results belong in the relevant `tasks.xml` Task records. Temporary Markdown/JSON responses and `.agents/work-results/` are not a persistence requirement.
-4. **Configure Agent Guidelines (`AGENTS.md`)**:
-   - `AGENTS.md` establishes governance boundaries, mode selection (Mode A direct commit vs Mode B governed iteration), and authority rules for AI coding agents.
-   - Maintainers or coding agents should configure `AGENTS.md` tailored to the target project's specific tech stack, build scripts (e.g. `npm test`, `cargo build`, `dotnet test`), and verification commands, referencing [`templates/v1/AGENTS.md`](templates/v1/AGENTS.md) as a structural baseline.
-5. **Provide installation guidance to AI agents (optional)**:
-   If an AI coding agent is missing DogdouSpec or needs to understand the correct workflow, you can surface the embedded guide directly:
+   This single command performs all mechanical initialization:
+   - Creates `.dogdouspec/` with authoritative XSD schemas, `backlog.xml`, and `knowledge.xml`.
+   - Copies the agent skill to `.agents/skills/dogdouspec/` (SKILL.md + references). Skips files that already exist.
+   - Appends `/.dogdouspec/_tmp/` to `.gitignore` (idempotent; creates the file if not present).
+3. **Read the setup guide and configure your project**:
    ```powershell
-   # Display SKILL.md workflow guidance for the agent (default: markdown output)
    dogdouspec skill guide
-
-   # Include all supporting reference documents (authority, mutations, xpath)
-   dogdouspec skill guide --all
-
-   # Machine-readable XML output for agent tool consumption
-   dogdouspec skill guide --format xml
    ```
+   The guide describes what to add to `AGENTS.md`, what to commit to Git, and how to tailor DogdouSpec to your project's build tools. These are **agent + owner decisions** — DogdouSpec never writes `AGENTS.md` automatically.
+4. **Checkpoint the initialized governed state in Git-backed repositories**:
+   - Managed `.dogdouspec/` documents and `.agents/skills/dogdouspec/` are authoritative project state. Review and commit them explicitly.
+   - DogdouSpec does not run `git add`, `git commit`, or `git push`. Inspect `git status --short -- .dogdouspec` and create a checkpoint only with repository-write authority.
+
+### Upgrading DogdouSpec
+
+After installing a newer version:
+
+```powershell
+winget upgrade Vixasol.DogdouSpec
+
+# Overwrite the checked-in skill files with the new CLI's embedded version (requires --force):
+dogdouspec skill sync --force
+
+# Review what changed and update AGENTS.md if needed — agent + owner decision:
+dogdouspec skill guide
+```
+
+`skill sync --force` overwrites `.agents/skills/dogdouspec/` with the version embedded in the current CLI binary. Without `--force`, `skill sync` refuses to overwrite existing skill files. It never touches `AGENTS.md`. How to update `AGENTS.md` is left to the agent and project owner based on the guidance output.
 
 ---
 
@@ -91,15 +95,15 @@ All commands run directly through `dogdouspec <command> [options]`:
   ```
 
 ### 2. Skill Management
-- **Skill Guide** (AI agent install & workflow guidance)
+- **Skill Guide** (AI agent setup guidance, workflow reference, and upgrade notes)
   ```powershell
   dogdouspec skill guide [--all] [--format markdown|human|xml]
   ```
-- **Skill Sync**
+- **Skill Sync** (synchronize skill files with this CLI's embedded version; pass `--force` to overwrite upon upgrade)
   ```powershell
-  dogdouspec skill sync [--output-dir PATH] [--agents] [--format xml|human]
+  dogdouspec skill sync [--force] [--output-dir PATH] [--format xml|human]
   ```
-  The synchronized guidance keeps semantic execution results in Task records and treats worker report files as transient.
+  Requires `--force` to overwrite existing files. Never reads or modifies `AGENTS.md`. Agent and owner decide how to update `AGENTS.md` based on `skill guide` output.
 - **Skill Export**
   ```powershell
   dogdouspec skill export --output-dir PATH [--format xml|human]

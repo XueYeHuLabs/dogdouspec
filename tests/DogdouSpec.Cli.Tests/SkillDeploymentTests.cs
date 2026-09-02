@@ -119,7 +119,7 @@ public sealed class SkillDeploymentTests
             "wrapper-create",
             "workspace-init",
             "skill-install",
-            "agents-merge",
+            "agents-guide",
             "workspace-validate",
             "upgrade-procedure",
             "rollback-initial",
@@ -400,7 +400,7 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
         RunProcess("git", $"commit -m \"{message}\"", targetPath);
     }
 
-    private static void SetupExistingInstalledWorkspace(string targetPath)
+    private void SetupExistingInstalledWorkspace(string targetPath)
     {
         // Place wrapper
         var wrapperContent = "@echo off\r\nsetlocal\r\n\"%~dp0tools\\dogdouspec\\dogdouspec.exe\" %*\r\nexit /b %ERRORLEVEL%\r\n";
@@ -418,6 +418,9 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
         var cmdPath = Path.Combine(targetPath, "dogdouspec.cmd");
         var res = RunProcess("cmd.exe", $"/c \"{cmdPath}\" workspace init --format xml", targetPath);
         Assert.AreEqual(0, res.ExitCode, $"Setup workspace init failed: {res.Stderr}");
+
+        // Ensure installed skill files match source fixture
+        InstallDefaultSkillFiles(targetPath);
     }
 
     private void InstallDefaultSkillFiles(string targetPath)
@@ -432,8 +435,17 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
         }
     }
 
-    private void InstallLegacySkillFiles(string targetPath)
+    private void InstallLegacySkillFiles(string targetPath, bool removeDotAgents = false)
     {
+        if (removeDotAgents)
+        {
+            var dotAgents = Path.Combine(targetPath, ".agents");
+            if (Directory.Exists(dotAgents))
+            {
+                Directory.Delete(dotAgents, true);
+            }
+        }
+
         var sourceSkillDir = Path.Combine(_cleanSourceRepo, ".agents", "skills", "dogdouspec");
         var targetSkillDir = Path.Combine(targetPath, "skills", "dogdouspec");
         Directory.CreateDirectory(Path.Combine(targetSkillDir, "references"));
@@ -514,7 +526,7 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
 
 " + DocSnippets["skill-install"] + @"
 
-" + DocSnippets["agents-merge"] + @"
+" + DocSnippets["agents-guide"] + @"
 
 " + DocSnippets["workspace-validate"];
 
@@ -532,11 +544,9 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
         Assert.IsTrue(File.Exists(Path.Combine(targetDefaultSkill, "references", "mutations.md")), "mutations.md must exist");
         Assert.IsTrue(File.Exists(Path.Combine(targetDefaultSkill, "references", "xpath.md")), "xpath.md must exist");
 
-        // Assert AGENTS.md was merged non-destructively
-        var mergedAgents = File.ReadAllText(Path.Combine(targetRepo, "AGENTS.md"));
-        Assert.IsTrue(mergedAgents.Contains("# Project Rules"), "Original guidelines must be preserved");
-        Assert.IsTrue(mergedAgents.Contains("## DogdouSpec Workflow"), "DogdouSpec workflow block must be present");
-        Assert.IsTrue(mergedAgents.Contains(".agents/skills/dogdouspec/SKILL.md"), "AGENTS.md must reference default .agents/skills path");
+        // Assert AGENTS.md was left untouched for user+agent decision
+        var agentsContent = File.ReadAllText(Path.Combine(targetRepo, "AGENTS.md"));
+        Assert.AreEqual("# Project Rules\n\nRule 1.\n", agentsContent, "Original AGENTS.md must be untouched by installation");
     }
 
     [TestMethod]
@@ -575,7 +585,7 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
     {
         var targetRepo = CreateTargetGitRepo("LegacyStandardUpgradeTarget");
         SetupExistingInstalledWorkspace(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
+        InstallLegacySkillFiles(targetRepo, removeDotAgents: true);
         File.WriteAllText(Path.Combine(targetRepo, "AGENTS.md"), "# Guidelines\n- Read [`skills/dogdouspec/SKILL.md`](skills/dogdouspec/SKILL.md)\n");
         CommitAllInRepo(targetRepo);
 
@@ -604,7 +614,7 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
     {
         var targetRepo = CreateTargetGitRepo("LegacyModifiedUpgradeTarget");
         SetupExistingInstalledWorkspace(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
+        InstallLegacySkillFiles(targetRepo, removeDotAgents: true);
 
         // User modified a standard file
         var legacyAuthFile = Path.Combine(targetRepo, "skills", "dogdouspec", "references", "authority.md");
@@ -631,7 +641,7 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
     {
         var targetRepo = CreateTargetGitRepo("LegacyExtraFileUpgradeTarget");
         SetupExistingInstalledWorkspace(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
+        InstallLegacySkillFiles(targetRepo, removeDotAgents: true);
 
         // User added a custom extra file
         var customNoteFile = Path.Combine(targetRepo, "skills", "dogdouspec", "custom-notes.md");
@@ -749,7 +759,7 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
     {
         var targetRepo = CreateTargetGitRepo("MixedAgentsReferencesTarget");
         SetupExistingInstalledWorkspace(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
+        InstallLegacySkillFiles(targetRepo, removeDotAgents: true);
 
         var initialAgents = @"# Project Guidelines
 1. Read [.agents/skills/dogdouspec/SKILL.md](.agents/skills/dogdouspec/SKILL.md)
@@ -783,7 +793,7 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
     {
         var targetRepo = CreateTargetGitRepo("ValidationRollbackTarget");
         SetupExistingInstalledWorkspace(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
+        InstallLegacySkillFiles(targetRepo, removeDotAgents: true);
 
         var originalAgents = "# Pre-Upgrade Guidelines\n- Read skills/dogdouspec/SKILL.md\n";
         File.WriteAllText(Path.Combine(targetRepo, "AGENTS.md"), originalAgents);
@@ -837,7 +847,7 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
 
 " + DocSnippets["skill-install"] + @"
 
-" + DocSnippets["agents-merge"];
+" + DocSnippets["agents-guide"];
 
         var installResult = ExecutePowerShellSnippet(installScript, targetRepo);
         Assert.AreEqual(0, installResult.ExitCode, $"Install failed: {installResult.Stderr}");

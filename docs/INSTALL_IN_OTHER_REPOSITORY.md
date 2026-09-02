@@ -412,167 +412,45 @@ $targetSkillDir = Join-Path "$TARGET_REPO" ".agents\skills\dogdouspec"
 $targetSkillRef = Join-Path "$targetSkillDir" "references"
 
 Assert-InsideTarget $targetSkillDir $TARGET_REPO
-if (Test-Path "$targetSkillDir") {
-    throw "[ERROR] Target skill directory already exists at '$targetSkillDir'."
+if (-not (Test-Path "$targetSkillDir")) {
+    Assert-InsideTarget $targetSkillRef $TARGET_REPO
+    New-Item -ItemType Directory -Path "$targetSkillRef" -Force | Out-Null
+
+    Copy-Item -Path (Join-Path "$sourceSkillDir" "SKILL.md") -Destination (Join-Path "$targetSkillDir" "SKILL.md")
+    Copy-Item -Path (Join-Path "$sourceSkillDir" "references\*") -Destination (Join-Path "$targetSkillDir" "references\")
+    Write-Host "[OK] Installed DogdouSpec skill in '$targetSkillDir'"
+} else {
+    Write-Host "[OK] DogdouSpec skill already initialized in '$targetSkillDir'"
 }
 
-Assert-InsideTarget $targetSkillRef $TARGET_REPO
-New-Item -ItemType Directory -Path "$targetSkillRef" -Force | Out-Null
-
-Copy-Item -Path (Join-Path "$sourceSkillDir" "SKILL.md") -Destination (Join-Path "$targetSkillDir" "SKILL.md")
-Copy-Item -Path (Join-Path "$sourceSkillDir" "references\*") -Destination (Join-Path "$targetSkillDir" "references\")
-
-Write-Host "[OK] Installed DogdouSpec skill in '$targetSkillDir'"
 ```
 
-### 5.3. Non-Destructive `AGENTS.md` Integration
+### 5.3. Agent Setup Guidance (`AGENTS.md`)
 
-Merge the DogdouSpec agent guidelines into `<TARGET_REPO>/AGENTS.md`.
+DogdouSpec does **not** automatically write or modify `AGENTS.md`. How `AGENTS.md` is configured is an **agent + project owner decision**.
 
-> [!IMPORTANT]
-> **Preserve Existing Project Guidelines**:
-> - If `AGENTS.md` exists, **never overwrite or truncate it**. Create a pre-merge backup in `$STAGING_DIR\backups\` (outside the target repository) before appending the minimal DogdouSpec block.
-> - If `AGENTS.md` does not exist, create it with the minimal block.
-> - Merging must be **idempotent** (checks if `## DogdouSpec Workflow` already exists before writing).
-
-#### Minimal DogdouSpec `AGENTS.md` Block
-
-```markdown
-## DogdouSpec Workflow
-
-This repository supports **DogdouSpec** for managing complex, long-cycle iterations, specifications, and tasks through authoritative XML documents in `.dogdouspec/`.
-
-### 1. When to Use DogdouSpec
-- **Routine & Lightweight Tasks (Default)**: For standalone fixes, small refactorings, or direct requests, proceed directly with code changes and Git commits. Do **not** query or mutate `.dogdouspec/` artifacts.
-- **Complex & Long-Cycle Iterations (Recommended)**: For multi-step features, architectural changes, or roadmap items, recommend and prefer using DogdouSpec for structured context persistence, token efficiency (`ds:filter`), and authority governance.
-- **Checked-In Skill**: The DogdouSpec agent skill is located at [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md). When the user chooses DogdouSpec or when executing active iteration tasks, follow the workflow below.
-
-### 2. Governed Execution Rules (When Active / Selected)
-1. **Use Repo-Local CLI**:
-   - Windows: `.\dogdouspec.cmd <command>`
-   - Do not install global tools or configure external MCP servers for DogdouSpec.
-2. **Never Directly Edit `.dogdouspec/*.xml`**:
-   - Do not use text editors, scripts, or direct file writes on files inside `.dogdouspec/`.
-   - All managed mutations must be executed through the public CLI (`task update`, `append`, `transaction apply`, `iteration confirm`).
-3. **Discover & Select Actionable Work (Two-Phase Query)**:
-   - Discover workspace: `.\dogdouspec.cmd workspace discover --format xml`
-   - Validate workspace: `.\dogdouspec.cmd validate --format xml`
-   - List active iterations: `.\dogdouspec.cmd iteration list --format xml`
-   - Query in-progress task (Phase 1a):
-     ```powershell
-     .\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "ds:filter(/tasks/task[@status='in-progress' or @status='verification'][1], '@id', '@status', '@agent', 'index')" --format xml
-     ```
-   - Query next pending task (Phase 1b):
-     ```powershell
-     .\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "ds:filter(/tasks/task[@status='pending' and not(dependencies/ref[@relation='depends-on']/@target = /tasks/task[@status!='done' and @status!='transferred' and @status!='superseded' and @status!='cancelled']/@id)][1], '@id', '@status', '@agent', 'index')" --format xml
-     ```
-   - Load full selected task (Phase 2):
-     ```powershell
-     .\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id='<TASK_ID>']" --format xml
-     ```
-4. **Follow the Checked-In Skill**:
-   - Read [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md) and its references for complete workflow rules, XPath projections, mutation semantics, and authority rules.
-5. **Task Updates & State Transitions**:
-   - Transition task: `pending` -> `start` (`in-progress`) -> `verify` (`verification`) -> `complete` (`done`).
-   - Always pass exact expected revisions (`--expected-revision <N>`).
-   - Validate workspace after each mutation: `.\dogdouspec.cmd validate --format xml`.
-6. **Respect Product Authority Gates**:
-   - Technical agents cannot auto-complete requirements, design decisions, or iterations.
-   - Run `.\dogdouspec.cmd iteration readiness` to check gating status.
-   - Only execute `iteration confirm` when explicitly instructed by the human product owner in the current interaction.
-7. **Persist Semantic Results in Task Records**:
-   - Record implementation summaries, source commits, checks, findings, review outcomes, risks, blockers, and handoff instructions in the relevant `tasks.xml` Task records.
-   - Do not depend on `.agents/work-results/`, raw prompts, worker response files, mutation envelopes, or provider logs for recovery. Only bulky raw evidence may remain in repository-approved artifact storage, with its semantic outcome recorded in the Task.
-8. **Checkpoint Governed State Without Inferring Authority**:
-   - At material lifecycle, review, handoff, external-blocker, and release boundaries, run `git status --short -- .dogdouspec`.
-   - Version managed `.dogdouspec/` documents and ignore only `.dogdouspec/_tmp/`. Never stage, commit, or push unless repository-write authority is explicit.
-```
-
-#### PowerShell Merge Script
+After workspace initialization, retrieve the embedded setup guidance and act on it:
 
 ```powershell
-# snippet: agents-merge
-$targetAgentsFile = Join-Path "$TARGET_REPO" "AGENTS.md"
-$dogdouSpecHeader = "## DogdouSpec Workflow"
-
-$blockContent = @'
-
-## DogdouSpec Workflow
-
-This repository supports **DogdouSpec** for managing complex, long-cycle iterations, specifications, and tasks through authoritative XML documents in `.dogdouspec/`.
-
-### 1. When to Use DogdouSpec
-- **Routine & Lightweight Tasks (Default)**: For standalone fixes, small refactorings, or direct requests, proceed directly with code changes and Git commits. Do **not** query or mutate `.dogdouspec/` artifacts.
-- **Complex & Long-Cycle Iterations (Recommended)**: For multi-step features, architectural changes, or roadmap items, recommend and prefer using DogdouSpec for structured context persistence, token efficiency (`ds:filter`), and authority governance.
-- **Checked-In Skill**: The DogdouSpec agent skill is located at [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md). When the user chooses DogdouSpec or when executing active iteration tasks, follow the workflow below.
-
-### 2. Governed Execution Rules (When Active / Selected)
-1. **Use Repo-Local CLI**:
-   - Windows: `.\dogdouspec.cmd <command>`
-   - Do not install global tools or configure external MCP servers for DogdouSpec.
-2. **Never Directly Edit `.dogdouspec/*.xml`**:
-   - Do not use text editors, scripts, or direct file writes on files inside `.dogdouspec/`.
-   - All managed mutations must be executed through the public CLI (`task update`, `append`, `transaction apply`, `iteration confirm`).
-3. **Discover & Select Actionable Work (Two-Phase Query)**:
-   - Discover workspace: `.\dogdouspec.cmd workspace discover --format xml`
-   - Validate workspace: `.\dogdouspec.cmd validate --format xml`
-   - List active iterations: `.\dogdouspec.cmd iteration list --format xml`
-   - Query in-progress task (Phase 1a):
-     ```powershell
-     .\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "ds:filter(/tasks/task[@status='in-progress' or @status='verification'][1], '@id', '@status', '@agent', 'index')" --format xml
-     ```
-   - Query next pending task (Phase 1b):
-     ```powershell
-     .\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "ds:filter(/tasks/task[@status='pending' and not(dependencies/ref[@relation='depends-on']/@target = /tasks/task[@status!='done' and @status!='transferred' and @status!='superseded' and @status!='cancelled']/@id)][1], '@id', '@status', '@agent', 'index')" --format xml
-     ```
-   - Load full selected task (Phase 2):
-     ```powershell
-     .\dogdouspec.cmd query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id='<TASK_ID>']" --format xml
-     ```
-4. **Follow the Checked-In Skill**:
-   - Read [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md) and its references for complete workflow rules, XPath projections, mutation semantics, and authority rules.
-5. **Task Updates & State Transitions**:
-   - Transition task: `pending` -> `start` (`in-progress`) -> `verify` (`verification`) -> `complete` (`done`).
-   - Always pass exact expected revisions (`--expected-revision <N>`).
-   - Validate workspace after each mutation: `.\dogdouspec.cmd validate --format xml`.
-6. **Respect Product Authority Gates**:
-   - Technical agents cannot auto-complete requirements, design decisions, or iterations.
-   - Run `.\dogdouspec.cmd iteration readiness` to check gating status.
-   - Only execute `iteration confirm` when explicitly instructed by the human product owner in the current interaction.
-7. **Persist Semantic Results in Task Records**:
-   - Record implementation summaries, source commits, checks, findings, review outcomes, risks, blockers, and handoff instructions in the relevant `tasks.xml` Task records.
-   - Do not depend on `.agents/work-results/`, raw prompts, worker response files, mutation envelopes, or provider logs for recovery. Only bulky raw evidence may remain in repository-approved artifact storage, with its semantic outcome recorded in the Task.
-8. **Checkpoint Governed State Without Inferring Authority**:
-   - At material lifecycle, review, handoff, external-blocker, and release boundaries, run `git status --short -- .dogdouspec`.
-   - Version managed `.dogdouspec/` documents and ignore only `.dogdouspec/_tmp/`. Never stage, commit, or push unless repository-write authority is explicit.
-'@
-
-Assert-InsideTarget $targetAgentsFile $TARGET_REPO
-if (Test-Path "$targetAgentsFile") {
-    $existingText = Get-Content "$targetAgentsFile" -Raw
-    if ($existingText -match [regex]::Escape($dogdouSpecHeader)) {
-        Write-Host "[INFO] DogdouSpec section already present in AGENTS.md. Skipping append."
-    } else {
-        # Store pre-merge backup in external staging directory (not in target repo)
-        $stagingBackupDir = Join-Path "$STAGING_DIR" "backups"
-        if (-not (Test-Path "$stagingBackupDir")) {
-            New-Item -ItemType Directory -Path "$stagingBackupDir" -Force | Out-Null
-        }
-        $agentsBackup = Join-Path "$stagingBackupDir" "AGENTS.md.bak"
-        Copy-Item -Path "$targetAgentsFile" -Destination "$agentsBackup"
-        Write-Host "[OK] Staged pre-merge backup at '$agentsBackup'"
-
-        Add-Content -Path "$targetAgentsFile" -Value $blockContent -Encoding Utf8
-        Write-Host "[OK] Appended DogdouSpec workflow block to existing AGENTS.md"
-    }
-} else {
-    $stagingBackupDir = Join-Path "$STAGING_DIR" "backups"
-    New-Item -ItemType Directory -Path "$stagingBackupDir" -Force | Out-Null
-    New-Item -ItemType File -Path (Join-Path "$stagingBackupDir" "AGENTS.md.created") | Out-Null
-    Set-Content -Path "$targetAgentsFile" -Value ("# Agent Guidelines`n" + $blockContent) -Encoding Utf8
-    Write-Host "[OK] Created new AGENTS.md with DogdouSpec workflow block"
+# snippet: agents-guide
+Push-Location "$TARGET_REPO"
+try {
+    # Display AGENTS.md configuration guidance and the upgrade workflow.
+    # The agent and project owner decide what to add and how to tailor it to the project.
+    .\dogdouspec.cmd skill guide
+} finally {
+    Pop-Location
 }
 ```
+
+The `skill guide` output (§0 of SKILL.md) explains:
+- What sections to add to `AGENTS.md` and the minimum content required.
+- How to tailor build/verification commands to the target project's tech stack.
+- What files to commit to Git.
+
+> [!NOTE]
+> A structural baseline for `AGENTS.md` is available in the DogdouSpec source repository at [`templates/v1/AGENTS.md`](../templates/v1/AGENTS.md). Coding agents or project maintainers may use it as a starting point and adapt it to the target project.
+
 
 ### 5.4. Post-Integration Workspace Validation
 
@@ -629,7 +507,7 @@ try {
 }
 ```
 
----
+
 
 ## 7. Completion Review, Backup Retention & What Must Be Committed
 

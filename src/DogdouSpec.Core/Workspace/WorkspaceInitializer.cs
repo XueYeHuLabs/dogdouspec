@@ -159,6 +159,54 @@ In a Git-backed governed workspace, version the managed `.dogdouspec/` documents
             File.WriteAllText(backlogPath, backlogContent.Replace("\r\n", "\n"), Utf8NoBom);
             createdFiles.Add(backlogPath);
 
+            // Copy embedded skill files to <projectRoot>/.agents/skills/dogdouspec/
+            // Skip files that already exist — never overwrite on init (use 'skill sync' to upgrade).
+            var agentSkillDir = Path.Combine(projectRoot, ".agents", "skills", "dogdouspec");
+            var agentSkillRefDir = Path.Combine(agentSkillDir, "references");
+
+            if (!Directory.Exists(agentSkillDir))
+            {
+                Directory.CreateDirectory(agentSkillDir);
+                createdDirs.Add(agentSkillDir);
+            }
+            if (!Directory.Exists(agentSkillRefDir))
+            {
+                Directory.CreateDirectory(agentSkillRefDir);
+                createdDirs.Add(agentSkillRefDir);
+            }
+
+            foreach (var relPath in EmbeddedResources.SkillFilePaths)
+            {
+                var destPath = Path.Combine(agentSkillDir, relPath.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(destPath))
+                {
+                    var content = EmbeddedResources.GetSkillText(relPath);
+                    if (content != null)
+                    {
+                        File.WriteAllText(destPath, content, Utf8NoBom);
+                        createdFiles.Add(destPath);
+                    }
+                }
+            }
+
+            // Update .gitignore: append /.dogdouspec/_tmp/ if not already present (idempotent).
+            var gitignorePath = Path.Combine(projectRoot, ".gitignore");
+            const string GitignoreEntry = "/.dogdouspec/_tmp/";
+            if (!File.Exists(gitignorePath))
+            {
+                File.WriteAllText(gitignorePath, $"# DogdouSpec runtime temporary staging files\n{GitignoreEntry}\n", Utf8NoBom);
+                createdFiles.Add(gitignorePath);
+            }
+            else
+            {
+                var existing = File.ReadAllText(gitignorePath);
+                if (!existing.Contains(GitignoreEntry, StringComparison.Ordinal))
+                {
+                    var suffix = existing.EndsWith('\n') ? "" : "\n";
+                    File.AppendAllText(gitignorePath, $"{suffix}\n# DogdouSpec runtime temporary staging files\n{GitignoreEntry}\n", Utf8NoBom);
+                }
+            }
+
             return (true, targetDogdouDir, null);
         }
         catch (Exception ex)

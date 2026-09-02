@@ -25,7 +25,7 @@ public sealed class SkillCliTests
     }
 
     [TestMethod]
-    public void SkillSync_ExportsSkillFilesToDefaultLocation()
+    public void SkillSync_WritesSkillFilesToTargetDirectory()
     {
         var targetSkillDir = Path.Combine(_tempDir, ".agents", "skills", "dogdouspec");
         var exitCode = Program.Main(new[] { "skill", "sync", "--output-dir", targetSkillDir, "--format", "human" });
@@ -36,6 +36,49 @@ public sealed class SkillCliTests
             var expectedPath = Path.Combine(targetSkillDir, relPath.Replace('/', Path.DirectorySeparatorChar));
             Assert.IsTrue(File.Exists(expectedPath), $"Expected skill file {relPath} missing at {expectedPath}");
         }
+    }
+
+    [TestMethod]
+    public void SkillSync_WithoutForce_WhenFilesExist_RefusesToOverwrite()
+    {
+        var targetSkillDir = Path.Combine(_tempDir, ".agents", "skills", "dogdouspec");
+        Directory.CreateDirectory(targetSkillDir);
+        var skillPath = Path.Combine(targetSkillDir, "SKILL.md");
+        File.WriteAllText(skillPath, "# Stale content");
+
+        var exitCode = Program.Main(new[] { "skill", "sync", "--output-dir", targetSkillDir, "--format", "human" });
+
+        Assert.AreEqual(2, exitCode, "skill sync without --force must fail when files already exist");
+        var actual = File.ReadAllText(skillPath);
+        Assert.AreEqual("# Stale content", actual, "existing file must not be modified without --force");
+    }
+
+    [TestMethod]
+    public void SkillSync_WithForce_OverwritesExistingSkillFiles()
+    {
+        var targetSkillDir = Path.Combine(_tempDir, ".agents", "skills", "dogdouspec");
+        Directory.CreateDirectory(targetSkillDir);
+        var skillPath = Path.Combine(targetSkillDir, "SKILL.md");
+        File.WriteAllText(skillPath, "# Stale content");
+
+        var exitCode = Program.Main(new[] { "skill", "sync", "--force", "--output-dir", targetSkillDir, "--format", "human" });
+
+        Assert.AreEqual(0, exitCode);
+        var actual = File.ReadAllText(skillPath);
+        Assert.IsFalse(actual.Contains("Stale content"), "skill sync --force must overwrite stale skill files");
+        Assert.IsTrue(actual.Contains("DogdouSpec"), "overwritten SKILL.md must contain embedded content");
+    }
+
+    [TestMethod]
+    public void SkillSync_DoesNotCreateOrModifyAgentsMd()
+    {
+        var targetSkillDir = Path.Combine(_tempDir, ".agents", "skills", "dogdouspec");
+        var agentsPath = Path.Combine(_tempDir, "AGENTS.md");
+
+        var exitCode = Program.Main(new[] { "skill", "sync", "--force", "--output-dir", targetSkillDir, "--format", "human" });
+
+        Assert.AreEqual(0, exitCode);
+        Assert.IsFalse(File.Exists(agentsPath), "skill sync must never create AGENTS.md");
     }
 
     [TestMethod]

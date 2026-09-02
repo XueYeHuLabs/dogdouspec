@@ -9,6 +9,56 @@ DogdouSpec is an iteration-first specification and task management system design
 
 ---
 
+## 0. Post-Install Setup (Run Once After `workspace init` or After Upgrading)
+
+`workspace init` has already performed the following mechanical steps:
+- Created `.dogdouspec/` with authoritative schemas, backlog, and knowledge documents.
+- Written this skill to `.agents/skills/dogdouspec/` (SKILL.md + references/).
+- Added `/.dogdouspec/_tmp/` to `.gitignore`.
+
+The following steps require **agent + owner judgment** — DogdouSpec does not automate them.
+
+### What to Add to `AGENTS.md`
+
+If your project does not yet have an `AGENTS.md`, create one. Add a `## DogdouSpec Workflow` section that at minimum tells agents:
+
+1. **When to use DogdouSpec** — Mode A (direct commit) vs Mode B (governed iteration). See §1 below.
+2. **CLI invocation** — global install: `dogdouspec <command>`. Air-gapped / repo-local: `.\dogdouspec.cmd <command>`.
+3. **Fail-closed guard** — if `dogdouspec` is not found, stop and instruct the user to run `winget install Vixasol.DogdouSpec`.
+4. **Read the checked-in skill** — point agents to `.agents/skills/dogdouspec/SKILL.md` for complete workflow rules.
+5. **Never edit `.dogdouspec/*.xml` directly** — all mutations must go through the CLI.
+6. **Preserve user work** — do not commit or push unless explicitly asked.
+
+Tailor the section to your project's build commands (e.g., replace `.\build.cmd` with `npm test`, `cargo build`, `dotnet test`, etc.).
+
+### What to Commit to Git
+
+| Path | Commit? | Note |
+|---|:---:|---|
+| `.dogdouspec/` | **Yes** | Authoritative state (backlog, knowledge, iterations, schemas) |
+| `.agents/skills/dogdouspec/` | **Yes** | Skill instructions for agents |
+| `AGENTS.md` | **Yes** | Project agent guidelines |
+| `.gitignore` | **Yes** | Now includes `/.dogdouspec/_tmp/` |
+| `.dogdouspec/_tmp/` | **No** | Runtime-only; already in `.gitignore` |
+
+DogdouSpec never stages, commits, or pushes. Create the Git checkpoint explicitly after reviewing `git status --short -- .dogdouspec`.
+
+### Upgrading DogdouSpec
+
+After running `winget upgrade Vixasol.DogdouSpec` (global) or re-deploying the binary (air-gapped):
+
+```powershell
+# Overwrite skill files with the version embedded in the new CLI binary (requires --force):
+dogdouspec skill sync --force
+
+# Review what changed in SKILL.md and update AGENTS.md if needed — agent + owner decision.
+dogdouspec skill guide
+```
+
+`skill sync --force` overwrites `.agents/skills/dogdouspec/` with the CLI's embedded version. Without `--force`, `skill sync` refuses to overwrite existing files. It never touches `AGENTS.md`.
+
+---
+
 ## 1. Design Philosophy & When to Use DogdouSpec
 
 ### The Core Problem DogdouSpec Solves

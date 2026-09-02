@@ -126,4 +126,90 @@ public sealed class InitTests
         Assert.IsTrue(File.Exists(Path.Combine(expectedDogdou, "knowledge.xml")));
         Assert.IsTrue(File.Exists(Path.Combine(expectedDogdou, "backlog.xml")));
     }
+
+    [TestMethod]
+    public void Initialize_HappyPath_CopiesSkillFilesToAgentSkillDir()
+    {
+        var (success, _, error) = WorkspaceInitializer.Initialize(null, _tempDir);
+
+        Assert.IsTrue(success);
+        Assert.IsNull(error);
+
+        var skillDir = Path.Combine(_tempDir, ".agents", "skills", "dogdouspec");
+        Assert.IsTrue(Directory.Exists(skillDir), ".agents/skills/dogdouspec/ must exist after init");
+
+        foreach (var relPath in EmbeddedResources.SkillFilePaths)
+        {
+            var expectedPath = Path.Combine(skillDir, relPath.Replace('/', Path.DirectorySeparatorChar));
+            Assert.IsTrue(File.Exists(expectedPath), $"Skill file '{relPath}' must be written by init");
+
+            var content = File.ReadAllText(expectedPath);
+            var embeddedContent = EmbeddedResources.GetSkillText(relPath);
+            Assert.AreEqual(embeddedContent, content, $"Skill file '{relPath}' content must match embedded resource");
+        }
+    }
+
+    [TestMethod]
+    public void Initialize_HappyPath_UpdatesGitignoreWithTmpEntry()
+    {
+        var (success, _, error) = WorkspaceInitializer.Initialize(null, _tempDir);
+
+        Assert.IsTrue(success);
+        Assert.IsNull(error);
+
+        var gitignorePath = Path.Combine(_tempDir, ".gitignore");
+        Assert.IsTrue(File.Exists(gitignorePath), ".gitignore must be created by init when not present");
+
+        var content = File.ReadAllText(gitignorePath);
+        Assert.IsTrue(content.Contains("/.dogdouspec/_tmp/", StringComparison.Ordinal),
+            ".gitignore must contain /.dogdouspec/_tmp/");
+    }
+
+    [TestMethod]
+    public void Initialize_ExistingGitignore_AppendsEntryIdempotently()
+    {
+        var gitignorePath = Path.Combine(_tempDir, ".gitignore");
+        File.WriteAllText(gitignorePath, "node_modules/\n*.log\n");
+
+        var (success, _, error) = WorkspaceInitializer.Initialize(null, _tempDir);
+        Assert.IsTrue(success);
+        Assert.IsNull(error);
+
+        var content = File.ReadAllText(gitignorePath);
+        Assert.IsTrue(content.Contains("node_modules/", StringComparison.Ordinal), "Existing .gitignore content must be preserved");
+        Assert.IsTrue(content.Contains("/.dogdouspec/_tmp/", StringComparison.Ordinal), "New entry must be appended");
+
+        // Second init fails (workspace exists), but manually test idempotency by calling on a separate dir
+        var dir2 = Path.Combine(_tempDir, "proj2");
+        Directory.CreateDirectory(dir2);
+        var gitignore2 = Path.Combine(dir2, ".gitignore");
+        File.WriteAllText(gitignore2, "/.dogdouspec/_tmp/\n");
+
+        var (s2, _, e2) = WorkspaceInitializer.Initialize(null, dir2);
+        Assert.IsTrue(s2);
+        Assert.IsNull(e2);
+
+        var content2 = File.ReadAllText(gitignore2);
+        var count = System.Text.RegularExpressions.Regex.Count(content2, System.Text.RegularExpressions.Regex.Escape("/.dogdouspec/_tmp/"));
+        Assert.AreEqual(1, count, "/.dogdouspec/_tmp/ must appear exactly once when already present");
+    }
+
+    [TestMethod]
+    public void Initialize_SkillFilesAlreadyExist_DoesNotOverwriteThem()
+    {
+        // Pre-create a skill file with custom content
+        var skillDir = Path.Combine(_tempDir, ".agents", "skills", "dogdouspec");
+        var refDir = Path.Combine(skillDir, "references");
+        Directory.CreateDirectory(refDir);
+        var skillPath = Path.Combine(skillDir, "SKILL.md");
+        const string CustomContent = "# Custom Agent Guide\nDo not overwrite me.\n";
+        File.WriteAllText(skillPath, CustomContent);
+
+        var (success, _, error) = WorkspaceInitializer.Initialize(null, _tempDir);
+        Assert.IsTrue(success);
+        Assert.IsNull(error);
+
+        var actual = File.ReadAllText(skillPath);
+        Assert.AreEqual(CustomContent, actual, "workspace init must not overwrite pre-existing skill files");
+    }
 }
