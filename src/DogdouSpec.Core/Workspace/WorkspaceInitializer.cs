@@ -106,7 +106,15 @@ public static class WorkspaceInitializer
 
             // Write _skill/README.md
             var skillReadme = Path.Combine(skillDir, "README.md");
-            var skillReadmeContent = "# Skill Directory\n\nManaged workflow skill definitions and environment adapters.\n";
+            var skillReadmeContent = """
+# Skill Directory
+
+This directory contains managed DogdouSpec workflow guidance and environment adapters.
+
+Authoritative specification and execution state lives in the managed XML documents under `.dogdouspec/`. Semantic agent results—including summaries, source commits, checks, findings, risks, review outcomes, blockers, and handoff instructions—belong in the relevant `tasks.xml` Task records. Temporary agent reports or response files are transport only; no external report directory is required for recovery.
+
+In a Git-backed governed workspace, version the managed `.dogdouspec/` documents and checkpoint them at material lifecycle, review, handoff, external-blocker, and release boundaries. Ignore only `.dogdouspec/_tmp/`, which contains runtime transaction and recovery state. DogdouSpec does not stage, commit, or push files; repository writes require explicit caller authority.
+""";
             File.WriteAllText(skillReadme, skillReadmeContent, Utf8NoBom);
             createdFiles.Add(skillReadme);
 

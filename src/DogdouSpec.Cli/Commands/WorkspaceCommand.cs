@@ -11,7 +11,7 @@ public static class WorkspaceCommand
 {
     public static Command BuildCommand()
     {
-        var workspaceCmd = new Command("workspace", "Manage and inspect DogdouSpec workspaces");
+        var workspaceCmd = new Command("workspace", "Manage authoritative DogdouSpec workspace state; Git checkpointing remains caller-controlled");
 
         var discoverCmd = BuildDiscoverCommand();
         var initCmd = BuildInitCommand();
@@ -77,7 +77,7 @@ public static class WorkspaceCommand
 
     private static Command BuildInitCommand()
     {
-        var initCmd = new Command("init", "Initialize a new .dogdouspec workspace atomically");
+        var initCmd = new Command("init", "Initialize authoritative .dogdouspec state atomically; version managed files in Git-backed governed work");
 
         var workspaceRootOption = new Option<string?>("--workspace-root")
         {
@@ -118,6 +118,7 @@ public static class WorkspaceCommand
             else
             {
                 Console.Out.WriteLine($"Initialized DogdouSpec workspace at: {initializedRoot}");
+                Console.Out.WriteLine("Managed .dogdouspec state is authoritative. In Git-backed governed work, ignore only .dogdouspec/_tmp/ and checkpoint managed files explicitly.");
             }
 
             return 0;

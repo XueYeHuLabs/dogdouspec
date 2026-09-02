@@ -12,7 +12,7 @@ public static class SkillCommand
 {
     public static Command BuildCommand()
     {
-        var skillCmd = new Command("skill", "Manage, inspect, and synchronize DogdouSpec agent skills and guidelines");
+        var skillCmd = new Command("skill", "Manage DogdouSpec guidance for iteration-owned results, authority, and workspace persistence");
 
         var guideCmd = BuildGuideCommand();
         var syncCmd = BuildSyncCommand();
@@ -27,7 +27,7 @@ public static class SkillCommand
 
     private static Command BuildGuideCommand()
     {
-        var guideCmd = new Command("guide", "Display recommended installation, workflow, and skill guidance for AI coding agents");
+        var guideCmd = new Command("guide", "Display installation and workflow guidance, including Task-record result ownership and VCS checkpoints");
 
         var formatOption = new Option<string?>("--format")
         {
@@ -126,7 +126,7 @@ public static class SkillCommand
 
     private static Command BuildSyncCommand()
     {
-        var syncCmd = new Command("sync", "Synchronize embedded DogdouSpec skill to .agents/skills/dogdouspec and workspace guidelines");
+        var syncCmd = new Command("sync", "Synchronize guidance that keeps semantic results in Task records and Git writes caller-controlled");
 
         var outputDirOption = new Option<string?>("--output-dir")
         {
