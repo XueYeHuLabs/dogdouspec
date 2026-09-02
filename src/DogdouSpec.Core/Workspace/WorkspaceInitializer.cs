@@ -115,7 +115,8 @@ Authoritative specification and execution state lives in the managed XML documen
 
 In a Git-backed governed workspace, version the managed `.dogdouspec/` documents and checkpoint them at material lifecycle, review, handoff, external-blocker, and release boundaries. Ignore only `.dogdouspec/_tmp/`, which contains runtime transaction and recovery state. DogdouSpec does not stage, commit, or push files; repository writes require explicit caller authority.
 """;
-            File.WriteAllText(skillReadme, skillReadmeContent, Utf8NoBom);
+            var normalizedSkillReadme = skillReadmeContent.Replace("\r\n", "\n").Replace("\r", "\n").TrimEnd('\n') + "\n";
+            File.WriteAllText(skillReadme, normalizedSkillReadme, Utf8NoBom);
             createdFiles.Add(skillReadme);
 
             // Date for initial objects

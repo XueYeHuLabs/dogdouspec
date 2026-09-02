@@ -81,6 +81,12 @@ public static class IterationSummaryGenerator
                         DiagnosticCodes.DocumentNotFound,
                         "No iterations found in workspace. Create one with 'dogdouspec iteration create'.") });
                 }
+                if (replanningIter == null && !string.IsNullOrWhiteSpace(iterationId))
+                {
+                    diagnostics.Add(Diagnostic.Info(
+                        DiagnosticCodes.IterationAutoSelected,
+                        $"Auto-selected iteration '{iterationId}' (no active iteration found). Use --iteration to specify explicitly."));
+                }
             }
         }
 

@@ -16,10 +16,14 @@ public static class WorkspaceCommand
         var discoverCmd = BuildDiscoverCommand();
         var initCmd = BuildInitCommand();
         var unlockCmd = BuildUnlockCommand();
+        var vcsStatusCmd = BuildVcsStatusCommand();
+        var checkpointPlanCmd = BuildCheckpointPlanCommand();
 
         workspaceCmd.Add(discoverCmd);
         workspaceCmd.Add(initCmd);
         workspaceCmd.Add(unlockCmd);
+        workspaceCmd.Add(vcsStatusCmd);
+        workspaceCmd.Add(checkpointPlanCmd);
 
         return workspaceCmd;
     }
@@ -178,13 +182,6 @@ public static class WorkspaceCommand
             }
 
             var (recoverySuccess, recoveryError) = DogdouSpec.Core.Transactions.StartupRecovery.Run(discoveredRoot);
-            if (!recoverySuccess || recoveryError != null)
-            {
-                var envelope = new DiagnosticsEnvelope("workspace unlock", recoveryError!);
-                Console.Error.Write(envelope.Format(format));
-                return 2;
-            }
-
             if (format == OutputFormat.Xml)
             {
                 var xml = FormatWorkspaceUnlockedXml(discoveredRoot, force);
@@ -192,13 +189,129 @@ public static class WorkspaceCommand
             }
             else
             {
-                Console.Out.WriteLine($"Workspace unlocked and startup recovery completed at: {discoveredRoot}{(force ? " (forced)" : "")}");
+                if (recoverySuccess && recoveryError == null)
+                {
+                    Console.Out.WriteLine($"Workspace unlocked and startup recovery completed at: {discoveredRoot}{(force ? " (forced)" : "")}");
+                }
+                else
+                {
+                    Console.Out.WriteLine($"Workspace unlocked at: {discoveredRoot}{(force ? " (forced)" : "")}");
+                }
+            }
+
+            if (!recoverySuccess || recoveryError != null)
+            {
+                var warningDiag = Diagnostic.Warning(
+                    recoveryError?.Code ?? DiagnosticCodes.RecoveryFailed,
+                    $"Lock was released, but startup recovery encountered an issue: {recoveryError?.Message}. Run 'dogdouspec validate' to inspect workspace health.");
+                var warningEnvelope = new DiagnosticsEnvelope("workspace unlock", warningDiag);
+                Console.Error.Write(warningEnvelope.Format(format));
             }
 
             return 0;
         });
 
         return unlockCmd;
+    }
+
+    private static Command BuildVcsStatusCommand()
+    {
+        var cmd = new Command("vcs-status", "Inspect tracked, untracked, and modified state of authoritative .dogdouspec files (read-only)");
+
+        var workspaceRootOption = new Option<string?>("--workspace-root")
+        {
+            Description = "Explicit path to workspace root or project directory containing .dogdouspec"
+        };
+
+        var formatOption = new Option<string?>("--format")
+        {
+            Description = "Output format (xml or human)"
+        };
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        cmd.Add(workspaceRootOption);
+        cmd.Add(formatOption);
+
+        cmd.SetAction(parseResult =>
+        {
+            var workspaceRoot = parseResult.GetValue(workspaceRootOption);
+            var formatArg = parseResult.GetValue(formatOption);
+            var format = ResolveFormat(formatArg);
+
+            var (success, discoveredRoot, error) = WorkspaceDiscovery.FindWorkspaceRoot(
+                workspaceRoot,
+                Environment.CurrentDirectory);
+
+            if (!success || error != null)
+            {
+                var envelope = new DiagnosticsEnvelope("workspace vcs-status", error!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var (statusOk, result, diagnostics) = WorkspaceVcsStatus.CheckStatus(discoveredRoot);
+            if (!statusOk || diagnostics.Count > 0 || result == null)
+            {
+                var envelope = new DiagnosticsEnvelope("workspace vcs-status", diagnostics);
+                Console.Error.Write(envelope.Format(format));
+                return envelope.GetExitCode();
+            }
+
+            Console.Out.Write(result.Format(format));
+            return 0;
+        });
+
+        return cmd;
+    }
+
+    private static Command BuildCheckpointPlanCommand()
+    {
+        var cmd = new Command("checkpoint-plan", "Report uncheckpointed authoritative files and advisory Git commands (read-only)");
+
+        var workspaceRootOption = new Option<string?>("--workspace-root")
+        {
+            Description = "Explicit path to workspace root or project directory containing .dogdouspec"
+        };
+
+        var formatOption = new Option<string?>("--format")
+        {
+            Description = "Output format (xml or human)"
+        };
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        cmd.Add(workspaceRootOption);
+        cmd.Add(formatOption);
+
+        cmd.SetAction(parseResult =>
+        {
+            var workspaceRoot = parseResult.GetValue(workspaceRootOption);
+            var formatArg = parseResult.GetValue(formatOption);
+            var format = ResolveFormat(formatArg);
+
+            var (success, discoveredRoot, error) = WorkspaceDiscovery.FindWorkspaceRoot(
+                workspaceRoot,
+                Environment.CurrentDirectory);
+
+            if (!success || error != null)
+            {
+                var envelope = new DiagnosticsEnvelope("workspace checkpoint-plan", error!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var (planOk, result, diagnostics) = WorkspaceVcsStatus.CreateCheckpointPlan(discoveredRoot);
+            if (!planOk || diagnostics.Count > 0 || result == null)
+            {
+                var envelope = new DiagnosticsEnvelope("workspace checkpoint-plan", diagnostics);
+                Console.Error.Write(envelope.Format(format));
+                return envelope.GetExitCode();
+            }
+
+            Console.Out.Write(result.Format(format));
+            return 0;
+        });
+
+        return cmd;
     }
 
     public static OutputFormat ResolveFormat(string? formatArgument)

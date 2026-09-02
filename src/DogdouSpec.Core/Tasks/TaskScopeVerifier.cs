@@ -9,7 +9,7 @@ using DogdouSpec.Core.Workspace;
 namespace DogdouSpec.Core.Tasks;
 
 /// <summary>
-/// Public read-only verifier that compares changed repository paths against a task's declared scope.
+/// Public read-only verifier that compares changed repository paths against a task declared repository scope.
 /// Never mutates Git or workspace state.
 /// </summary>
 public static class TaskScopeVerifier
@@ -23,6 +23,7 @@ public static class TaskScopeVerifier
 
     private const int GitTimeoutMilliseconds = 30_000;
     private static readonly char[] GitLineSeparators = { '\r', '\n' };
+    private static readonly string[] GitStatusPorcelainArgs = { "status", "--porcelain", "-uall" };
     private static readonly SearchValues<char> InvalidConcretePathCharacters = SearchValues.Create("<>\"|?*");
 
     public static (bool Success, TaskScopeResult? Result, IReadOnlyList<Diagnostic> Diagnostics) VerifyScope(
@@ -32,6 +33,7 @@ public static class TaskScopeVerifier
         IReadOnlyList<string>? explicitPaths = null,
         string? gitRef = null,
         string? gitRange = null,
+        bool worktree = false,
         bool? forceCaseInsensitive = null)
     {
         if (string.IsNullOrWhiteSpace(workspaceRoot))
@@ -60,22 +62,22 @@ public static class TaskScopeVerifier
         var hasGitRef = !string.IsNullOrWhiteSpace(gitRef);
         var hasGitRange = !string.IsNullOrWhiteSpace(gitRange);
 
-        var modeCount = (hasExplicitPaths ? 1 : 0) + (hasGitRef ? 1 : 0) + (hasGitRange ? 1 : 0);
+        var modeCount = (hasExplicitPaths ? 1 : 0) + (hasGitRef ? 1 : 0) + (hasGitRange ? 1 : 0) + (worktree ? 1 : 0);
         if (modeCount == 0)
         {
-            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Must specify either explicit --path arguments, --git-ref, or --git-range.") });
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Must specify either explicit --path arguments, --worktree, --git-ref, or --git-range.") });
         }
 
         if (modeCount > 1)
         {
-            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Specify either explicit --path arguments, --git-ref, or --git-range, not multiple sources.") });
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Specify either explicit --path arguments, --worktree, --git-ref, or --git-range, not multiple sources.") });
         }
 
         // Derive repository root (parent of .dogdouspec or workspace root itself)
         var repoRoot = GetRepositoryRoot(workspaceRoot);
 
         // Collect changed paths
-        var (pathsOk, candidatePaths, pathsDiags) = CollectChangedPaths(repoRoot, explicitPaths, gitRef, gitRange);
+        var (pathsOk, candidatePaths, pathsDiags) = CollectChangedPaths(repoRoot, explicitPaths, gitRef, gitRange, worktree);
         if (!pathsOk || pathsDiags.Count > 0)
         {
             return (false, null, pathsDiags);
@@ -138,13 +140,16 @@ public static class TaskScopeVerifier
 
         var declaredScopes = TaskScopeMatcher.ParseScopes(scopeElem);
 
-        // Partition candidate paths into InScope and OutOfScope
+        // Partition candidate paths into InScope and OutOfScope and record explanations
         var inScope = new List<string>();
         var outOfScope = new List<string>();
+        var explanations = new List<ScopePathExplanation>();
 
         foreach (var p in candidatePaths)
         {
-            if (TaskScopeMatcher.IsPathInScope(p, declaredScopes, forceCaseInsensitive))
+            var exp = TaskScopeMatcher.ExplainPath(p, declaredScopes, forceCaseInsensitive);
+            explanations.Add(exp);
+            if (exp.InScope)
             {
                 inScope.Add(p);
             }
@@ -163,7 +168,8 @@ public static class TaskScopeVerifier
             resolvedIterationId,
             scopeElem,
             inScope,
-            outOfScope);
+            outOfScope,
+            explanations);
 
         return (true, result, Array.Empty<Diagnostic>());
     }
@@ -172,7 +178,8 @@ public static class TaskScopeVerifier
         string repoRoot,
         IReadOnlyList<string>? explicitPaths,
         string? gitRef,
-        string? gitRange)
+        string? gitRange,
+        bool worktree)
     {
         var diagnostics = new List<Diagnostic>();
         var normalizedPaths = new HashSet<string>(StringComparer.Ordinal);
@@ -188,6 +195,50 @@ public static class TaskScopeVerifier
                 }
 
                 normalizedPaths.Add(normalizedPath);
+            }
+
+            return diagnostics.Count == 0
+                ? (true, normalizedPaths.OrderBy(path => path, StringComparer.Ordinal).ToArray(), Array.Empty<Diagnostic>())
+                : (false, Array.Empty<string>(), diagnostics);
+        }
+
+        if (worktree)
+        {
+            var (gitSuccess, exitCode, stdout, stderr, runDiag) = RunGit(repoRoot, GitStatusPorcelainArgs);
+            if (!gitSuccess || runDiag != null)
+            {
+                return (false, Array.Empty<string>(), new[] { runDiag ?? Diagnostic.Error(DiagnosticCodes.FilesystemError, "Failed to run git status for worktree scope verification.") });
+            }
+
+            if (exitCode != 0)
+            {
+                return (false, Array.Empty<string>(), new[] { Diagnostic.Error(
+                    DiagnosticCodes.FilesystemError,
+                    $"Git status returned exit code {exitCode}: {stderr.Trim()}") });
+            }
+
+            var lines = stdout.Split(GitLineSeparators, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                if (line.Length < 3) continue;
+                var raw = line[3..].Trim();
+                if (raw.Contains(" -> "))
+                {
+                    var parts = raw.Split(" -> ");
+                    raw = parts[^1].Trim();
+                }
+                raw = raw.Trim('"');
+                if (string.IsNullOrWhiteSpace(raw)) continue;
+
+                var (isValid, normalizedPath, diagnostic) = ValidateAndNormalizeInputPath(repoRoot, raw);
+                if (isValid && diagnostic == null)
+                {
+                    normalizedPaths.Add(normalizedPath);
+                }
+                else if (diagnostic != null)
+                {
+                    diagnostics.Add(diagnostic);
+                }
             }
 
             return diagnostics.Count == 0
@@ -226,30 +277,28 @@ public static class TaskScopeVerifier
                 return (false, Array.Empty<string>(), new[] { rightDiagnostic! });
             }
 
-            diffArgument = leftCommit + separator + rightCommit;
+            diffArgument = $"{leftCommit}{separator}{rightCommit}";
         }
 
-        var run = RunGit(repoRoot, new[]
+        var (diffSuccess, diffExitCode, diffStdout, diffStderr, diffRunDiagnostic) = RunGit(
+            repoRoot,
+            new[] { "diff", "--name-only", "-z", "--no-renames", diffArgument });
+        if (!diffSuccess || diffRunDiagnostic != null)
         {
-            "diff", "--name-only", "-z", "--no-renames", "--no-ext-diff", "--no-textconv", diffArgument, "--"
-        });
-        if (!run.Success || run.Diagnostic != null)
-        {
-            return (false, Array.Empty<string>(), new[] { run.Diagnostic! });
+            return (false, Array.Empty<string>(), new[] { diffRunDiagnostic ?? Diagnostic.Error(
+                DiagnosticCodes.FilesystemError,
+                "Failed to run Git for read-only scope verification.") });
         }
 
-        if (run.ExitCode != 0)
+        if (diffExitCode != 0)
         {
-            var detail = string.IsNullOrWhiteSpace(run.StandardError)
-                ? $"git diff exited with code {run.ExitCode}"
-                : run.StandardError.Trim();
-            return (false, Array.Empty<string>(), new[]
-            {
-                Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Failed to retrieve Git diff: {detail}")
-            });
+            return (false, Array.Empty<string>(), new[] { Diagnostic.Error(
+                DiagnosticCodes.FilesystemError,
+                $"Git diff failed with exit code {diffExitCode}: {diffStderr.Trim()}") });
         }
 
-        foreach (var rawPath in run.StandardOutput.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+        var rawPaths = diffStdout.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var rawPath in rawPaths)
         {
             var (isValid, normalizedPath, diagnostic) = ValidateAndNormalizeInputPath(repoRoot, rawPath);
             if (!isValid || diagnostic != null)
@@ -266,72 +315,93 @@ public static class TaskScopeVerifier
             : (false, Array.Empty<string>(), diagnostics);
     }
 
-    private static (bool Success, string? Commit, Diagnostic? Diagnostic) ResolveGitCommit(
+    private static (bool Resolved, string? CommitSha, Diagnostic? Diagnostic) ResolveGitCommit(
         string repoRoot,
         string revision,
-        string argumentName)
+        string optionName)
     {
-        if (string.IsNullOrWhiteSpace(revision) ||
-            revision.Length > 512 ||
-            revision.StartsWith('-') ||
-            revision.Any(char.IsControl) ||
-            revision.Any(char.IsWhiteSpace) ||
-            revision.Contains("..", StringComparison.Ordinal))
+        if (string.IsNullOrWhiteSpace(revision))
         {
             return (false, null, Diagnostic.Error(
                 DiagnosticCodes.InvalidArgument,
-                $"{argumentName} must be one non-option Git revision without whitespace, control characters, or range syntax."));
+                $"{optionName} requires a non-empty Git revision."));
         }
 
-        var run = RunGit(repoRoot, new[]
+        var (success, exitCode, stdout, stderr, runDiagnostic) = RunGit(
+            repoRoot,
+            new[] { "rev-parse", "--verify", "--end-of-options", $"{revision}^{{commit}}" });
+        if (!success || runDiagnostic != null)
         {
-            "rev-parse", "--verify", "--quiet", "--end-of-options", revision + "^{commit}"
-        });
-        if (!run.Success || run.Diagnostic != null)
-        {
-            return (false, null, run.Diagnostic);
+            return (false, null, runDiagnostic ?? Diagnostic.Error(
+                DiagnosticCodes.FilesystemError,
+                $"Failed to resolve Git revision '{revision}' for {optionName}."));
         }
 
-        var values = run.StandardOutput.Split(GitLineSeparators, StringSplitOptions.RemoveEmptyEntries);
-        if (run.ExitCode != 0 || values.Length != 1 || values[0].Length is < 40 or > 64 || !values[0].All(Uri.IsHexDigit))
+        if (exitCode != 0)
         {
             return (false, null, Diagnostic.Error(
                 DiagnosticCodes.InvalidArgument,
-                $"{argumentName} does not resolve to exactly one commit."));
+                $"Git could not resolve revision '{revision}' for {optionName}: {stderr.Trim()}"));
         }
 
-        return (true, values[0].ToLowerInvariant(), null);
+        var commit = stdout.Trim();
+        if (commit.Length != 40 || !commit.All(char.IsAsciiHexDigitLower))
+        {
+            return (false, null, Diagnostic.Error(
+                DiagnosticCodes.InvalidArgument,
+                $"Git revision '{revision}' for {optionName} did not resolve to a canonical commit SHA."));
+        }
+
+        return (true, commit, null);
     }
 
-    private static (bool Success, string? Left, string? Separator, string? Right, Diagnostic? Diagnostic) ParseGitRange(string range)
+    private static (bool Parsed, string? Left, string? Separator, string? Right, Diagnostic? Diagnostic) ParseGitRange(string gitRange)
     {
-        if (string.IsNullOrWhiteSpace(range) ||
-            range.Length > 1024 ||
-            range.Any(char.IsControl) ||
-            range.Any(char.IsWhiteSpace))
+        if (string.IsNullOrWhiteSpace(gitRange))
         {
             return (false, null, null, null, Diagnostic.Error(
                 DiagnosticCodes.InvalidArgument,
-                "--git-range must be one whitespace-free A..B or A...B expression."));
+                "--git-range requires a non-empty two-reference range expression."));
         }
 
-        var separator = range.Contains("...", StringComparison.Ordinal) ? "..." : "..";
-        var parts = range.Split(new[] { separator }, StringSplitOptions.None);
-        if (parts.Length != 2 ||
-            string.IsNullOrEmpty(parts[0]) ||
-            string.IsNullOrEmpty(parts[1]) ||
-            parts[0].Contains("..", StringComparison.Ordinal) ||
-            parts[1].Contains("..", StringComparison.Ordinal))
+        var tripleIndex = gitRange.IndexOf("...", StringComparison.Ordinal);
+        if (tripleIndex >= 0)
         {
-            return (false, null, null, null, Diagnostic.Error(
-                DiagnosticCodes.InvalidArgument,
-                "--git-range must contain exactly one A..B or A...B separator."));
+            var left = gitRange[..tripleIndex].Trim();
+            var right = gitRange[(tripleIndex + 3)..].Trim();
+            if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right) ||
+                gitRange.IndexOf("...", tripleIndex + 3, StringComparison.Ordinal) >= 0)
+            {
+                return (false, null, null, null, Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    $"Invalid symmetric difference range '{gitRange}'. Must follow '<left>...<right>'."));
+            }
+
+            return (true, left, "...", right, null);
         }
 
-        return (true, parts[0], separator, parts[1], null);
+        var doubleIndex = gitRange.IndexOf("..", StringComparison.Ordinal);
+        if (doubleIndex >= 0)
+        {
+            var left = gitRange[..doubleIndex].Trim();
+            var right = gitRange[(doubleIndex + 2)..].Trim();
+            if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right) ||
+                gitRange.IndexOf("..", doubleIndex + 2, StringComparison.Ordinal) >= 0)
+            {
+                return (false, null, null, null, Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    $"Invalid two-reference range '{gitRange}'. Must follow '<left>..<right>'."));
+            }
+
+            return (true, left, "..", right, null);
+        }
+
+        return (false, null, null, null, Diagnostic.Error(
+            DiagnosticCodes.InvalidArgument,
+            $"Invalid --git-range '{gitRange}'. Expected '<left>..<right>' or '<left>...<right>'."));
     }
 
-    private static (bool Success, int ExitCode, string StandardOutput, string StandardError, Diagnostic? Diagnostic) RunGit(
+    public static (bool Success, int ExitCode, string Stdout, string Stderr, Diagnostic? Diagnostic) RunGit(
         string repoRoot,
         IReadOnlyList<string> arguments)
     {
@@ -383,10 +453,6 @@ public static class TaskScopeVerifier
         }
     }
 
-    /// <summary>
-    /// Validates and normalizes an input changed path.
-    /// Rejects traversal, absolute, device, alternate data stream, and workspace/repo escaping paths.
-    /// </summary>
     public static (bool IsValid, string NormalizedPath, Diagnostic? Error) ValidateAndNormalizeInputPath(
         string repoRoot,
         string rawPath)
@@ -404,7 +470,6 @@ public static class TaskScopeVerifier
                 $"Path '{rawPath}' contains leading or trailing whitespace or control characters."));
         }
 
-        // Check for device namespaces, UNC, or drive roots
         if (trimmed.StartsWith(@"\\", StringComparison.Ordinal) ||
             trimmed.StartsWith("//", StringComparison.Ordinal) ||
             (trimmed.Length >= 2 && trimmed[1] == ':'))
@@ -412,74 +477,36 @@ public static class TaskScopeVerifier
             return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, $"Absolute or rooted path '{rawPath}' is rejected. Inputs must be repository-relative canonical paths."));
         }
 
-        // Check leading slash
         if (trimmed.StartsWith('/') || trimmed.StartsWith('\\'))
         {
             return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, $"Absolute path starting with slash '{rawPath}' is rejected. Inputs must be repository-relative canonical paths."));
         }
 
-        // Traversal checks on raw input
-        if (trimmed == ".." || trimmed.StartsWith("../", StringComparison.Ordinal) || trimmed.StartsWith(@"..\", StringComparison.Ordinal) || trimmed.Contains("/../") || trimmed.Contains(@"\..\") || trimmed.EndsWith("/..", StringComparison.Ordinal) || trimmed.EndsWith(@"\..", StringComparison.Ordinal))
-        {
-            return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.PathTraversalDetected, $"Path '{rawPath}' contains path traversal and is rejected."));
-        }
-
-        // Alternate data stream syntax
-        if (trimmed.Contains(':'))
-        {
-            return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.InvalidPath, $"Alternate data stream syntax in path '{rawPath}' is rejected."));
-        }
-
-        // Invalid characters
-        if (trimmed.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
-        {
-            return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.InvalidPath, $"Path '{rawPath}' contains invalid characters."));
-        }
-
         var normalized = TaskScopeMatcher.NormalizePath(trimmed);
-        if (normalized is "" or "." || normalized.StartsWith('/'))
+        if (normalized.Length == 0 || normalized == "." || normalized.StartsWith('/'))
         {
-            return (false, string.Empty, Diagnostic.Error(
-                DiagnosticCodes.InvalidPath,
-                $"Path '{rawPath}' does not identify a concrete repository-relative path."));
+            return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.InvalidPath, $"Path '{rawPath}' normalizes to empty or invalid path."));
         }
 
-        // Segment-level validation
-        var segments = normalized.Split('/');
-        foreach (var seg in segments)
+        var segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Any(s => s == ".."))
         {
-            if (seg == "..")
-            {
-                return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.PathTraversalDetected, $"Path '{rawPath}' contains traversal segment '..' and is rejected."));
-            }
-
-            if (seg.AsSpan().IndexOfAny(InvalidConcretePathCharacters) >= 0)
-            {
-                return (false, string.Empty, Diagnostic.Error(
-                    DiagnosticCodes.InvalidPath,
-                    $"Path '{rawPath}' contains wildcard or Windows-unsafe characters."));
-            }
-
-            if (seg.Length > 1 && (seg.EndsWith(' ') || seg.EndsWith('.')))
-            {
-                return (false, string.Empty, Diagnostic.Error(
-                    DiagnosticCodes.InvalidPath,
-                    $"Path '{rawPath}' contains a segment ending in a space or period, which is not Windows-safe."));
-            }
-
-            var baseName = Path.GetFileNameWithoutExtension(seg);
-            if (ReservedDeviceNames.Contains(baseName) || ReservedDeviceNames.Contains(seg))
-            {
-                return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.InvalidPath, $"Reserved device name '{seg}' in path '{rawPath}' is rejected."));
-            }
+            return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.PathTraversalDetected, $"Path '{rawPath}' contains forbidden '..' traversal."));
         }
 
-        // Physical containment and reparse check if path exists
-        var fullPath = Path.Combine(repoRoot, normalized.Replace('/', Path.DirectorySeparatorChar));
-        var (isSafe, contErr) = PathSecurity.CheckContainmentAndReparsePoints(repoRoot, fullPath);
-        if (!isSafe || contErr != null)
+        if (segments.Any(s => ReservedDeviceNames.Contains(s)))
         {
-            return (false, string.Empty, contErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, $"Path '{rawPath}' escapes repository root."));
+            return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.InvalidPath, $"Path '{rawPath}' contains a reserved device name."));
+        }
+
+        if (segments.Any(s => s.EndsWith('.') || s.EndsWith(' ')))
+        {
+            return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.InvalidPath, $"Path '{rawPath}' contains segment with trailing dot or space."));
+        }
+
+        if (segments.Any(s => s.AsSpan().IndexOfAny(InvalidConcretePathCharacters) >= 0 || s.Contains(':')))
+        {
+            return (false, string.Empty, Diagnostic.Error(DiagnosticCodes.InvalidPath, $"Path '{rawPath}' contains invalid characters or stream specifiers."));
         }
 
         return (true, normalized, null);
@@ -487,16 +514,12 @@ public static class TaskScopeVerifier
 
     private static string GetRepositoryRoot(string workspaceRoot)
     {
-        var normalized = Path.GetFullPath(workspaceRoot).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (Path.GetFileName(normalized) == ".dogdouspec")
+        var dir = new DirectoryInfo(workspaceRoot);
+        if (string.Equals(dir.Name, ".dogdouspec", StringComparison.OrdinalIgnoreCase) && dir.Parent != null)
         {
-            var parent = Directory.GetParent(normalized);
-            if (parent != null)
-            {
-                return parent.FullName;
-            }
+            return dir.Parent.FullName;
         }
 
-        return normalized;
+        return workspaceRoot;
     }
 }

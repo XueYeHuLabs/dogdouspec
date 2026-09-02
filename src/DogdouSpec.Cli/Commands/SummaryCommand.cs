@@ -54,18 +54,23 @@ public static class SummaryCommand
                 discoveredRoot,
                 iterationId);
 
-            if (!success || diagnostics.Count > 0)
+            var errors = diagnostics.Where(d => string.Equals(d.Severity, "error", StringComparison.OrdinalIgnoreCase)).ToList();
+            var warnings = diagnostics.Where(d => !string.Equals(d.Severity, "error", StringComparison.OrdinalIgnoreCase)).ToList();
+
+            if (!success || errors.Count > 0 || result == null)
             {
-                var envelope = new DiagnosticsEnvelope("summary", diagnostics);
+                var envelope = new DiagnosticsEnvelope("summary", diagnostics.Count > 0 ? diagnostics : new[] { Diagnostic.Error(DiagnosticCodes.DocumentNotFound, "Failed to generate summary.") });
                 Console.Error.Write(envelope.Format(format == OutputFormat.Markdown || format == OutputFormat.Json ? OutputFormat.Human : format));
                 return envelope.GetExitCode();
             }
 
-            if (result != null)
+            if (warnings.Count > 0)
             {
-                Console.Out.Write(result.Format(format));
+                var envelope = new DiagnosticsEnvelope("summary", warnings);
+                Console.Error.Write(envelope.Format(format == OutputFormat.Markdown || format == OutputFormat.Json ? OutputFormat.Human : format));
             }
 
+            Console.Out.Write(result.Format(format));
             return 0;
         });
 

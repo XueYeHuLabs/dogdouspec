@@ -58,13 +58,14 @@ try {
     $manifestDir    = Join-Path $repoRoot "manifests/winget"
     $installerUrl   = "https://github.com/XueYeHuLabs/dogdouspec/releases/download/$tag/dogdouspec-win-x64.zip"
 
-    # Helper: update a single YAML field value in-place (line-based, no external YAML parser needed)
+    # Helper: update a single top-level YAML field value in-place (line-based, top-level non-indented fields only).
     function Update-YamlField([string]$FilePath, [string]$Field, [string]$Value) {
+        $escapedField = [regex]::Escape($Field)
         $lines = Get-Content $FilePath
         $lines = $lines | ForEach-Object {
-            if ($_ -match "^$Field\s*:") { "$Field`: $Value" } else { $_ }
+            if ($_ -match "^$escapedField\s*:") { "$Field`: $Value" } else { $_ }
         }
-        $lines | Set-Content $FilePath -Encoding utf8
+        [System.IO.File]::WriteAllLines($FilePath, [string[]]$lines, [System.Text.UTF8Encoding]::new($false))
     }
 
     # Vixasol.DogdouSpec.yaml
@@ -88,7 +89,7 @@ try {
         elseif  ($_ -match "^(\s+InstallerSha256):") { "$($Matches[1]): $hash" }
         else    { $_ }
     }
-    $installerLines | Set-Content $installerYaml -Encoding utf8
+    [System.IO.File]::WriteAllLines($installerYaml, [string[]]$installerLines, [System.Text.UTF8Encoding]::new($false))
     Write-Host "[OK] Updated $installerYaml"
 
     # 5. Automated Upload via GitHub CLI (Optional / Automatic)

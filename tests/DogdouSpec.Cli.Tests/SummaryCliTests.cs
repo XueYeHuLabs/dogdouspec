@@ -82,4 +82,45 @@ public sealed class SummaryCliTests
             Console.SetOut(originalOut);
         }
     }
+
+    [TestMethod]
+    public void SummaryCommand_WhenWarningsPresent_OutputsSummaryAndReturnsZero()
+    {
+        var iterId = "20260831-warn-test";
+        IterationCreator.Create(_wsRoot, iterId, "feature", activate: true);
+        var input = new QuickTaskInput("Warning Task", new List<string> { "src/**" }, "Done", "Why",
+            Array.Empty<string>(), Array.Empty<string>(), new List<string> { "component=core" }, iterId, 1, true, false,
+            $"{iterId}-01", "20260831T120000Z-warn-task");
+        TaskQuick.Create(_wsRoot, input);
+
+        // Intentionally modify task status to non-standard status to trigger warning
+        var tasksPath = Path.Combine(_wsRoot, iterId, "tasks.xml");
+        var tasksDoc = System.Xml.Linq.XDocument.Load(tasksPath);
+        tasksDoc.Root!.Element("task")!.SetAttributeValue("status", "mysterious_status");
+        tasksDoc.Save(tasksPath);
+
+        using var swOut = new StringWriter();
+        using var swErr = new StringWriter();
+        var originalOut = Console.Out;
+        var originalErr = Console.Error;
+        try
+        {
+            Console.SetOut(swOut);
+            Console.SetError(swErr);
+            var exitCode = Program.Main(new[] { "summary", "--iteration", iterId, "--workspace-root", _tempDir, "--format", "markdown" });
+            Assert.AreEqual(0, exitCode);
+
+            var stdout = swOut.ToString();
+            Assert.IsTrue(stdout.Contains("### 🚀 Iteration Progress: `20260831-warn-test`"));
+            Assert.IsTrue(stdout.Contains("Warning Task"));
+
+            var stderr = swErr.ToString();
+            Assert.IsTrue(stderr.Contains("has unrecognized status 'mysterious_status'"));
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalErr);
+        }
+    }
 }

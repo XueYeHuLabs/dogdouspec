@@ -64,10 +64,19 @@ public static class TaskScopeMatcher
         IReadOnlyList<DeclaredRepositoryScope> declaredScopes,
         bool? forceCaseInsensitive = null)
     {
+        var explanation = ExplainPath(candidatePath, declaredScopes, forceCaseInsensitive);
+        return explanation.InScope;
+    }
+
+    public static ScopePathExplanation ExplainPath(
+        string candidatePath,
+        IReadOnlyList<DeclaredRepositoryScope> declaredScopes,
+        bool? forceCaseInsensitive = null)
+    {
         var normalizedPath = NormalizePath(candidatePath);
         if (normalizedPath.Length == 0 || normalizedPath == "." || normalizedPath.StartsWith('/'))
         {
-            return false;
+            return new ScopePathExplanation(candidatePath, false, null, "invalid-path", "Invalid normalized path");
         }
 
         var ignoreCase = forceCaseInsensitive ?? OperatingSystem.IsWindows();
@@ -80,14 +89,34 @@ public static class TaskScopeMatcher
             }
         }
 
-        if (relativeScopes.Any(item => item.Scope.Excludes.Any(pattern =>
-            MatchesGlob(item.RelativePath, pattern, ignoreCase))))
+        if (relativeScopes.Count == 0)
         {
-            return false;
+            return new ScopePathExplanation(candidatePath, false, null, "unmatched-base", "Path is outside declared repository base path");
         }
 
-        return relativeScopes.Any(item => item.Scope.Includes.Any(pattern =>
-            MatchesGlob(item.RelativePath, pattern, ignoreCase)));
+        foreach (var item in relativeScopes)
+        {
+            foreach (var pattern in item.Scope.Excludes)
+            {
+                if (MatchesGlob(item.RelativePath, pattern, ignoreCase))
+                {
+                    return new ScopePathExplanation(candidatePath, false, pattern, "exclude", $"Excluded by rule '{pattern}' in repository base '{item.Scope.BasePath}'");
+                }
+            }
+        }
+
+        foreach (var item in relativeScopes)
+        {
+            foreach (var pattern in item.Scope.Includes)
+            {
+                if (MatchesGlob(item.RelativePath, pattern, ignoreCase))
+                {
+                    return new ScopePathExplanation(candidatePath, true, pattern, "include", $"Matched include rule '{pattern}' in repository base '{item.Scope.BasePath}'");
+                }
+            }
+        }
+
+        return new ScopePathExplanation(candidatePath, false, null, "no-include-match", "No declared include pattern matched path");
     }
 
     public static bool MatchesGlob(string relativePath, string pattern, bool ignoreCase)
