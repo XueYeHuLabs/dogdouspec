@@ -67,12 +67,17 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
    - Transition task: `pending` -> `start` (`in-progress`) -> `verify` (`verification`) -> `complete` (`done`).
    - Pass exact expected revisions (`--expected-revision <N>`).
    - After each write, run `dogdouspec validate --format xml` and re-query.
+   - Persist semantic agent results—implementation summary, source commits, checks, findings, risks, review outcome, blockers, and handoff instructions—in the relevant `tasks.xml` Task records. Do not rely on `.agents/work-results/` or another report folder for recovery.
 7. **Respect Product Authority Gates**:
    - Technical agents cannot auto-complete requirements, design decisions, or iterations.
    - Run `dogdouspec iteration readiness` to check gating status.
    - Only execute `iteration confirm` when explicitly instructed by the human owner in the current interaction.
 8. **Preserve User Work**:
    - Do not commit or push to git unless explicitly requested by the user.
+9. **Checkpoint Governed State**:
+   - In Git-backed Mode B work, inspect `git status --short -- .dogdouspec` at material lifecycle, review, handoff, external-blocker, and release boundaries.
+   - Version managed `.dogdouspec/` documents and ignore only `.dogdouspec/_tmp/`. If Git-write authority is absent, report the workspace as locally durable but not transport-ready and list the exact uncheckpointed files.
+   - Raw worker reports, prompts, mutation envelopes, and provider logs are transient by default. Only bulky raw evidence may remain external; summarize its outcome in the owning Task record.
 
 ## 3. Git Commit Guidelines
 

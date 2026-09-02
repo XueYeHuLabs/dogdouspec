@@ -81,6 +81,9 @@ public sealed class SkillCliTests
             Assert.IsTrue(output.Contains("DogdouSpec"));
             Assert.IsTrue(output.Contains("Mode A: Direct Execution"));
             Assert.IsTrue(output.Contains("Mode B: Governed Iterations"));
+            Assert.IsTrue(output.Contains("Semantic Agent Results", StringComparison.Ordinal));
+            Assert.IsTrue(output.Contains("tasks.xml", StringComparison.Ordinal));
+            Assert.IsTrue(output.Contains("transport-ready", StringComparison.Ordinal));
         }
         finally
         {

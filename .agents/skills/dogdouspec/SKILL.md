@@ -37,6 +37,9 @@ DogdouSpec replaces unstructured markdown tracking with **schema-validated XML a
 5. **Respect Authority Boundaries**: Technical task automation never auto-completes product requirements, design decisions, acceptance criteria, or iterations. Stop and prompt the owner when product decisions are needed.
 6. **Terminal Task Immutability**: Tasks in `done`, `transferred`, `superseded`, or `cancelled` statuses are immutable; low-level edits and execution transitions fail with `TASK_IMMUTABLE`. Only append-only informational records may be added.
 7. **Replanning Execution Freeze**: When an iteration is in `status="replanning"`, task execution transitions (`start`, `resume`, `verify`, `complete`) fail closed with `ITERATION_REPLANNING_EXECUTION_FROZEN`. Technical planning helpers (`task add`, `task split`, `change apply`) and terminal dispositions remain enabled.
+8. **Semantic Agent Results Are Iteration State**: Persist implementation summaries, changed files or commits, commands and exit codes, review disposition, findings, risks, blockers, and handoff instructions in the relevant `tasks.xml` Task records. Do not create a durable agent-report ledger or depend on `.agents/work-results/` for recovery.
+9. **Raw Output Is Transient by Default**: Worker JSON/Markdown, raw prompts, chat transcripts, mutation request XML, and provider telemetry are transport or diagnostic material, not governed state. Large traces, dumps, packages, screenshots, or complete logs may remain in repository-approved artifact storage, but the Task record must preserve the semantic outcome and any required locator or digest.
+10. **Checkpoint Authoritative State**: In a Git-backed Mode B workspace, validate and checkpoint managed `.dogdouspec/` documents at material lifecycle, review, handoff, external-blocker, and release boundaries. Ignore only `.dogdouspec/_tmp/`. Never stage, commit, or push without user or repository authority; if authority is absent, report the workspace as locally durable but not transport-ready and list the uncheckpointed files.
 
 ---
 
@@ -119,6 +122,7 @@ Identify objectives, scope includes/excludes, origin requirement, acceptance cri
 2. **Implement & Build**:
    - Make necessary code and test changes.
    - Run `.\build.cmd` (or project build command) to compile and execute all tests.
+   - Treat worker responses as transient transport. Summarize material implementation, verification, review, risk, and handoff facts in the Task's records.
 3. **Verify Task** (transitions `in-progress` -> `verification`):
    ```powershell
    dogdouspec task verify --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--covers "<CRITERION_ID>"] [--summary "..."] --format xml
@@ -155,7 +159,10 @@ Always re-validate the workspace and re-query after writing:
 ```powershell
 dogdouspec validate --format xml
 dogdouspec query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id='<TASK_ID>']/@status" --format xml
+git status --short -- .dogdouspec
 ```
+
+The Git status check is advisory and does not change DogdouSpec transaction success. At a material checkpoint boundary, create a governance checkpoint only when Git-write authority already exists. Otherwise identify the exact untracked or dirty managed files and report that the workspace is not transport-ready.
 
 ---
 

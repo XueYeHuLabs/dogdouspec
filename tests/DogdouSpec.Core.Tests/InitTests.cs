@@ -56,7 +56,13 @@ public sealed class InitTests
         // Check _skill
         var skillDir = Path.Combine(dogdouDir, "_skill");
         Assert.IsTrue(Directory.Exists(skillDir));
-        Assert.IsTrue(File.Exists(Path.Combine(skillDir, "README.md")));
+        var skillReadmePath = Path.Combine(skillDir, "README.md");
+        Assert.IsTrue(File.Exists(skillReadmePath));
+        var skillReadme = File.ReadAllText(skillReadmePath);
+        Assert.IsTrue(skillReadme.Contains("Semantic agent results", StringComparison.Ordinal));
+        Assert.IsTrue(skillReadme.Contains("tasks.xml", StringComparison.Ordinal));
+        Assert.IsTrue(skillReadme.Contains(".dogdouspec/_tmp/", StringComparison.Ordinal));
+        Assert.IsTrue(skillReadme.Contains("does not stage, commit, or push", StringComparison.Ordinal));
 
         // Check knowledge.xml and backlog.xml
         var knowledgePath = Path.Combine(dogdouDir, "knowledge.xml");
@@ -65,8 +71,11 @@ public sealed class InitTests
         Assert.IsTrue(File.Exists(backlogPath));
 
         // Check EmbeddedResources methods
-        Assert.IsNotNull(EmbeddedResources.GetAgentsTemplateText());
-        Assert.IsTrue(EmbeddedResources.GetAgentsTemplateText()!.Contains("DogdouSpec Workflow", StringComparison.OrdinalIgnoreCase));
+        var agentsTemplate = EmbeddedResources.GetAgentsTemplateText();
+        Assert.IsNotNull(agentsTemplate);
+        Assert.IsTrue(agentsTemplate.Contains("DogdouSpec Workflow", StringComparison.OrdinalIgnoreCase));
+        Assert.IsTrue(agentsTemplate.Contains("Persist semantic agent results", StringComparison.Ordinal));
+        Assert.IsTrue(agentsTemplate.Contains("locally durable but not transport-ready", StringComparison.Ordinal));
         foreach (var relPath in EmbeddedResources.SkillFilePaths)
         {
             var content = EmbeddedResources.GetSkillText(relPath);

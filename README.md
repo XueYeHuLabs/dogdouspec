@@ -22,10 +22,14 @@ For standard development environments with a global package manager:
    dogdouspec skill sync --agents
    ```
    The `--agents` flag writes a project-tailored `AGENTS.md` template to your repo root if one does not already exist.
-3. **Configure Agent Guidelines (`AGENTS.md`)**:
+3. **Checkpoint the initialized governed state in Git-backed repositories**:
+   - Managed `.dogdouspec/` documents are authoritative project state. Version them when Mode B governance is adopted; ignore only `.dogdouspec/_tmp/`.
+   - DogdouSpec does not run `git add`, `git commit`, or `git push`. Inspect `git status --short -- .dogdouspec` and create a checkpoint only with repository-write authority.
+   - Semantic agent results belong in the relevant `tasks.xml` Task records. Temporary Markdown/JSON responses and `.agents/work-results/` are not a persistence requirement.
+4. **Configure Agent Guidelines (`AGENTS.md`)**:
    - `AGENTS.md` establishes governance boundaries, mode selection (Mode A direct commit vs Mode B governed iteration), and authority rules for AI coding agents.
    - Maintainers or coding agents should configure `AGENTS.md` tailored to the target project's specific tech stack, build scripts (e.g. `npm test`, `cargo build`, `dotnet test`), and verification commands, referencing [`templates/v1/AGENTS.md`](templates/v1/AGENTS.md) as a structural baseline.
-4. **Provide installation guidance to AI agents (optional)**:
+5. **Provide installation guidance to AI agents (optional)**:
    If an AI coding agent is missing DogdouSpec or needs to understand the correct workflow, you can surface the embedded guide directly:
    ```powershell
    # Display SKILL.md workflow guidance for the agent (default: markdown output)
@@ -80,6 +84,7 @@ All commands run directly through `dogdouspec <command> [options]`:
   ```powershell
   dogdouspec workspace init [--workspace-root PATH] [--format xml|human]
   ```
+  Initialization creates authoritative managed state. In Git-backed governed work, validate and checkpoint that state explicitly; the CLI never stages or commits it.
 - **Workspace Unlock** (release stale writer locks and run startup recovery)
   ```powershell
   dogdouspec workspace unlock [--force] [--workspace-root PATH] [--format xml|human]
@@ -94,6 +99,7 @@ All commands run directly through `dogdouspec <command> [options]`:
   ```powershell
   dogdouspec skill sync [--output-dir PATH] [--agents] [--format xml|human]
   ```
+  The synchronized guidance keeps semantic execution results in Task records and treats worker report files as transient.
 - **Skill Export**
   ```powershell
   dogdouspec skill export --output-dir PATH [--format xml|human]
@@ -181,10 +187,13 @@ All commands run directly through `dogdouspec <command> [options]`:
 - **Cross-Platform Build & Packaging**: See [docs/CROSS_PLATFORM.md](docs/CROSS_PLATFORM.md) for Linux and macOS compilation and packaging guidance.
 - **Dogfood Remediation Evidence**: See [docs/DOGDOUCLIX_DOGFOOD_REMEDIATION.md](docs/DOGDOUCLIX_DOGFOOD_REMEDIATION.md) for background analysis and remediation evidence.
 - **Agent Guidelines & Skills**: See [`AGENTS.md`](AGENTS.md) and [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md) for workflow integration rules and compact two-phase query patterns.
+- **Usability, Results, and Checkpoint Proposal**: See [`docs/DOGFOOD_USABILITY_AND_EVIDENCE_PROPOSAL.md`](docs/DOGFOOD_USABILITY_AND_EVIDENCE_PROPOSAL.md) for the merged non-normative roadmap. Proposed commands described there are not current CLI commands.
 
 ---
 
 ## 6. Architectural Boundaries & Workflow
 
 - **Repository-Local State**: Authoritative specification and task state is stored entirely within `.dogdouspec/` XML documents and validated against embedded XSD v1 schemas.
+- **Iteration-Owned Results**: Implementation summaries, commits, checks, findings, reviews, risks, blockers, and handoff instructions are persisted in `tasks.xml` records. Raw agent reports, prompts, and provider logs are transient by default; only inherently bulky raw evidence remains external when repository policy requires it.
+- **VCS Checkpoints**: An atomic DogdouSpec document commit is locally durable but is not a Git checkpoint. Git-backed Mode B work should version managed `.dogdouspec/` state at material boundaries, ignore only `_tmp/`, and never infer repository-write authority.
 - **Authority Boundaries**: Technical agents manage task lifecycles, execution records, and code changes autonomously. Product requirements, design decisions, and iteration completions require explicit human owner confirmation via `iteration confirm`.

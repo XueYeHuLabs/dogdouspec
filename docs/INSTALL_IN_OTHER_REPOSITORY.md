@@ -30,6 +30,8 @@ flowchart LR
    - Copies the DogdouSpec agent skill (`.agents/skills/dogdouspec/`) to the target repository.
    - Non-destructively merges a minimal DogdouSpec workflow block into the target repository's `AGENTS.md` (never overwriting existing project rules; keeps pre-merge backup in the external staging directory).
    - Validates workspace integrity using `dogdouspec validate`.
+   - Establishes that semantic agent results live in `tasks.xml` Task records, not a durable report folder.
+   - In a Git-backed target, reviews authoritative `.dogdouspec/` files for an explicit VCS checkpoint; only `_tmp/` is runtime-only.
 
 3. **Stage 3: Project Adoption (Optional First Iteration)**
    - **Product Authority Boundary**: Technical coding agents must **never** auto-create iterations, invent requirements, or define tasks without explicit instruction from the human project owner.
@@ -397,6 +399,8 @@ try {
 }
 ```
 
+The initialized XML is locally durable authoritative state, not generated cache. In a Git-backed governed repository, version managed `.dogdouspec/` files and ignore only `.dogdouspec/_tmp/`. DogdouSpec does not stage or commit them. If the installer lacks Git-write authority, report the exact untracked files as locally durable but not transport-ready.
+
 ### 5.2. Install DogdouSpec Agent Skill
 
 Copy the checked-in skill instructions and references from `$SOURCE_REPO\.agents\skills\dogdouspec` into `$TARGET_REPO\.agents\skills\dogdouspec\`:
@@ -476,6 +480,12 @@ This repository supports **DogdouSpec** for managing complex, long-cycle iterati
    - Technical agents cannot auto-complete requirements, design decisions, or iterations.
    - Run `.\dogdouspec.cmd iteration readiness` to check gating status.
    - Only execute `iteration confirm` when explicitly instructed by the human product owner in the current interaction.
+7. **Persist Semantic Results in Task Records**:
+   - Record implementation summaries, source commits, checks, findings, review outcomes, risks, blockers, and handoff instructions in the relevant `tasks.xml` Task records.
+   - Do not depend on `.agents/work-results/`, raw prompts, worker response files, mutation envelopes, or provider logs for recovery. Only bulky raw evidence may remain in repository-approved artifact storage, with its semantic outcome recorded in the Task.
+8. **Checkpoint Governed State Without Inferring Authority**:
+   - At material lifecycle, review, handoff, external-blocker, and release boundaries, run `git status --short -- .dogdouspec`.
+   - Version managed `.dogdouspec/` documents and ignore only `.dogdouspec/_tmp/`. Never stage, commit, or push unless repository-write authority is explicit.
 ```
 
 #### PowerShell Merge Script
@@ -529,6 +539,12 @@ This repository supports **DogdouSpec** for managing complex, long-cycle iterati
    - Technical agents cannot auto-complete requirements, design decisions, or iterations.
    - Run `.\dogdouspec.cmd iteration readiness` to check gating status.
    - Only execute `iteration confirm` when explicitly instructed by the human product owner in the current interaction.
+7. **Persist Semantic Results in Task Records**:
+   - Record implementation summaries, source commits, checks, findings, review outcomes, risks, blockers, and handoff instructions in the relevant `tasks.xml` Task records.
+   - Do not depend on `.agents/work-results/`, raw prompts, worker response files, mutation envelopes, or provider logs for recovery. Only bulky raw evidence may remain in repository-approved artifact storage, with its semantic outcome recorded in the Task.
+8. **Checkpoint Governed State Without Inferring Authority**:
+   - At material lifecycle, review, handoff, external-blocker, and release boundaries, run `git status --short -- .dogdouspec`.
+   - Version managed `.dogdouspec/` documents and ignore only `.dogdouspec/_tmp/`. Never stage, commit, or push unless repository-write authority is explicit.
 '@
 
 Assert-InsideTarget $targetAgentsFile $TARGET_REPO
@@ -569,6 +585,9 @@ try {
     .\dogdouspec.cmd validate --format xml
     if ($LASTEXITCODE -ne 0) { throw "[ERROR] Post-integration validation failed." }
     Write-Host "[OK] Workspace and schema validation passed."
+
+    Write-Host "=== Authoritative DogdouSpec VCS Status ==="
+    git status --short -- .dogdouspec
 } finally {
     Pop-Location
 }
@@ -651,6 +670,10 @@ When tracking DogdouSpec in the target repository's version control:
 | `.agents/skills/dogdouspec/` | **Yes** | Agent skill definition and reference guides (default path). |
 | `AGENTS.md` | **Yes** | Repository agent guidelines. |
 | `.dogdouspec/_tmp/` | **No** | Runtime transaction staging and recovery markers (must be ignored in `.gitignore`). |
+
+Semantic agent reports are not a separate committed component. Their material content belongs in `tasks.xml` records. Do not introduce a canonical `.agents/work-results/` tree; worker response files, prompts, request XML, and provider logs remain transient. Repository-approved storage may retain bulky raw evidence, but the owning Task records its summarized outcome and stable reference when required.
+
+After installation, iteration activation, material lifecycle changes, review, handoff, external-blocker pauses, and release gates, validate the workspace and inspect `git status --short -- .dogdouspec`. Create the VCS checkpoint only with explicit repository-write authority. Without that authority, the installation or handoff is locally durable but not transport-ready until the listed managed files are checkpointed.
 
 #### Recommended `.gitignore` Addition
 
