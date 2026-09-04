@@ -315,16 +315,29 @@ public static class TaskAdder
             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DuplicateId, "Iteration contains duplicate requirement IDs.", normSpecDocPath) });
         }
         var specReqIds = requirementDefinitions.Select(r => r.Attribute("id")!.Value).ToHashSet(StringComparer.Ordinal);
-        var operational = originRefs.Any(r => string.Equals(r.Attribute("relation")?.Value, "supports", StringComparison.Ordinal));
+        var operational = originRefs.Any(r =>
+            string.Equals(r.Attribute("relation")?.Value, "supports", StringComparison.Ordinal) ||
+            string.Equals(r.Attribute("target")?.Value, normIterId, StringComparison.Ordinal));
         if (operational)
         {
-            if (!string.Equals(commandName, "task quick", StringComparison.Ordinal) ||
-                originRefs.Count != 1 ||
-                !string.Equals(originRefs[0].Attribute("scope")?.Value, "iteration", StringComparison.Ordinal) ||
-                !string.Equals(originRefs[0].Attribute("relation")?.Value, "supports", StringComparison.Ordinal) ||
-                !string.Equals(originRefs[0].Attribute("target")?.Value, normIterId, StringComparison.Ordinal))
+            var isStructurallyValid = originRefs.Count == 1 &&
+                string.Equals(originRefs[0].Attribute("scope")?.Value, "iteration", StringComparison.Ordinal) &&
+                string.Equals(originRefs[0].Attribute("relation")?.Value, "supports", StringComparison.Ordinal) &&
+                string.Equals(originRefs[0].Attribute("target")?.Value, normIterId, StringComparison.Ordinal);
+
+            if (!isStructurallyValid)
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidReferenceTargetType, $"Operational origin for task '{taskId}' must be exactly one iteration supports reference to '{normIterId}'.", normTasksDocPath) });
+                var actualCount = originRefs.Count.ToString(CultureInfo.InvariantCulture);
+                var actualScope = FormatOriginValues(originRefs, "scope");
+                var actualRelation = FormatOriginValues(originRefs, "relation");
+                var actualTarget = FormatOriginValues(originRefs, "target");
+
+                return (false, null, new[] { Diagnostic.Error(
+                    DiagnosticCodes.InvalidReferenceTargetType,
+                    $"Operational origin for task '{taskId}' must be exactly one iteration supports reference to '{normIterId}'. " +
+                    $"Expected: count=1, scope='iteration', relation='supports', target='{normIterId}'. " +
+                    $"Actual: count={actualCount}, scope={actualScope}, relation={actualRelation}, target={actualTarget}.",
+                    normTasksDocPath) });
             }
         }
         else
@@ -489,5 +502,50 @@ public static class TaskAdder
         }
 
         return dto.Offset == TimeSpan.Zero;
+    }
+
+    private static string FormatOriginValues(List<XElement> refs, string attributeName)
+    {
+        if (refs.Count == 1)
+        {
+            return FormatSingleOriginValue(refs[0].Attribute(attributeName)?.Value);
+        }
+
+        var items = refs.Take(5).Select(r => FormatSingleOriginValue(r.Attribute(attributeName)?.Value));
+        var suffix = refs.Count > 5 ? ", ..." : string.Empty;
+        return $"[{string.Join(", ", items)}{suffix}]";
+    }
+
+    private static string FormatSingleOriginValue(string? raw)
+    {
+        if (raw == null)
+        {
+            return "<missing>";
+        }
+
+        if (raw.Length == 0)
+        {
+            return "<empty>";
+        }
+
+        return $"'{SanitizeOriginValue(raw)}'";
+    }
+
+    private static string SanitizeOriginValue(string raw)
+    {
+        var sb = new StringBuilder(Math.Min(raw.Length, 64));
+        foreach (var c in raw)
+        {
+            if (sb.Length >= 64)
+            {
+                sb.Append("...");
+                break;
+            }
+
+            sb.Append(char.IsControl(c) ? ' ' : c);
+        }
+
+        var trimmed = sb.ToString().Trim();
+        return trimmed.Length == 0 ? "<empty>" : trimmed;
     }
 }
