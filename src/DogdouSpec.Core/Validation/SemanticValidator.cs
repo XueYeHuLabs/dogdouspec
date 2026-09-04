@@ -187,7 +187,7 @@ public static class SemanticValidator
                     receipt.LinePosition));
             }
 
-            // 2. Must only be used on a receipt record owned by a Task or Backlog item.
+            // 2. Must only be used on a receipt record owned by a Task, Backlog item, or Knowledge entry.
             var isTaskOwnedRecord = string.Equals(receipt.ElementName, "record", StringComparison.Ordinal) &&
                                     string.Equals(receipt.ParentElementName, "records", StringComparison.Ordinal) &&
                                     !string.IsNullOrEmpty(receipt.ContainingTaskId) &&
@@ -197,12 +197,17 @@ public static class SemanticValidator
                                        string.Equals(receipt.ParentElementName, "records", StringComparison.Ordinal) &&
                                        !string.IsNullOrEmpty(backlogItemId) &&
                                        string.Equals(receipt.Document.RelativePath, "backlog.xml", StringComparison.OrdinalIgnoreCase);
+            var knowledgeEntryId = receipt.Element.Ancestors("entry").FirstOrDefault()?.Attribute("id")?.Value;
+            var isKnowledgeOwnedRecord = string.Equals(receipt.ElementName, "record", StringComparison.Ordinal) &&
+                                         string.Equals(receipt.ParentElementName, "records", StringComparison.Ordinal) &&
+                                         !string.IsNullOrEmpty(knowledgeEntryId) &&
+                                         string.Equals(receipt.Document.RelativePath, "knowledge.xml", StringComparison.OrdinalIgnoreCase);
 
-            if (!isTaskOwnedRecord && !isBacklogOwnedRecord)
+            if (!isTaskOwnedRecord && !isBacklogOwnedRecord && !isKnowledgeOwnedRecord)
             {
                 diagnostics.Add(Diagnostic.Error(
                     DiagnosticCodes.InvalidReferenceTargetType,
-                    $"Operation ID '{receipt.OperationId}' is used on <{receipt.ElementName}> in '{receipt.Document.RelativePath}'. Operation IDs are only permitted on Task- or Backlog-item-owned records.",
+                    $"Operation ID '{receipt.OperationId}' is used on <{receipt.ElementName}> in '{receipt.Document.RelativePath}'. Operation IDs are only permitted on Task-, Backlog-item-, or Knowledge-entry-owned records.",
                     receipt.Document.RelativePath,
                     receipt.LineNumber,
                     receipt.LinePosition));
@@ -227,7 +232,8 @@ public static class SemanticValidator
                 .Select(r =>
                 {
                     var backlogItemId = r.Element.Ancestors("item").FirstOrDefault()?.Attribute("id")?.Value;
-                    return (Doc: r.Document.RelativePath, Owner: r.ContainingTaskId ?? backlogItemId ?? string.Empty);
+                    var knowledgeEntryId = r.Element.Ancestors("entry").FirstOrDefault()?.Attribute("id")?.Value;
+                    return (Doc: r.Document.RelativePath, Owner: r.ContainingTaskId ?? backlogItemId ?? knowledgeEntryId ?? string.Empty);
                 })
                 .Distinct()
                 .ToList();
@@ -238,7 +244,7 @@ public static class SemanticValidator
                 {
                     diagnostics.Add(Diagnostic.Error(
                         DiagnosticCodes.AmbiguousReference,
-                        $"Operation ID '{opId}' is spread across multiple Task or Backlog-item owners ({string.Join(", ", distinctOwners.Select(d => $"{d.Doc}:{d.Owner}"))}).",
+                        $"Operation ID '{opId}' is spread across multiple Task, Backlog-item, or Knowledge-entry owners ({string.Join(", ", distinctOwners.Select(d => $"{d.Doc}:{d.Owner}"))}).",
                         r.Document.RelativePath,
                         r.LineNumber,
                         r.LinePosition));
