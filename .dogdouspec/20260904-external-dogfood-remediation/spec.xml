@@ -1,118 +1,181 @@
 <?xml version="1.0" encoding="utf-8"?>
-<iteration id="20260904-external-dogfood-remediation" schema_version="1.0" revision="3" kind="feature" status="active" created_at="2026-09-04T07:53:40Z" updated_at="2026-09-04T07:58:02Z">
+<iteration id="20260904-external-dogfood-remediation" schema_version="1.0" revision="4" kind="feature" status="completed" created_at="2026-09-04T07:53:40Z" updated_at="2026-09-04T23:41:33Z" completed_at="2026-09-04T23:41:33Z">
   <index>
-        <summary>Remediate ten externally verified DogdouSpec governance and usability defects.</summary>
-        <term key="kind" value="feature" />
-        <term key="iteration" value="20260904-external-dogfood-remediation" />
-        <term key="topic" value="external-dogfood-remediation" />
-        <term key="status" value="active" />
-      </index>
+    <summary>Remediate ten externally verified DogdouSpec governance and usability defects.</summary>
+    <term key="kind" value="feature" />
+    <term key="iteration" value="20260904-external-dogfood-remediation" />
+    <term key="topic" value="external-dogfood-remediation" />
+    <term key="status" value="completed" />
+  </index>
   <product>
-        <objective>Resolve F1 through F10 from the external dogfood field report so governance claims fail closed, mutation workflows are preflightable and consistent, managed state is reviewable, and durable knowledge has first-class CLI support.</objective>
-        <deliverables>
-          <deliverable id="20260904-deliv-transport-integrity">
-            <index><summary>Fail-closed workspace transport status.</summary><term key="findings" value="F10" /></index>
-            <description>Correct vcs-status and checkpoint-plan for non-repositories and Git status failures.</description>
-          </deliverable>
-          <deliverable id="20260904-deliv-defined-criteria">
-            <index><summary>Owner-authorized acceptance criterion lifecycle.</summary><term key="findings" value="F2" /></index>
-            <description>Provide criterion authoring and reject activation or completion against undefined placeholders.</description>
-          </deliverable>
-          <deliverable id="20260904-deliv-preflight-consistency">
-            <index><summary>Coherent mutation preflight, explanation, revision, and addressing behavior.</summary><term key="findings" value="F1-F5-F8" /></index>
-            <description>Expose request validation and prospective checks while converging help, revision, and document addressing semantics.</description>
-          </deliverable>
-          <deliverable id="20260904-deliv-canonical-xml">
-            <index><summary>Canonical reviewable managed XML serialization.</summary><term key="findings" value="F6-F7" /></index>
-            <description>Guarantee one trailing LF and stable structural indentation without changing prose text values.</description>
-          </deliverable>
-          <deliverable id="20260904-deliv-task-composition">
-            <index><summary>Composable canonical operational task requests.</summary><term key="findings" value="F4" /></index>
-            <description>Allow task add to accept structurally valid operational requests emitted by task quick dry-run.</description>
-          </deliverable>
-          <deliverable id="20260904-deliv-knowledge-porcelain">
-            <index><summary>First-class knowledge store porcelain.</summary><term key="findings" value="F3" /></index>
-            <description>Add knowledge add and list workflows and surface durable-fact capture at completion.</description>
-          </deliverable>
-          <deliverable id="20260904-deliv-schema-drift">
-            <index><summary>Workspace schema drift visibility.</summary><term key="findings" value="F9" /></index>
-            <description>Version or compare workspace schema copies against embedded authoritative schemas.</description>
-          </deliverable>
-        </deliverables>
-        <scope>
-          <included>
-            <item>Core mutation, iteration, task, workspace, validation, serialization, and knowledge services.</item>
-            <item>CLI command surfaces and accurate conditional help.</item>
-            <item>Core and CLI regression tests reproducing every field-report finding.</item>
-            <item>Documentation updates required to describe implemented behavior.</item>
-          </included>
-          <excluded>
-            <item>Automatic Git writes or weakening of owner authority gates.</item>
-            <item>Semantic hard-wrapping that changes XML text node values.</item>
-            <item>Removal of raw XML plumbing or existing read-only porcelain.</item>
-            <item>Unrelated schema redesign or compatibility-breaking command renames.</item>
-          </excluded>
-        </scope>
-        <requirements>
-          <requirement id="20260904-req-transport-integrity" status="approved">
-            <index><summary>Transport readiness must be established from successful Git evidence.</summary><term key="findings" value="F10" /></index>
-            <statement>Workspace transport status must fail closed when no Git repository exists or Git status cannot be obtained, while retaining correct success for clean checkpointed repositories.</statement>
-            <rationale>F10 currently certifies transport readiness without any checkpoint destination or successful Git evidence.</rationale>
-          </requirement>
-          <requirement id="20260904-req-defined-criteria" status="approved">
-            <index><summary>Product acceptance criteria must be authorable and defined before lifecycle gates.</summary><term key="findings" value="F2" /></index>
-            <statement>Owners must have first-class criterion authoring paths, and activation, readiness, and completion must reject blank or seeded placeholder criteria.</statement>
-            <rationale>F2 permits an iteration to certify acceptance against a bar that was never written.</rationale>
-          </requirement>
-          <requirement id="20260904-req-mutation-preflight" status="approved">
-            <index><summary>Mutation requirements must be inspectable before writes and consistently addressed.</summary><term key="findings" value="F1-F5-F8" /></index>
-            <statement>Mutation requests must support coherent validation or dry-run and explain semantics, conditional requirements must be visible in help, and iteration, document, and revision addressing must follow one predictable model.</statement>
-            <rationale>F1, F5, and F8 create avoidable trial-and-error and inconsistent concurrency handling.</rationale>
-          </requirement>
-          <requirement id="20260904-req-canonical-serialization" status="approved">
-            <index><summary>Managed XML must be byte-stable and structurally reviewable.</summary><term key="findings" value="F6-F7" /></index>
-            <statement>All managed document writes must use canonical structural formatting with exactly one trailing LF while preserving exact prose text values.</statement>
-            <rationale>F6 breaks consumer whitespace checks and F7 makes versioned governance state unreviewable.</rationale>
-          </requirement>
-          <requirement id="20260904-req-operational-task-composition" status="approved">
-            <index><summary>Canonical operational task requests must compose across CLI commands.</summary><term key="findings" value="F4" /></index>
-            <statement>Task add must accept any structurally valid single current-iteration supports origin, including canonical task quick dry-run output, independent of command-name provenance.</statement>
-            <rationale>F4 rejects the CLI's own valid generated request because validation is tied to an entrypoint string.</rationale>
-          </requirement>
-          <requirement id="20260904-req-knowledge-porcelain" status="approved">
-            <index><summary>Durable knowledge must have first-class write and discovery commands.</summary><term key="findings" value="F3" /></index>
-            <statement>Knowledge entries must be addable and listable without hand-authored XML, with completion guidance prompting capture of facts that outlive an iteration.</statement>
-            <rationale>F3 leaves durable cross-cutting knowledge trapped in closed task records.</rationale>
-          </requirement>
-          <requirement id="20260904-req-schema-drift" status="approved">
-            <index><summary>Workspace schema cache drift must be detectable.</summary><term key="findings" value="F9" /></index>
-            <statement>Validation must identify workspace schema copies that differ from the CLI's embedded authoritative schema set without making local cache drift silently authoritative.</statement>
-            <rationale>F9 leaves independently copied workspace schemas unpinned across upgrades.</rationale>
-          </requirement>
-        </requirements>
-        <acceptance>
-          <criterion id="20260904-crit-f10-no-repository" decision="pending">In a non-Git directory, vcs-status and checkpoint-plan report locally durable but not transport-ready and enumerate authoritative files as uncheckpointed.</criterion>
-          <criterion id="20260904-crit-f10-git-failure" decision="pending">A failed Git status invocation produces a diagnostic and never reports a clean transport-ready workspace.</criterion>
-          <criterion id="20260904-crit-f2-defined-bar" decision="pending">Owners can set meaningful acceptance criterion text, while create-and-activate, activation readiness, and completion fail closed on blank or seeded placeholder criteria.</criterion>
-          <criterion id="20260904-crit-f1-preflight" decision="pending">Hand-authored mutation requests can be schema- and state-checked without writing, and supported dry-runs report their prospective target revision.</criterion>
-          <criterion id="20260904-crit-f5-explain-help" decision="pending">Mutation preconditions and conditional option pairings are discoverable before failure through explain output or accurate help.</criterion>
-          <criterion id="20260904-crit-f8-consistency" decision="pending">Query, validate, task, backlog, and iteration confirmation use consistent iteration, document, and optional expected-revision addressing where safe.</criterion>
-          <criterion id="20260904-crit-f6-one-newline" decision="pending">Repeated mutations through every managed write path leave exactly one trailing LF and pass git diff --check in a consumer workspace.</criterion>
-          <criterion id="20260904-crit-f7-reviewable" decision="pending">Canonical serialization places structural siblings on stable separate indented lines without changing prose text-node values.</criterion>
-          <criterion id="20260904-crit-f4-composition" decision="pending">Unmodified XML emitted by task quick --dry-run is accepted by task add when its operational origin is structurally valid.</criterion>
-          <criterion id="20260904-crit-f3-knowledge" decision="pending">Knowledge entries can be added and listed through first-class commands, and completion output prompts durable-fact capture.</criterion>
-          <criterion id="20260904-crit-f9-schema-drift" decision="pending">Validate reports workspace schema drift against embedded authoritative schemas and normal workspaces remain valid.</criterion>
-          <criterion id="20260904-crit-regression" decision="pending">The full build and test suite passes with zero failures and confirmed prior usability improvements remain available.</criterion>
-        </acceptance>
-      </product>
-  <confirmations><confirmation id="20260904T075802Z-confirm-activate" action="activate" decision="accepted" actor="owner-instruction" decided_at="2026-09-04T07:58:02Z"><summary>Owner requested a governed remediation iteration based on the external dogfood field report.</summary><requirements>
-    <requirement target="20260904-req-transport-integrity" decision="approved" />
-    <requirement target="20260904-req-defined-criteria" decision="approved" />
-    <requirement target="20260904-req-mutation-preflight" decision="approved" />
-    <requirement target="20260904-req-canonical-serialization" decision="approved" />
-    <requirement target="20260904-req-operational-task-composition" decision="approved" />
-    <requirement target="20260904-req-knowledge-porcelain" decision="approved" />
-    <requirement target="20260904-req-schema-drift" decision="approved" />
-  </requirements></confirmation></confirmations>
+    <objective>Resolve F1 through F10 from the external dogfood field report so governance claims fail closed, mutation workflows are preflightable and consistent, managed state is reviewable, and durable knowledge has first-class CLI support.</objective>
+    <deliverables>
+      <deliverable id="20260904-deliv-transport-integrity">
+        <index>
+          <summary>Fail-closed workspace transport status.</summary>
+          <term key="findings" value="F10" />
+        </index>
+        <description>Correct vcs-status and checkpoint-plan for non-repositories and Git status failures.</description>
+      </deliverable>
+      <deliverable id="20260904-deliv-defined-criteria">
+        <index>
+          <summary>Owner-authorized acceptance criterion lifecycle.</summary>
+          <term key="findings" value="F2" />
+        </index>
+        <description>Provide criterion authoring and reject activation or completion against undefined placeholders.</description>
+      </deliverable>
+      <deliverable id="20260904-deliv-preflight-consistency">
+        <index>
+          <summary>Coherent mutation preflight, explanation, revision, and addressing behavior.</summary>
+          <term key="findings" value="F1-F5-F8" />
+        </index>
+        <description>Expose request validation and prospective checks while converging help, revision, and document addressing semantics.</description>
+      </deliverable>
+      <deliverable id="20260904-deliv-canonical-xml">
+        <index>
+          <summary>Canonical reviewable managed XML serialization.</summary>
+          <term key="findings" value="F6-F7" />
+        </index>
+        <description>Guarantee one trailing LF and stable structural indentation without changing prose text values.</description>
+      </deliverable>
+      <deliverable id="20260904-deliv-task-composition">
+        <index>
+          <summary>Composable canonical operational task requests.</summary>
+          <term key="findings" value="F4" />
+        </index>
+        <description>Allow task add to accept structurally valid operational requests emitted by task quick dry-run.</description>
+      </deliverable>
+      <deliverable id="20260904-deliv-knowledge-porcelain">
+        <index>
+          <summary>First-class knowledge store porcelain.</summary>
+          <term key="findings" value="F3" />
+        </index>
+        <description>Add knowledge add and list workflows and surface durable-fact capture at completion.</description>
+      </deliverable>
+      <deliverable id="20260904-deliv-schema-drift">
+        <index>
+          <summary>Workspace schema drift visibility.</summary>
+          <term key="findings" value="F9" />
+        </index>
+        <description>Version or compare workspace schema copies against embedded authoritative schemas.</description>
+      </deliverable>
+    </deliverables>
+    <scope>
+      <included>
+        <item>Core mutation, iteration, task, workspace, validation, serialization, and knowledge services.</item>
+        <item>CLI command surfaces and accurate conditional help.</item>
+        <item>Core and CLI regression tests reproducing every field-report finding.</item>
+        <item>Documentation updates required to describe implemented behavior.</item>
+      </included>
+      <excluded>
+        <item>Automatic Git writes or weakening of owner authority gates.</item>
+        <item>Semantic hard-wrapping that changes XML text node values.</item>
+        <item>Removal of raw XML plumbing or existing read-only porcelain.</item>
+        <item>Unrelated schema redesign or compatibility-breaking command renames.</item>
+      </excluded>
+    </scope>
+    <requirements>
+      <requirement id="20260904-req-transport-integrity" status="approved">
+        <index>
+          <summary>Transport readiness must be established from successful Git evidence.</summary>
+          <term key="findings" value="F10" />
+        </index>
+        <statement>Workspace transport status must fail closed when no Git repository exists or Git status cannot be obtained, while retaining correct success for clean checkpointed repositories.</statement>
+        <rationale>F10 currently certifies transport readiness without any checkpoint destination or successful Git evidence.</rationale>
+      </requirement>
+      <requirement id="20260904-req-defined-criteria" status="approved">
+        <index>
+          <summary>Product acceptance criteria must be authorable and defined before lifecycle gates.</summary>
+          <term key="findings" value="F2" />
+        </index>
+        <statement>Owners must have first-class criterion authoring paths, and activation, readiness, and completion must reject blank or seeded placeholder criteria.</statement>
+        <rationale>F2 permits an iteration to certify acceptance against a bar that was never written.</rationale>
+      </requirement>
+      <requirement id="20260904-req-mutation-preflight" status="approved">
+        <index>
+          <summary>Mutation requirements must be inspectable before writes and consistently addressed.</summary>
+          <term key="findings" value="F1-F5-F8" />
+        </index>
+        <statement>Mutation requests must support coherent validation or dry-run and explain semantics, conditional requirements must be visible in help, and iteration, document, and revision addressing must follow one predictable model.</statement>
+        <rationale>F1, F5, and F8 create avoidable trial-and-error and inconsistent concurrency handling.</rationale>
+      </requirement>
+      <requirement id="20260904-req-canonical-serialization" status="approved">
+        <index>
+          <summary>Managed XML must be byte-stable and structurally reviewable.</summary>
+          <term key="findings" value="F6-F7" />
+        </index>
+        <statement>All managed document writes must use canonical structural formatting with exactly one trailing LF while preserving exact prose text values.</statement>
+        <rationale>F6 breaks consumer whitespace checks and F7 makes versioned governance state unreviewable.</rationale>
+      </requirement>
+      <requirement id="20260904-req-operational-task-composition" status="approved">
+        <index>
+          <summary>Canonical operational task requests must compose across CLI commands.</summary>
+          <term key="findings" value="F4" />
+        </index>
+        <statement>Task add must accept any structurally valid single current-iteration supports origin, including canonical task quick dry-run output, independent of command-name provenance.</statement>
+        <rationale>F4 rejects the CLI's own valid generated request because validation is tied to an entrypoint string.</rationale>
+      </requirement>
+      <requirement id="20260904-req-knowledge-porcelain" status="approved">
+        <index>
+          <summary>Durable knowledge must have first-class write and discovery commands.</summary>
+          <term key="findings" value="F3" />
+        </index>
+        <statement>Knowledge entries must be addable and listable without hand-authored XML, with completion guidance prompting capture of facts that outlive an iteration.</statement>
+        <rationale>F3 leaves durable cross-cutting knowledge trapped in closed task records.</rationale>
+      </requirement>
+      <requirement id="20260904-req-schema-drift" status="approved">
+        <index>
+          <summary>Workspace schema cache drift must be detectable.</summary>
+          <term key="findings" value="F9" />
+        </index>
+        <statement>Validation must identify workspace schema copies that differ from the CLI's embedded authoritative schema set without making local cache drift silently authoritative.</statement>
+        <rationale>F9 leaves independently copied workspace schemas unpinned across upgrades.</rationale>
+      </requirement>
+    </requirements>
+    <acceptance>
+      <criterion id="20260904-crit-f10-no-repository" decision="accepted">In a non-Git directory, vcs-status and checkpoint-plan report locally durable but not transport-ready and enumerate authoritative files as uncheckpointed.</criterion>
+      <criterion id="20260904-crit-f10-git-failure" decision="accepted">A failed Git status invocation produces a diagnostic and never reports a clean transport-ready workspace.</criterion>
+      <criterion id="20260904-crit-f2-defined-bar" decision="accepted">Owners can set meaningful acceptance criterion text, while create-and-activate, activation readiness, and completion fail closed on blank or seeded placeholder criteria.</criterion>
+      <criterion id="20260904-crit-f1-preflight" decision="accepted">Hand-authored mutation requests can be schema- and state-checked without writing, and supported dry-runs report their prospective target revision.</criterion>
+      <criterion id="20260904-crit-f5-explain-help" decision="accepted">Mutation preconditions and conditional option pairings are discoverable before failure through explain output or accurate help.</criterion>
+      <criterion id="20260904-crit-f8-consistency" decision="accepted">Query, validate, task, backlog, and iteration confirmation use consistent iteration, document, and optional expected-revision addressing where safe.</criterion>
+      <criterion id="20260904-crit-f6-one-newline" decision="accepted">Repeated mutations through every managed write path leave exactly one trailing LF and pass git diff --check in a consumer workspace.</criterion>
+      <criterion id="20260904-crit-f7-reviewable" decision="accepted">Canonical serialization places structural siblings on stable separate indented lines without changing prose text-node values.</criterion>
+      <criterion id="20260904-crit-f4-composition" decision="accepted">Unmodified XML emitted by task quick --dry-run is accepted by task add when its operational origin is structurally valid.</criterion>
+      <criterion id="20260904-crit-f3-knowledge" decision="accepted">Knowledge entries can be added and listed through first-class commands, and completion output prompts durable-fact capture.</criterion>
+      <criterion id="20260904-crit-f9-schema-drift" decision="accepted">Validate reports workspace schema drift against embedded authoritative schemas and normal workspaces remain valid.</criterion>
+      <criterion id="20260904-crit-regression" decision="accepted">The full build and test suite passes with zero failures and confirmed prior usability improvements remain available.</criterion>
+    </acceptance>
+  </product>
+  <confirmations>
+    <confirmation id="20260904T075802Z-confirm-activate" action="activate" decision="accepted" actor="owner-instruction" decided_at="2026-09-04T07:58:02Z">
+      <summary>Owner requested a governed remediation iteration based on the external dogfood field report.</summary>
+      <requirements>
+        <requirement target="20260904-req-transport-integrity" decision="approved" />
+        <requirement target="20260904-req-defined-criteria" decision="approved" />
+        <requirement target="20260904-req-mutation-preflight" decision="approved" />
+        <requirement target="20260904-req-canonical-serialization" decision="approved" />
+        <requirement target="20260904-req-operational-task-composition" decision="approved" />
+        <requirement target="20260904-req-knowledge-porcelain" decision="approved" />
+        <requirement target="20260904-req-schema-drift" decision="approved" />
+      </requirements>
+    </confirmation>
+    <confirmation id="20260904T234133Z-confirm-complete" action="complete" decision="accepted" actor="owner-instruction" decided_at="2026-09-04T23:41:33Z">
+      <summary>Complete the entire iteration under the owner's current instruction to perform follow-up closeout and finish the iteration. All seven tasks are done with independent approvals, covering all ten external findings. Accept all twelve defined product criteria based on persisted per-task verification and the current build.cmd result: 805/805 passed, zero skips, zero build warnings/errors. F9 additionally reproduced and resolved four real workspace schema-copy drifts through public schema export. No unresolved technical findings; source and governance Git checkpoint remains a separate unperformed action requiring explicit Git-write instruction.</summary>
+      <acceptance>
+        <criterion target="20260904-crit-f10-no-repository" decision="accepted" />
+        <criterion target="20260904-crit-f10-git-failure" decision="accepted" />
+        <criterion target="20260904-crit-f2-defined-bar" decision="accepted" />
+        <criterion target="20260904-crit-f1-preflight" decision="accepted" />
+        <criterion target="20260904-crit-f5-explain-help" decision="accepted" />
+        <criterion target="20260904-crit-f8-consistency" decision="accepted" />
+        <criterion target="20260904-crit-f6-one-newline" decision="accepted" />
+        <criterion target="20260904-crit-f7-reviewable" decision="accepted" />
+        <criterion target="20260904-crit-f4-composition" decision="accepted" />
+        <criterion target="20260904-crit-f3-knowledge" decision="accepted" />
+        <criterion target="20260904-crit-f9-schema-drift" decision="accepted" />
+        <criterion target="20260904-crit-regression" decision="accepted" />
+      </acceptance>
+    </confirmation>
+  </confirmations>
 </iteration>
-

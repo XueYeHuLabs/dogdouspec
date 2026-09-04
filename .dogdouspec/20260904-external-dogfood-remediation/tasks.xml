@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="29">
+<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="42">
   <index>
     <summary>Tasks for iteration 20260904-external-dogfood-remediation.</summary>
     <term key="iteration" value="20260904-external-dogfood-remediation" />
   </index>
-<task id="20260904-task-f10-transport-integrity" status="done" created_at="2026-09-04T08:00:00Z" updated_at="2026-09-04T09:00:49Z" agent="agy-f10-implementer" started_at="2026-09-04T08:00:23Z" completed_at="2026-09-04T09:00:49Z">
+  <task id="20260904-task-f10-transport-integrity" status="done" created_at="2026-09-04T08:00:00Z" updated_at="2026-09-04T09:00:49Z" agent="agy-f10-implementer" started_at="2026-09-04T08:00:23Z" completed_at="2026-09-04T09:00:49Z">
     <index>
       <summary>Fail closed when transport evidence is unavailable</summary>
       <term key="kind" value="quick" />
@@ -31,21 +31,43 @@
     <context>
       <summary>External finding F10 proves the current governance status can certify a checkpoint that does not exist.</summary>
     </context>
-    <review required="true"><submission id="20260904T090012Z-review-f10-transport-submission" disposition="approved" actor="agy-f10-reviewer" reviewed_at="2026-09-04T09:00:12Z" record="20260904T090012Z-review-f10-transport-submission-record" /></review>
-    <records><record id="20260904T080000Z-quick-f10-transport-integrity-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:00:00Z" actor="quick-task" operation_id="20260904T080000Z-quick-f10-transport-integrity"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="eea4df6c0aad1e20faa0460c78218615ba5cc7b6b064202df5cf907c16434950" /></index><summary>Task addition receipt.</summary></record><record id="20260904T080023Z-record-start-71919bbb35244c8983a216a53d31b75b" kind="start" status="informational" created_at="2026-09-04T08:00:23Z" actor="agent" operation_id="20260904T080023Z-taskstart-a5636da71edf440bbf0646f21f7a0e27">
-      <summary>Assigned to agy.exe implementer for fail-closed transport remediation.</summary>
-    </record><record id="20260904T085342Z-record-verify-82b0cb26ecb345d388c46bcd25fea266" kind="verification" status="informational" created_at="2026-09-04T08:53:42Z" actor="kiro-supervisor" operation_id="20260904T085342Z-taskverify-8313ef7b9ae142d49d506bedf19ccc3b">
-      <summary>Implemented fail-closed transport evaluation, coherent degraded output, relative _tmp filtering, and Core/CLI regressions; independent targeted validation passed 19 tests.</summary>
-      <covers>
-        <ref scope="document" target="20260904-task-f10-transport-integrity-done" relation="covers" />
-      </covers>
-    </record><record id="20260904T090012Z-review-f10-transport-submission-record" kind="decision" status="informational" created_at="2026-09-04T09:00:12Z" actor="agy-f10-reviewer" operation_id="20260904T090012Z-review-f10-transport"><index><summary>Structured task review submission.</summary><term key="review-disposition" value="approved" /><term key="request-sha256" value="3272086b9cd3af3099ec61502384feb7ea537d039a6645110dbaae7f4355944f" /></index><summary>Approved after correction: non-Git and failed Git evidence paths fail closed, enumerate authoritative files, render coherent status and checkpoint plans, preserve clean and dirty repository behavior, and pass 705 tests.</summary></record><record id="20260904T090049Z-record-complete-27173fd963594ae4ae58c5ecab015d4e" kind="completion" status="informational" created_at="2026-09-04T09:00:49Z" actor="kiro-supervisor" operation_id="20260904T090049Z-taskcomplete-6180ae3c840e442cbe2783ec909a0070">
-      <summary>Completed after independent approval; fail-closed transport behavior and focused Core/CLI regressions are ready for checkpoint.</summary>
-      <covers>
-        <ref scope="document" target="20260904-task-f10-transport-integrity-done" relation="covers" />
-      </covers>
-    </record></records>
-  </task><task id="20260904-task-f6-f7-canonical-xml" status="done" created_at="2026-09-04T08:01:00Z" updated_at="2026-09-04T11:59:56Z" agent="agy-xml-implementer" started_at="2026-09-04T09:04:10Z" completed_at="2026-09-04T11:59:56Z">
+    <review required="true">
+      <submission id="20260904T090012Z-review-f10-transport-submission" disposition="approved" actor="agy-f10-reviewer" reviewed_at="2026-09-04T09:00:12Z" record="20260904T090012Z-review-f10-transport-submission-record" />
+    </review>
+    <records>
+      <record id="20260904T080000Z-quick-f10-transport-integrity-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:00:00Z" actor="quick-task" operation_id="20260904T080000Z-quick-f10-transport-integrity">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="eea4df6c0aad1e20faa0460c78218615ba5cc7b6b064202df5cf907c16434950" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260904T080023Z-record-start-71919bbb35244c8983a216a53d31b75b" kind="start" status="informational" created_at="2026-09-04T08:00:23Z" actor="agent" operation_id="20260904T080023Z-taskstart-a5636da71edf440bbf0646f21f7a0e27">
+        <summary>Assigned to agy.exe implementer for fail-closed transport remediation.</summary>
+      </record>
+      <record id="20260904T085342Z-record-verify-82b0cb26ecb345d388c46bcd25fea266" kind="verification" status="informational" created_at="2026-09-04T08:53:42Z" actor="kiro-supervisor" operation_id="20260904T085342Z-taskverify-8313ef7b9ae142d49d506bedf19ccc3b">
+        <summary>Implemented fail-closed transport evaluation, coherent degraded output, relative _tmp filtering, and Core/CLI regressions; independent targeted validation passed 19 tests.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f10-transport-integrity-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260904T090012Z-review-f10-transport-submission-record" kind="decision" status="informational" created_at="2026-09-04T09:00:12Z" actor="agy-f10-reviewer" operation_id="20260904T090012Z-review-f10-transport">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="3272086b9cd3af3099ec61502384feb7ea537d039a6645110dbaae7f4355944f" />
+        </index>
+        <summary>Approved after correction: non-Git and failed Git evidence paths fail closed, enumerate authoritative files, render coherent status and checkpoint plans, preserve clean and dirty repository behavior, and pass 705 tests.</summary>
+      </record>
+      <record id="20260904T090049Z-record-complete-27173fd963594ae4ae58c5ecab015d4e" kind="completion" status="informational" created_at="2026-09-04T09:00:49Z" actor="kiro-supervisor" operation_id="20260904T090049Z-taskcomplete-6180ae3c840e442cbe2783ec909a0070">
+        <summary>Completed after independent approval; fail-closed transport behavior and focused Core/CLI regressions are ready for checkpoint.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f10-transport-integrity-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260904-task-f6-f7-canonical-xml" status="done" created_at="2026-09-04T08:01:00Z" updated_at="2026-09-04T11:59:56Z" agent="agy-xml-implementer" started_at="2026-09-04T09:04:10Z" completed_at="2026-09-04T11:59:56Z">
     <index>
       <summary>Canonicalize managed XML serialization</summary>
       <term key="kind" value="quick" />
@@ -71,21 +93,43 @@
     <context>
       <summary>External findings F6 and F7 make checkpointed governance state fail whitespace checks and resist meaningful review.</summary>
     </context>
-    <review required="true"><submission id="20260904T115938Z-review-canonical-xml-submission" disposition="approved" actor="agy-xml-reviewer" reviewed_at="2026-09-04T11:59:38Z" record="20260904T115938Z-review-canonical-xml-submission-record" /></review>
-    <records><record id="20260904T080100Z-quick-f6-f7-canonical-xml-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:01:00Z" actor="quick-task" operation_id="20260904T080100Z-quick-f6-f7-canonical-xml"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="b48c7e5c7be60f9ff3717f76c7a073dd8ddb3fd2a83dda22320aabf47b5bcd2a" /></index><summary>Task addition receipt.</summary></record><record id="20260904T090410Z-record-start-e5b813545d1848fb9ee20bf3e7c3622d" kind="start" status="informational" created_at="2026-09-04T09:04:10Z" actor="agent" operation_id="20260904T090410Z-taskstart-e36aa9648214444f887a4a4cf91674b8">
-      <summary>Assigned to agy.exe implementer for canonical managed XML serialization.</summary>
-    </record><record id="20260904T115938Z-record-verify-c6cb737cbb8b4d13ba8a3c90aa3c0453" kind="verification" status="informational" created_at="2026-09-04T11:59:38Z" actor="kiro-supervisor" operation_id="20260904T115938Z-taskverify-9e1e44b270154219a512dafb387685b4">
-      <summary>Centralized every managed XML write path behind canonical LF-only structural serialization, preserved mixed/prose text semantics, and added 22 focused regressions; full build passed 727 tests.</summary>
-      <covers>
-        <ref scope="document" target="20260904-task-f6-f7-canonical-xml-done" relation="covers" />
-      </covers>
-    </record><record id="20260904T115938Z-review-canonical-xml-submission-record" kind="decision" status="informational" created_at="2026-09-04T11:59:38Z" actor="agy-xml-reviewer" operation_id="20260904T115938Z-review-canonical-xml"><index><summary>Structured task review submission.</summary><term key="review-disposition" value="approved" /><term key="request-sha256" value="521920b56d83896795e653e2e7e776b20bb78bd141738ae72b60df07b582d12b" /></index><summary>Approved after correction: all managed write paths and the final transaction boundary enforce canonical UTF-8 and one trailing LF, structural siblings are reviewable, mixed and prose text values are preserved, and the full suite passes 727 tests.</summary></record><record id="20260904T115956Z-record-complete-99aa1c756d2c4d94a830500c284a474b" kind="completion" status="informational" created_at="2026-09-04T11:59:56Z" actor="kiro-supervisor" operation_id="20260904T115956Z-taskcomplete-7f128626093b4ddba137c05dd5848826">
-      <summary>Completed after independent approval and 727 passing full-suite tests; canonical serializer and write-boundary regressions are ready for checkpoint.</summary>
-      <covers>
-        <ref scope="document" target="20260904-task-f6-f7-canonical-xml-done" relation="covers" />
-      </covers>
-    </record></records>
-  </task><task id="20260904-task-f4-operational-task-add" status="done" created_at="2026-09-04T08:02:00Z" updated_at="2026-09-04T12:22:54Z" agent="agy-task-add-implementer" started_at="2026-09-04T12:01:00Z" completed_at="2026-09-04T12:22:54Z">
+    <review required="true">
+      <submission id="20260904T115938Z-review-canonical-xml-submission" disposition="approved" actor="agy-xml-reviewer" reviewed_at="2026-09-04T11:59:38Z" record="20260904T115938Z-review-canonical-xml-submission-record" />
+    </review>
+    <records>
+      <record id="20260904T080100Z-quick-f6-f7-canonical-xml-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:01:00Z" actor="quick-task" operation_id="20260904T080100Z-quick-f6-f7-canonical-xml">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="b48c7e5c7be60f9ff3717f76c7a073dd8ddb3fd2a83dda22320aabf47b5bcd2a" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260904T090410Z-record-start-e5b813545d1848fb9ee20bf3e7c3622d" kind="start" status="informational" created_at="2026-09-04T09:04:10Z" actor="agent" operation_id="20260904T090410Z-taskstart-e36aa9648214444f887a4a4cf91674b8">
+        <summary>Assigned to agy.exe implementer for canonical managed XML serialization.</summary>
+      </record>
+      <record id="20260904T115938Z-record-verify-c6cb737cbb8b4d13ba8a3c90aa3c0453" kind="verification" status="informational" created_at="2026-09-04T11:59:38Z" actor="kiro-supervisor" operation_id="20260904T115938Z-taskverify-9e1e44b270154219a512dafb387685b4">
+        <summary>Centralized every managed XML write path behind canonical LF-only structural serialization, preserved mixed/prose text semantics, and added 22 focused regressions; full build passed 727 tests.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f6-f7-canonical-xml-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260904T115938Z-review-canonical-xml-submission-record" kind="decision" status="informational" created_at="2026-09-04T11:59:38Z" actor="agy-xml-reviewer" operation_id="20260904T115938Z-review-canonical-xml">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="521920b56d83896795e653e2e7e776b20bb78bd141738ae72b60df07b582d12b" />
+        </index>
+        <summary>Approved after correction: all managed write paths and the final transaction boundary enforce canonical UTF-8 and one trailing LF, structural siblings are reviewable, mixed and prose text values are preserved, and the full suite passes 727 tests.</summary>
+      </record>
+      <record id="20260904T115956Z-record-complete-99aa1c756d2c4d94a830500c284a474b" kind="completion" status="informational" created_at="2026-09-04T11:59:56Z" actor="kiro-supervisor" operation_id="20260904T115956Z-taskcomplete-7f128626093b4ddba137c05dd5848826">
+        <summary>Completed after independent approval and 727 passing full-suite tests; canonical serializer and write-boundary regressions are ready for checkpoint.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f6-f7-canonical-xml-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260904-task-f4-operational-task-add" status="done" created_at="2026-09-04T08:02:00Z" updated_at="2026-09-04T12:22:54Z" agent="agy-task-add-implementer" started_at="2026-09-04T12:01:00Z" completed_at="2026-09-04T12:22:54Z">
     <index>
       <summary>Accept canonical operational tasks in task add</summary>
       <term key="kind" value="quick" />
@@ -111,21 +155,43 @@
     <context>
       <summary>External finding F4 shows task add rejects the CLI's own canonical request solely because of command-name provenance.</summary>
     </context>
-    <review required="true"><submission id="20260904T122210Z-review-f4-submission" disposition="approved" actor="agy-task-add-reviewer" reviewed_at="2026-09-04T12:22:10Z" record="20260904T122210Z-review-f4-submission-record" /></review>
-    <records><record id="20260904T080200Z-quick-f4-operational-task-add-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:02:00Z" actor="quick-task" operation_id="20260904T080200Z-quick-f4-operational-task-add"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="fa4f65518eab7d00abc1f4555f89ae1b6e05da99210ab5c7eb2c51015ea88957" /></index><summary>Task addition receipt.</summary></record><record id="20260904T120100Z-record-start-b29c9238f9cc4de098ac98649ce37b94" kind="start" status="informational" created_at="2026-09-04T12:01:00Z" actor="agent" operation_id="20260904T120100Z-taskstart-c0ea821af9ff4a63999d7cc92087f4f1">
-      <summary>Assigned to agy.exe implementer for canonical operational task composition.</summary>
-    </record><record id="20260904T122145Z-record-verify-54f29876a7dd4803b3e6f873daec68cb" kind="verification" status="informational" created_at="2026-09-04T12:21:45Z" actor="kiro-supervisor" operation_id="20260904T122145Z-taskverify-fd03e244f7ab4f2a9c2b5174af66da92">
-      <summary>Canonical task quick dry-run requests now compose through task add based on origin structure, with bounded actual-versus-expected diagnostics and passing core and CLI regressions.</summary>
-      <covers>
-        <ref scope="document" target="20260904-task-f4-operational-task-add-done" relation="covers" />
-      </covers>
-    </record><record id="20260904T122210Z-review-f4-submission-record" kind="decision" status="informational" created_at="2026-09-04T12:22:10Z" actor="agy-task-add-reviewer" operation_id="20260904T122210Z-review-f4"><index><summary>Structured task review submission.</summary><term key="review-disposition" value="approved" /><term key="request-sha256" value="cea6f2332f0d59cf5546bfaa300f88c0f5a5d211c94bd5253ca5ddcd2fe44dd0" /></index><summary>Independent agy review approved the structural operational-origin handling, bounded diagnostics, and regression coverage with no blocking findings.</summary></record><record id="20260904T122254Z-record-complete-c842538e1df34dfa8f8cce286d4c7573" kind="completion" status="informational" created_at="2026-09-04T12:22:54Z" actor="kiro-supervisor" operation_id="20260904T122254Z-taskcomplete-2e181eb9477046479837656b1a884251">
-      <summary>Completed after targeted core and CLI regressions and independent agy approval; task add now accepts canonical operational origins independent of command provenance.</summary>
-      <covers>
-        <ref scope="document" target="20260904-task-f4-operational-task-add-done" relation="covers" />
-      </covers>
-    </record></records>
-  </task><task id="20260904-task-f2-defined-criteria" status="done" created_at="2026-09-04T08:03:00Z" updated_at="2026-09-04T13:32:14Z" agent="agy-criteria-implementer" started_at="2026-09-04T12:28:40Z" completed_at="2026-09-04T13:32:14Z">
+    <review required="true">
+      <submission id="20260904T122210Z-review-f4-submission" disposition="approved" actor="agy-task-add-reviewer" reviewed_at="2026-09-04T12:22:10Z" record="20260904T122210Z-review-f4-submission-record" />
+    </review>
+    <records>
+      <record id="20260904T080200Z-quick-f4-operational-task-add-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:02:00Z" actor="quick-task" operation_id="20260904T080200Z-quick-f4-operational-task-add">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="fa4f65518eab7d00abc1f4555f89ae1b6e05da99210ab5c7eb2c51015ea88957" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260904T120100Z-record-start-b29c9238f9cc4de098ac98649ce37b94" kind="start" status="informational" created_at="2026-09-04T12:01:00Z" actor="agent" operation_id="20260904T120100Z-taskstart-c0ea821af9ff4a63999d7cc92087f4f1">
+        <summary>Assigned to agy.exe implementer for canonical operational task composition.</summary>
+      </record>
+      <record id="20260904T122145Z-record-verify-54f29876a7dd4803b3e6f873daec68cb" kind="verification" status="informational" created_at="2026-09-04T12:21:45Z" actor="kiro-supervisor" operation_id="20260904T122145Z-taskverify-fd03e244f7ab4f2a9c2b5174af66da92">
+        <summary>Canonical task quick dry-run requests now compose through task add based on origin structure, with bounded actual-versus-expected diagnostics and passing core and CLI regressions.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f4-operational-task-add-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260904T122210Z-review-f4-submission-record" kind="decision" status="informational" created_at="2026-09-04T12:22:10Z" actor="agy-task-add-reviewer" operation_id="20260904T122210Z-review-f4">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="cea6f2332f0d59cf5546bfaa300f88c0f5a5d211c94bd5253ca5ddcd2fe44dd0" />
+        </index>
+        <summary>Independent agy review approved the structural operational-origin handling, bounded diagnostics, and regression coverage with no blocking findings.</summary>
+      </record>
+      <record id="20260904T122254Z-record-complete-c842538e1df34dfa8f8cce286d4c7573" kind="completion" status="informational" created_at="2026-09-04T12:22:54Z" actor="kiro-supervisor" operation_id="20260904T122254Z-taskcomplete-2e181eb9477046479837656b1a884251">
+        <summary>Completed after targeted core and CLI regressions and independent agy approval; task add now accepts canonical operational origins independent of command provenance.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f4-operational-task-add-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260904-task-f2-defined-criteria" status="done" created_at="2026-09-04T08:03:00Z" updated_at="2026-09-04T13:32:14Z" agent="agy-criteria-implementer" started_at="2026-09-04T12:28:40Z" completed_at="2026-09-04T13:32:14Z">
     <index>
       <summary>Add owner-authorized defined criteria lifecycle</summary>
       <term key="kind" value="quick" />
@@ -155,21 +221,43 @@
     <context>
       <summary>External finding F2 proves DogdouSpec can certify product acceptance against undefined text.</summary>
     </context>
-    <review required="true"><submission id="20260904T133138Z-review-f2-submission" disposition="approved" actor="agy-criteria-reviewer" reviewed_at="2026-09-04T13:31:38Z" record="20260904T133138Z-review-f2-submission-record" /></review>
-    <records><record id="20260904T080300Z-quick-f2-defined-criteria-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:03:00Z" actor="quick-task" operation_id="20260904T080300Z-quick-f2-defined-criteria"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="3981f1e2569eb025d2fc09d76780c22b5dccea4e64de7883c5ca1137a49373e5" /></index><summary>Task addition receipt.</summary></record><record id="20260904T122840Z-record-start-c269168497dd412a824d02d121c19179" kind="start" status="informational" created_at="2026-09-04T12:28:40Z" actor="kiro-supervisor" operation_id="20260904T122840Z-taskstart-bbe36091c7864b58a9b4388d94e2f6de">
-      <summary>Assigned to agy.exe implementer for owner-authorized criteria authoring and lifecycle gates.</summary>
-    </record><record id="20260904T133127Z-record-verify-c073c7b34f30414cb20a3a97f3d2b561" kind="verification" status="informational" created_at="2026-09-04T13:31:27Z" actor="kiro-supervisor" operation_id="20260904T133127Z-taskverify-cc284951c45646b8b69d9de4e79b020e">
-      <summary>Implemented owner-path criterion creation and define/add porcelain with optimistic revisions, canonical transactions, shared undefined-content policy, and fail-closed create, readiness, activate, continue, and completion gates; Kiro full build passed 748 tests and independent agy review approved.</summary>
-      <covers>
-        <ref scope="document" target="20260904-task-f2-defined-criteria-done" relation="covers" />
-      </covers>
-    </record><record id="20260904T133138Z-review-f2-submission-record" kind="decision" status="informational" created_at="2026-09-04T13:31:38Z" actor="agy-criteria-reviewer" operation_id="20260904T133138Z-review-f2"><index><summary>Structured task review submission.</summary><term key="review-disposition" value="approved" /><term key="request-sha256" value="d63644d7e930c0ade4479754523613a1d378b8b1908522e82a1ee37d2aa82fb8" /></index><summary>Independent agy review approved create-time and later criterion authoring, exact placeholder policy, readiness dimensions, raw lifecycle gates, transaction safety, compatibility, and 748 passing regressions with no blocking findings.</summary></record><record id="20260904T133214Z-record-complete-125266e722f1411183c7941d9d4fc2b9" kind="completion" status="informational" created_at="2026-09-04T13:32:14Z" actor="kiro-supervisor" operation_id="20260904T133214Z-taskcomplete-b5664cb7c8074b389327ce83b1fbf34c">
-      <summary>Completed after Kiro full validation and independent agy approval; defined criteria can be authored at creation or through criterion porcelain and undefined criteria now block every lifecycle boundary.</summary>
-      <covers>
-        <ref scope="document" target="20260904-task-f2-defined-criteria-done" relation="covers" />
-      </covers>
-    </record></records>
-  </task><task id="20260904-task-f1-f5-f8-preflight" status="done" created_at="2026-09-04T08:04:00Z" updated_at="2026-09-04T17:27:04Z" agent="agy-preflight-implementer" started_at="2026-09-04T13:39:22Z" completed_at="2026-09-04T17:27:04Z">
+    <review required="true">
+      <submission id="20260904T133138Z-review-f2-submission" disposition="approved" actor="agy-criteria-reviewer" reviewed_at="2026-09-04T13:31:38Z" record="20260904T133138Z-review-f2-submission-record" />
+    </review>
+    <records>
+      <record id="20260904T080300Z-quick-f2-defined-criteria-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:03:00Z" actor="quick-task" operation_id="20260904T080300Z-quick-f2-defined-criteria">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="3981f1e2569eb025d2fc09d76780c22b5dccea4e64de7883c5ca1137a49373e5" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260904T122840Z-record-start-c269168497dd412a824d02d121c19179" kind="start" status="informational" created_at="2026-09-04T12:28:40Z" actor="kiro-supervisor" operation_id="20260904T122840Z-taskstart-bbe36091c7864b58a9b4388d94e2f6de">
+        <summary>Assigned to agy.exe implementer for owner-authorized criteria authoring and lifecycle gates.</summary>
+      </record>
+      <record id="20260904T133127Z-record-verify-c073c7b34f30414cb20a3a97f3d2b561" kind="verification" status="informational" created_at="2026-09-04T13:31:27Z" actor="kiro-supervisor" operation_id="20260904T133127Z-taskverify-cc284951c45646b8b69d9de4e79b020e">
+        <summary>Implemented owner-path criterion creation and define/add porcelain with optimistic revisions, canonical transactions, shared undefined-content policy, and fail-closed create, readiness, activate, continue, and completion gates; Kiro full build passed 748 tests and independent agy review approved.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f2-defined-criteria-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260904T133138Z-review-f2-submission-record" kind="decision" status="informational" created_at="2026-09-04T13:31:38Z" actor="agy-criteria-reviewer" operation_id="20260904T133138Z-review-f2">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="d63644d7e930c0ade4479754523613a1d378b8b1908522e82a1ee37d2aa82fb8" />
+        </index>
+        <summary>Independent agy review approved create-time and later criterion authoring, exact placeholder policy, readiness dimensions, raw lifecycle gates, transaction safety, compatibility, and 748 passing regressions with no blocking findings.</summary>
+      </record>
+      <record id="20260904T133214Z-record-complete-125266e722f1411183c7941d9d4fc2b9" kind="completion" status="informational" created_at="2026-09-04T13:32:14Z" actor="kiro-supervisor" operation_id="20260904T133214Z-taskcomplete-b5664cb7c8074b389327ce83b1fbf34c">
+        <summary>Completed after Kiro full validation and independent agy approval; defined criteria can be authored at creation or through criterion porcelain and undefined criteria now block every lifecycle boundary.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f2-defined-criteria-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260904-task-f1-f5-f8-preflight" status="done" created_at="2026-09-04T08:04:00Z" updated_at="2026-09-04T17:27:04Z" agent="agy-preflight-implementer" started_at="2026-09-04T13:39:22Z" completed_at="2026-09-04T17:27:04Z">
     <index>
       <summary>Unify mutation preflight and addressing</summary>
       <term key="kind" value="quick" />
@@ -201,23 +289,46 @@
     <context>
       <summary>External findings F1, F5, and F8 show one underlying lack of a coherent preflight and addressing contract.</summary>
     </context>
-    <review required="true"><submission id="20260904T172649Z-sub-4c96750ea6ee42b28bfc01f9e683b563" disposition="approved" actor="agy-preflight-reviewer" reviewed_at="2026-09-04T17:26:49Z" record="20260904T172649Z-sub-4c96750ea6ee42b28bfc01f9e683b563-record" /></review>
-    <records><record id="20260904T080400Z-quick-f1-f5-f8-preflight-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:04:00Z" actor="quick-task" operation_id="20260904T080400Z-quick-f1-f5-f8-preflight"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="660afb8cf8211eb23c99080a4f61f03df69dfe3a05890749d5b9c7212c02fa5d" /></index><summary>Task addition receipt.</summary></record><record id="20260904T133922Z-record-start-c0ff6cbb3eab4170874bf7f11b4c9f4c" kind="start" status="informational" created_at="2026-09-04T13:39:22Z" actor="kiro-supervisor" operation_id="20260904T133922Z-taskstart-4c60a4cc760a459cb307173c9557d7cf">
-      <summary>Assigned to agy.exe implementer for unified mutation preflight, addressing, help, and revision contracts.</summary>
-    </record><record id="20260904T172619Z-record-verify-87c8534b73324d3798e34ce4378e6e78" kind="verification" status="informational" created_at="2026-09-04T17:26:19Z" actor="kiro-supervisor" operation_id="20260904T172619Z-taskverify-25c935dddb0b470ebc17c0e85023dc47">
-      <summary>Implemented unified mutation preflight, dry-run recovery gates, canonical quick-start composition, document and revision addressing, confirmation reconciliation, and lock-time authorization read checks. Full build passed 771/771 with zero failures; git diff --check and workspace validation passed.</summary>
-      <covers>
-        <ref scope="document" target="20260904-task-f1-f5-f8-preflight-done" relation="covers" />
-      </covers>
-    </record><record id="20260904T172649Z-sub-4c96750ea6ee42b28bfc01f9e683b563-record" kind="decision" status="informational" created_at="2026-09-04T17:26:49Z" actor="agy-preflight-reviewer" operation_id="20260904T172649Z-taskrev-c1fb0ebf6ebe4c95842f94b92f37a634"><index><summary>Structured task review submission.</summary><term key="review-disposition" value="approved" /><term key="request-sha256" value="89f058e5a64f9f5f8a0c6965bd91ad1138f5dbee35a62a1161faf18042635043" /></index><summary>Independent agy.exe review approved the complete diff after reconstructing preflight, canonical quick-start, locked read-precondition, and exact recovery replay behavior; reviewer independently confirmed 771/771 tests, clean whitespace, and valid workspace with no material blockers.</summary></record><record id="20260904T172704Z-record-complete-00950cde5ad9420da43027df3a835489" kind="completion" status="informational" created_at="2026-09-04T17:27:04Z" actor="kiro-supervisor" operation_id="20260904T172704Z-taskcomplete-6b50c54311064cdebf562dcdc12d68c8">
-      <summary>Completed F1/F5/F8 after independent agy-preflight-reviewer approval. Unified preflight and addressing contracts are implemented, exact replay recovery paths are regression-tested, and the full 771-test build plus workspace and whitespace validation pass.</summary>
-      <covers>
-        <ref scope="document" target="20260904-task-f1-f5-f8-preflight-done" relation="covers" />
-      </covers>
-    </record><record id="20260904T173100Z-record-preflight-source-commit" kind="discussion" status="informational" created_at="2026-09-04T17:31:00Z" actor="kiro-supervisor" operation_id="20260904T173100Z-taskupdate-preflight-source-commit">
-      <summary>Source commit 5a9e0fb records the completed F1, F5, and F8 implementation, independent agy approval, regression coverage, and governance state.</summary>
-    </record></records>
-  </task><task id="20260904-task-f3-knowledge-porcelain" status="pending" created_at="2026-09-04T08:05:00Z" updated_at="2026-09-04T08:05:00Z" agent="agy-knowledge-implementer">
+    <review required="true">
+      <submission id="20260904T172649Z-sub-4c96750ea6ee42b28bfc01f9e683b563" disposition="approved" actor="agy-preflight-reviewer" reviewed_at="2026-09-04T17:26:49Z" record="20260904T172649Z-sub-4c96750ea6ee42b28bfc01f9e683b563-record" />
+    </review>
+    <records>
+      <record id="20260904T080400Z-quick-f1-f5-f8-preflight-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:04:00Z" actor="quick-task" operation_id="20260904T080400Z-quick-f1-f5-f8-preflight">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="660afb8cf8211eb23c99080a4f61f03df69dfe3a05890749d5b9c7212c02fa5d" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260904T133922Z-record-start-c0ff6cbb3eab4170874bf7f11b4c9f4c" kind="start" status="informational" created_at="2026-09-04T13:39:22Z" actor="kiro-supervisor" operation_id="20260904T133922Z-taskstart-4c60a4cc760a459cb307173c9557d7cf">
+        <summary>Assigned to agy.exe implementer for unified mutation preflight, addressing, help, and revision contracts.</summary>
+      </record>
+      <record id="20260904T172619Z-record-verify-87c8534b73324d3798e34ce4378e6e78" kind="verification" status="informational" created_at="2026-09-04T17:26:19Z" actor="kiro-supervisor" operation_id="20260904T172619Z-taskverify-25c935dddb0b470ebc17c0e85023dc47">
+        <summary>Implemented unified mutation preflight, dry-run recovery gates, canonical quick-start composition, document and revision addressing, confirmation reconciliation, and lock-time authorization read checks. Full build passed 771/771 with zero failures; git diff --check and workspace validation passed.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f1-f5-f8-preflight-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260904T172649Z-sub-4c96750ea6ee42b28bfc01f9e683b563-record" kind="decision" status="informational" created_at="2026-09-04T17:26:49Z" actor="agy-preflight-reviewer" operation_id="20260904T172649Z-taskrev-c1fb0ebf6ebe4c95842f94b92f37a634">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="89f058e5a64f9f5f8a0c6965bd91ad1138f5dbee35a62a1161faf18042635043" />
+        </index>
+        <summary>Independent agy.exe review approved the complete diff after reconstructing preflight, canonical quick-start, locked read-precondition, and exact recovery replay behavior; reviewer independently confirmed 771/771 tests, clean whitespace, and valid workspace with no material blockers.</summary>
+      </record>
+      <record id="20260904T172704Z-record-complete-00950cde5ad9420da43027df3a835489" kind="completion" status="informational" created_at="2026-09-04T17:27:04Z" actor="kiro-supervisor" operation_id="20260904T172704Z-taskcomplete-6b50c54311064cdebf562dcdc12d68c8">
+        <summary>Completed F1/F5/F8 after independent agy-preflight-reviewer approval. Unified preflight and addressing contracts are implemented, exact replay recovery paths are regression-tested, and the full 771-test build plus workspace and whitespace validation pass.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f1-f5-f8-preflight-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260904T173100Z-record-preflight-source-commit" kind="discussion" status="informational" created_at="2026-09-04T17:31:00Z" actor="kiro-supervisor" operation_id="20260904T173100Z-taskupdate-preflight-source-commit">
+        <summary>Source commit 5a9e0fb records the completed F1, F5, and F8 implementation, independent agy approval, regression coverage, and governance state.</summary>
+      </record>
+    </records>
+  </task>
+  <task id="20260904-task-f3-knowledge-porcelain" status="done" created_at="2026-09-04T08:05:00Z" updated_at="2026-09-04T18:14:18Z" agent="agy-knowledge-implementer" started_at="2026-09-04T17:40:19Z" completed_at="2026-09-04T18:14:18Z">
     <index>
       <summary>Add first-class knowledge porcelain</summary>
       <term key="kind" value="quick" />
@@ -226,11 +337,13 @@
     </index>
     <title>Add first-class knowledge porcelain</title>
     <objective>Users can add and list validated knowledge entries without raw XML and iteration completion output advises recording durable cross-iteration facts.</objective>
-    <rationale>External finding F3 shows the durable knowledge store is practically unused without a first-class workflow.</rationale>
+    <rationale>Authorize the complete implementation scope, including the CLI registration entry point.</rationale>
     <scope>
       <repository path=".">
         <include path="src/DogdouSpec.Core/Knowledge/" />
+        <include path="src/DogdouSpec.Core/Validation/SemanticValidator.cs" />
         <include path="src/DogdouSpec.Cli/Commands/" />
+        <include path="src/DogdouSpec.Cli/Program.cs" />
         <include path="tests/" />
       </repository>
     </scope>
@@ -242,14 +355,81 @@
     </dependencies>
     <constraints />
     <acceptance>
-      <criterion id="20260904-task-f3-knowledge-porcelain-done" status="pending">Users can add and list validated knowledge entries without raw XML and iteration completion output advises recording durable cross-iteration facts.</criterion>
+      <criterion id="20260904-task-f3-knowledge-porcelain-done" status="passed">Users can add and list validated knowledge entries without raw XML and iteration completion output advises recording durable cross-iteration facts.</criterion>
     </acceptance>
     <context>
       <summary>External finding F3 shows the durable knowledge store is practically unused without a first-class workflow.</summary>
     </context>
-    <review required="true" />
-    <records><record id="20260904T080500Z-quick-f3-knowledge-porcelain-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:05:00Z" actor="quick-task" operation_id="20260904T080500Z-quick-f3-knowledge-porcelain"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="646f4828eca70bcc70fe6c799c48cbf4fbc9bd7542f2940c6c1a60517c93228a" /></index><summary>Task addition receipt.</summary></record></records>
-  </task><task id="20260904-task-f9-schema-drift" status="pending" created_at="2026-09-04T08:06:00Z" updated_at="2026-09-04T08:06:00Z" agent="agy-schema-implementer">
+    <review required="true">
+      <submission id="20260904T181355Z-sub-3c1a4a946e5648138066c3ebeb6b02bb" disposition="approved" actor="agy-knowledge-reviewer" reviewed_at="2026-09-04T18:13:55Z" record="20260904T181355Z-sub-3c1a4a946e5648138066c3ebeb6b02bb-record" />
+    </review>
+    <records>
+      <record id="20260904T080500Z-quick-f3-knowledge-porcelain-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:05:00Z" actor="quick-task" operation_id="20260904T080500Z-quick-f3-knowledge-porcelain">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="646f4828eca70bcc70fe6c799c48cbf4fbc9bd7542f2940c6c1a60517c93228a" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260904T173934Z-record-revise-58c326341ebe4d5791460d6ec99e5d5c" kind="decision" status="informational" created_at="2026-09-04T17:39:34Z" actor="kiro-supervisor" operation_id="20260904T173934Z-taskrev-f438541cff194747bd444d5fb12a6c64">
+        <summary>Include the CLI registration entry point required for the knowledge command.</summary>
+      </record>
+      <record id="20260904T173934Z-taskrev-f438541cff194747bd444d5fb12a6c64-receipt" kind="discussion" status="informational" created_at="2026-09-04T17:39:34Z" actor="kiro-supervisor" operation_id="20260904T173934Z-taskrev-f438541cff194747bd444d5fb12a6c64">
+        <index>
+          <summary>Task revision receipt.</summary>
+          <term key="request-sha256" value="fdf3f937f9e9d1b434f72530a846b8ef816511d89d5328579ffe0e0abd314a2a" />
+        </index>
+        <summary>Task revision receipt.</summary>
+      </record>
+      <record id="20260904T173956Z-record-revise-6919af2699b249f68c8d47b60e888752" kind="decision" status="informational" created_at="2026-09-04T17:39:56Z" actor="kiro-supervisor" operation_id="20260904T173956Z-taskrev-d543c4f809194fd0b8bd6f86684a110b">
+        <summary>Authorize the complete implementation scope, including the CLI registration entry point.</summary>
+      </record>
+      <record id="20260904T173956Z-taskrev-d543c4f809194fd0b8bd6f86684a110b-receipt" kind="discussion" status="informational" created_at="2026-09-04T17:39:56Z" actor="kiro-supervisor" operation_id="20260904T173956Z-taskrev-d543c4f809194fd0b8bd6f86684a110b">
+        <index>
+          <summary>Task revision receipt.</summary>
+          <term key="request-sha256" value="c3bb9efb9ea62e06cf1f04b1c95018963cb75070ab6213ef30e416e97453aff8" />
+        </index>
+        <summary>Task revision receipt.</summary>
+      </record>
+      <record id="20260904T174019Z-record-start-7854bc21b90749ad8f577b9dd0d46ceb" kind="start" status="informational" created_at="2026-09-04T17:40:19Z" actor="kiro-supervisor" operation_id="20260904T174019Z-taskstart-aa00bb9b2a6844c881d9cdc67e9d0820">
+        <summary>Assigned to agy.exe implementer for first-class knowledge add/list porcelain and completion guidance.</summary>
+      </record>
+      <record id="20260904T180638Z-record-revise-f8ef632e42fc49d08835f8a7dacd28c7" kind="decision" status="informational" created_at="2026-09-04T18:06:38Z" actor="kiro-supervisor" operation_id="20260904T180638Z-taskrev-b4ed001fa1864a9a86c6b7821a8984a1">
+        <summary>Authorize the complete implementation scope, including the CLI registration entry point.</summary>
+      </record>
+      <record id="20260904T180638Z-taskrev-b4ed001fa1864a9a86c6b7821a8984a1-receipt" kind="discussion" status="informational" created_at="2026-09-04T18:06:38Z" actor="kiro-supervisor" operation_id="20260904T180638Z-taskrev-b4ed001fa1864a9a86c6b7821a8984a1">
+        <index>
+          <summary>Task revision receipt.</summary>
+          <term key="request-sha256" value="33c80a3c9000a687e4ac6c51943784f59e7870f066a97844283bc54e4616e6a5" />
+        </index>
+        <summary>Task revision receipt.</summary>
+      </record>
+      <record id="20260904T181324Z-record-verify-1d56916567044819a2c474a1f5f23774" kind="verification" status="informational" created_at="2026-09-04T18:13:24Z" actor="kiro-supervisor" operation_id="20260904T181324Z-taskverify-50369278300b4bbf804a5ce56ebdad37">
+        <summary>Verified first-class knowledge add/list porcelain, typed source validation, canonical operation receipts and replay, completion guidance, and scope-safe semantic validation; focused Core 7/7, CLI 5/5, full build 783/783, workspace validation and diff checks passed.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f3-knowledge-porcelain-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260904T181355Z-sub-3c1a4a946e5648138066c3ebeb6b02bb-record" kind="decision" status="informational" created_at="2026-09-04T18:13:55Z" actor="agy-knowledge-reviewer" operation_id="20260904T181355Z-taskrev-b32de15882724394a4dcadce25325a31">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="8087efe9501bf78741c170c500d4b0a3d218baadfe4bec8febbc32809ba79c32" />
+        </index>
+        <summary>APPROVED: independent review confirmed knowledge porcelain, canonical global idempotency, source validation, completion guidance, semantic-owner constraints, and 783/783 regression coverage with no findings.</summary>
+      </record>
+      <record id="20260904T181418Z-record-complete-86e70f045da94534be74c49a9b650615" kind="completion" status="informational" created_at="2026-09-04T18:14:18Z" actor="kiro-supervisor" operation_id="20260904T181418Z-taskcomplete-d4c07914edb14472b433e2efc98297f8">
+        <summary>Completed F3 after agy implementation, Kiro correction of canonical global receipt handling, explicit scope expansion for SemanticValidator support, independent agy approval, and clean 783/783 validation.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f3-knowledge-porcelain-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260904T233140Z-record-f3-closeout-baseline" kind="discussion" status="informational" created_at="2026-09-04T23:31:40Z" actor="codex-supervisor" operation_id="20260904T233140Z-update-f3-closeout-baseline">
+        <summary>Closeout revalidation on 2026-09-05: build.cmd exit 0; build zero warnings and errors; Core 561/561 and CLI 222/222 passed with zero skips (783 total). Primary inspected the existing F3 source diff, knowledge source typing, cross-document receipt ownership, replay checks and completion guidance coverage; no additional F3 finding. Existing agy-knowledge-reviewer approval remains applicable. F3 source and this Task record are locally durable but not Git-checkpointed; no commit or push has been performed.</summary>
+      </record>
+    </records>
+  </task>
+  <task id="20260904-task-f9-schema-drift" status="done" created_at="2026-09-04T08:06:00Z" updated_at="2026-09-04T23:41:12Z" agent="agy-schema-implementer" started_at="2026-09-04T23:26:50Z" completed_at="2026-09-04T23:41:12Z">
     <index>
       <summary>Detect workspace schema drift</summary>
       <term key="kind" value="quick" />
@@ -265,6 +445,7 @@
         <include path="src/DogdouSpec.Core/Workspace/" />
         <include path="src/DogdouSpec.Cli/Commands/ValidateCommand.cs" />
         <include path="tests/" />
+        <include path=".dogdouspec/_schema/" />
       </repository>
     </scope>
     <origin>
@@ -275,16 +456,55 @@
     </dependencies>
     <constraints />
     <acceptance>
-      <criterion id="20260904-task-f9-schema-drift-done" status="pending">Validate compares workspace schema copies with embedded authoritative schemas, reports drift without silent trust, and leaves normal initialized workspaces valid.</criterion>
+      <criterion id="20260904-task-f9-schema-drift-done" status="passed">Validate compares workspace schema copies with embedded authoritative schemas, reports drift without silent trust, and leaves normal initialized workspaces valid.</criterion>
     </acceptance>
     <context>
       <summary>External finding F9 leaves independently copied schema caches unpinned across CLI upgrades.</summary>
     </context>
-    <review required="true" />
-    <records><record id="20260904T080600Z-quick-f9-schema-drift-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:06:00Z" actor="quick-task" operation_id="20260904T080600Z-quick-f9-schema-drift"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="7cf298084769b69885486e70fd1cca77c8ad6c0e7534c3e9fcf0b9e4cbe3d9d8" /></index><summary>Task addition receipt.</summary></record></records>
-  </task></tasks>
-
-
-
-
-
+    <review required="true">
+      <submission id="20260904T234051Z-sub-c940c30b8c094eb8b8c4b1ace1ce9c51" disposition="approved" actor="agy-schema-reviewer" reviewed_at="2026-09-04T23:40:51Z" record="20260904T234051Z-sub-c940c30b8c094eb8b8c4b1ace1ce9c51-record" />
+    </review>
+    <records>
+      <record id="20260904T080600Z-quick-f9-schema-drift-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:06:00Z" actor="quick-task" operation_id="20260904T080600Z-quick-f9-schema-drift">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="7cf298084769b69885486e70fd1cca77c8ad6c0e7534c3e9fcf0b9e4cbe3d9d8" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260904T232650Z-record-start-ed1d5bd6c8754a4fa2b634db440d5d93" kind="start" status="informational" created_at="2026-09-04T23:26:50Z" actor="codex-supervisor" operation_id="20260904T232650Z-taskstart-6bcc3a9fe10f4702815f9ebaeda9e636">
+        <summary>Resume final F9 implementation and independent agy review under owner instruction to complete the iteration.</summary>
+      </record>
+      <record id="20260904T233053Z-record-f9-cache-scope" kind="discussion" status="informational" created_at="2026-09-04T23:30:53Z" actor="codex-supervisor" operation_id="20260904T233053Z-revise-f9-cache-scope">
+        <summary>Expand F9 scope to refresh repository-readable schema copies from the source CLI public schema show output. Baseline inspection found common, requests, spec, and tasks copies behind current embedded resources; no authoritative schema or product requirements change is needed.</summary>
+      </record>
+      <record id="20260904T233053Z-revise-f9-cache-scope-receipt" kind="discussion" status="informational" created_at="2026-09-04T23:30:53Z" actor="codex-supervisor" operation_id="20260904T233053Z-revise-f9-cache-scope">
+        <index>
+          <summary>Task revision receipt.</summary>
+          <term key="request-sha256" value="4225710753d1af3b6104ce91dbd6b970dc1e329e525574a630ab284edc493070" />
+        </index>
+        <summary>Task revision receipt.</summary>
+      </record>
+      <record id="20260904T234050Z-record-verify-f8331db7d3de451e96e2e281fbf6e251" kind="verification" status="informational" created_at="2026-09-04T23:40:50Z" actor="codex-supervisor" operation_id="20260904T234050Z-taskverify-16829218258143f7b0de0cb8df26859e">
+        <summary>Implemented F9 via agy-schema-implementer (Gemini 3.7 Flash High); primary tightened stream reads to trusted resource length, distinguished unreadable copies from optional absence, added actionable schema export guidance, and replaced invalid scoped test fixtures. Added 22 Core/CLI regressions covering drift, bounded reads, locked copies, hostile/permissive XSD, optional absence, scoped validation, and read-only behavior. build.cmd exit 0 with 805/805 passed (Core 577, CLI 228), zero skipped, zero warnings/errors. Real source CLI reported four existing schema copies as SCHEMA_DRIFT_DETECTED; refreshed common/requests/spec/tasks with public schema show, hashes match source, workspace validation passed for 14 documents. git diff --check passed. Source files: SchemaValidator.cs, WorkspaceSchemaDriftDetector.cs, SchemaDriftTests.cs, SchemaDriftCliTests.cs; readable cache copies also refreshed.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f9-schema-drift-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260904T234051Z-sub-c940c30b8c094eb8b8c4b1ace1ce9c51-record" kind="decision" status="informational" created_at="2026-09-04T23:40:51Z" actor="agy-schema-reviewer" operation_id="20260904T234051Z-taskrev-153d750c545b48cc9a917ea74d1050f1">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="69feb9794636ba524ca0c5b932728dbb5e672744d3707661dd07923605671dba" />
+        </index>
+        <summary>APPROVED by separate agy.exe Gemini 3.7 Flash High review session 5019bbce-0658-4495-955c-7054ad0cc3ce. Independent read-only source inspection covered final F9 detector, public validation integration, related path security/embedded resources, and all 22 regression cases. Confirmed embedded-only authority, bounded reads, deterministic drift/unreadable diagnostics, optional copy behavior, read-only operation, and valid scoped fixtures; no actionable defects or blockers. Reviewer did not execute tests; primary separately observed final build.cmd 805/805 passing.</summary>
+      </record>
+      <record id="20260904T234112Z-record-complete-4b84b3c0f4cd419fa68f8b011b7a4646" kind="completion" status="informational" created_at="2026-09-04T23:41:12Z" actor="codex-supervisor" operation_id="20260904T234112Z-taskcomplete-e21611bf67f345fea47205f4617df714">
+        <summary>Completed F9 after bounded agy implementation, primary corrections, independent agy-schema-reviewer approval and full 805-test pass. The final suite also revalidates F10 transport failures, F6/F7 canonical serialization, F4 task-add composition, F2 defined owner criteria, F1/F5/F8 preflight/help/addressing and F3 knowledge commands/completion guidance. No outstanding technical finding. Existing implementation checkpoints: 2211214 (F10), 80f5643 (F6/F7), 88f645f (F4), 16818b0 (F2), 5a9e0fb (F1/F5/F8); baseline HEAD e3aeb7d. F3/F9 code, refreshed schema copies and governance closeout remain local and uncommitted pending explicit Git-write authority; no push. Semantic implementation, review and checks are persisted in this Task rather than depending on temporary provider reports.</summary>
+        <covers>
+          <ref scope="document" target="20260904-task-f9-schema-drift-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+</tasks>

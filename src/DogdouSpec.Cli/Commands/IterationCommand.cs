@@ -9,6 +9,7 @@ using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Iterations;
 using DogdouSpec.Core.Revisions;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Workspace;
 
 namespace DogdouSpec.Cli.Commands;
@@ -513,7 +514,15 @@ public static class IterationCommand
 
             if (envelopeResult != null)
             {
-                Console.Out.Write(envelopeResult.Format(format));
+                var action = (string?)rootEl?.Attribute("action");
+                if (!dryRun && string.Equals(action, "complete", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.Out.Write(FormatCompletionEnvelope(envelopeResult, format));
+                }
+                else
+                {
+                    Console.Out.Write(envelopeResult.Format(format));
+                }
             }
 
             return 0;
@@ -893,6 +902,31 @@ public static class IterationCommand
                 }
                 acceptance.AppendLine("  </acceptance>");
             }
+            else if (string.Equals((string?)specDoc.Root?.Attribute("status"), "completed", StringComparison.OrdinalIgnoreCase))
+            {
+                var lastComplete = specDoc.Root?.Element("confirmations")?.Elements("confirmation")
+                    .LastOrDefault(c => string.Equals((string?)c.Attribute("action"), "complete", StringComparison.OrdinalIgnoreCase));
+                if (lastComplete != null)
+                {
+                    confirmId = (string?)lastComplete.Attribute("id") ?? confirmId;
+                    isoTime = (string?)lastComplete.Attribute("decided_at") ?? isoTime;
+                    actor = (string?)lastComplete.Attribute("actor") ?? actor;
+                    summary = lastComplete.Element("summary")?.Value ?? summary;
+
+                    var lastAcceptance = lastComplete.Element("acceptance");
+                    if (lastAcceptance != null)
+                    {
+                        acceptance.AppendLine("  <acceptance>");
+                        foreach (var crit in lastAcceptance.Elements("criterion"))
+                        {
+                            var target = (string?)crit.Attribute("target");
+                            var decision = (string?)crit.Attribute("decision") ?? "accepted";
+                            acceptance.AppendLine(CultureInfo.InvariantCulture, $"    <criterion target=\"{target}\" decision=\"{decision}\"/>");
+                        }
+                        acceptance.AppendLine("  </acceptance>");
+                    }
+                }
+            }
 
             var confirmXml = $"""
 <?xml version="1.0" encoding="utf-8"?>
@@ -921,7 +955,7 @@ public static class IterationCommand
 
             if (envelopeResult != null)
             {
-                Console.Out.Write(envelopeResult.Format(format));
+                Console.Out.Write(FormatCompletionEnvelope(envelopeResult, format));
             }
 
             return 0;
@@ -1097,5 +1131,44 @@ public static class IterationCommand
             return result.Iterations[0].Id;
 
         return null;
+    }
+
+    public const string KnowledgeGuidanceMessage =
+        "Record stable reusable facts that outlive this iteration with dogdouspec knowledge add; do not record task-local status, transcripts, or one-off attempts.";
+
+    internal static string FormatCompletionEnvelope(MutationEnvelope envelope, OutputFormat format)
+    {
+        if (format == OutputFormat.Xml)
+        {
+            var rawXml = envelope.ToXmlString();
+            var doc = XDocument.Parse(rawXml);
+            doc.Root?.Add(new XElement("guidance", KnowledgeGuidanceMessage));
+            var settings = new XmlWriterSettings
+            {
+                Indent = true,
+                IndentChars = "  ",
+                OmitXmlDeclaration = false,
+                Encoding = new UTF8Encoding(false),
+                NewLineHandling = NewLineHandling.Replace,
+                NewLineChars = "\n"
+            };
+            using var ms = new MemoryStream();
+            using (var writer = XmlWriter.Create(ms, settings))
+            {
+                doc.Save(writer);
+            }
+            return Encoding.UTF8.GetString(ms.ToArray()) + "\n";
+        }
+        else
+        {
+            var human = envelope.ToHumanString();
+            var sb = new StringBuilder(human);
+            if (!human.EndsWith('\n'))
+            {
+                sb.AppendLine();
+            }
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Guidance: {KnowledgeGuidanceMessage}");
+            return sb.ToString();
+        }
     }
 }

@@ -42,6 +42,7 @@ PERSISTENCE & GOVERNANCE:
             rootCommand.Add(RequirementCommand.BuildCommand());
             rootCommand.Add(ChangeCommand.BuildCommand());
             rootCommand.Add(BacklogCommand.BuildCommand());
+            rootCommand.Add(KnowledgeCommand.BuildCommand());
             rootCommand.Add(TransactionCommand.BuildCommand());
             rootCommand.Add(SkillCommand.BuildCommand());
 
