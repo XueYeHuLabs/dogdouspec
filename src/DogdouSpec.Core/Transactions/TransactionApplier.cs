@@ -9,6 +9,7 @@ using DogdouSpec.Core.Append;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.Workspace;
@@ -602,27 +603,7 @@ public static class TransactionApplier
                     item.WorkingDoc.Root!.SetAttributeValue("updated_at", clock.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture));
                 }
 
-                var writerSettings = new XmlWriterSettings
-                {
-                    Indent = true,
-                    IndentChars = "  ",
-                    OmitXmlDeclaration = false,
-                    Encoding = Utf8NoBom,
-                    NewLineHandling = NewLineHandling.Replace,
-                    NewLineChars = "\n"
-                };
-
-                using var memoryStream = new MemoryStream();
-                using (var writer = XmlWriter.Create(memoryStream, writerSettings))
-                {
-                    item.WorkingDoc.Save(writer);
-                }
-
-                var replacementContent = Encoding.UTF8.GetString(memoryStream.ToArray());
-                if (!replacementContent.EndsWith('\n'))
-                {
-                    replacementContent += "\n";
-                }
+                var replacementContent = ManagedDocumentSerializer.Serialize(item.WorkingDoc);
 
                 changedOps.Add(new TransactionDocumentOperation(
                     item.NormPath,

@@ -8,6 +8,7 @@ using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -1307,25 +1308,7 @@ public static class IterationConfirmer
         confsContainer.Add(newConfEl);
 
         // Serialize mutated spec document
-        var xmlWriterSettings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "  ",
-            OmitXmlDeclaration = false,
-            Encoding = Utf8NoBom,
-            NewLineHandling = NewLineHandling.Replace,
-            NewLineChars = "\n"
-        };
-
-        string mutatedSpecXml;
-        using (var ms = new MemoryStream())
-        {
-            using (var writer = XmlWriter.Create(ms, xmlWriterSettings))
-            {
-                workingSpecDoc.WriteTo(writer);
-            }
-            mutatedSpecXml = Utf8NoBom.GetString(ms.ToArray()) + "\n";
-        }
+        var mutatedSpecXml = ManagedDocumentSerializer.Serialize(workingSpecDoc);
 
         // 11. Prospective validation & atomic commit via WorkspaceTransactionCommitter
         var op = new TransactionDocumentOperation(

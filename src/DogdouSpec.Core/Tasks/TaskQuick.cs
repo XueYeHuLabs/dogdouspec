@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -117,7 +118,7 @@ public static class TaskQuick
             new XElement("records", input.Start ? new XElement("record", new XAttribute("id", operationId + "-start"), new XAttribute("kind", "start"), new XAttribute("status", "informational"), new XAttribute("created_at", at), new XAttribute("actor", "quick-task"), new XElement("summary", "Quick task created and started atomically.")) : null));
         StatusTermHelper.SynchronizeStatusTerm(task, input.Start ? "in-progress" : "pending");
         var request = new XElement("task-add", new XAttribute("id", operationId), new XAttribute("actor", "quick-task"), new XAttribute("occurred_at", at), task);
-        var requestXml = Serialize(request);
+        var requestXml = CanonicalXmlSerializer.Serialize(request);
         if (Encoding.UTF8.GetByteCount(requestXml) > XPathQueryLimits.MaxDocumentBytes)
             return (false, null, null, new[] { Diagnostic.Error(DiagnosticCodes.LimitExceeded, "Generated task quick request exceeds the maximum XML document size.") });
         IReadOnlyList<TransactionReadPrecondition> dependencyReadPreconditions = Array.Empty<TransactionReadPrecondition>();
@@ -173,13 +174,6 @@ public static class TaskQuick
     {
         var value = new string(text.ToLowerInvariant().Select(c => c is >= 'a' and <= 'z' || c is >= '0' and <= '9' ? c : '-').ToArray()).Trim('-');
         return string.IsNullOrEmpty(value) ? "work" : value.Length > 32 ? value[..32].TrimEnd('-') : value;
-    }
-
-    private static string Serialize(XElement element)
-    {
-        var settings = new XmlWriterSettings { Indent = true, IndentChars = "  ", OmitXmlDeclaration = false, Encoding = new UTF8Encoding(false), NewLineChars = "\n" };
-        using var ms = new MemoryStream(); using (var writer = XmlWriter.Create(ms, settings)) new XDocument(element).Save(writer);
-        return Encoding.UTF8.GetString(ms.ToArray()) + "\n";
     }
 
     private static DateTimeOffset ResolveTimestamp(string? operationId, IClock clock)

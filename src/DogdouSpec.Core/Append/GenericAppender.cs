@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using System.Xml.XPath;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -354,27 +355,7 @@ public static class GenericAppender
             root.SetAttributeValue("updated_at", clock.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture));
         }
 
-        var writerSettings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "  ",
-            OmitXmlDeclaration = false,
-            Encoding = Utf8NoBom,
-            NewLineHandling = NewLineHandling.Replace,
-            NewLineChars = "\n"
-        };
-
-        using var memoryStream = new MemoryStream();
-        using (var writer = XmlWriter.Create(memoryStream, writerSettings))
-        {
-            targetDoc.Save(writer);
-        }
-
-        var replacementContent = Encoding.UTF8.GetString(memoryStream.ToArray());
-        if (!replacementContent.EndsWith('\n'))
-        {
-            replacementContent += "\n";
-        }
+        var replacementContent = ManagedDocumentSerializer.Serialize(targetDoc);
 
         // 13. Commit atomically via WorkspaceTransactionCommitter
         var operation = new TransactionDocumentOperation(
@@ -452,7 +433,7 @@ public static class GenericAppender
         }
 
         var childElements = elem.Elements().ToList();
-        if (childElements.Count == 0 && string.IsNullOrEmpty(elem.Value))
+        if (childElements.Count == 0 && string.IsNullOrWhiteSpace(elem.Value))
         {
             sb.Append("/>");
             return;

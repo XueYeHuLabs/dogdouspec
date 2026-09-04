@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="12">
+<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="16">
   <index>
     <summary>Tasks for iteration 20260904-external-dogfood-remediation.</summary>
     <term key="iteration" value="20260904-external-dogfood-remediation" />
@@ -45,7 +45,7 @@
         <ref scope="document" target="20260904-task-f10-transport-integrity-done" relation="covers" />
       </covers>
     </record></records>
-  </task><task id="20260904-task-f6-f7-canonical-xml" status="pending" created_at="2026-09-04T08:01:00Z" updated_at="2026-09-04T08:01:00Z" agent="agy-xml-implementer">
+  </task><task id="20260904-task-f6-f7-canonical-xml" status="done" created_at="2026-09-04T08:01:00Z" updated_at="2026-09-04T11:59:56Z" agent="agy-xml-implementer" started_at="2026-09-04T09:04:10Z" completed_at="2026-09-04T11:59:56Z">
     <index>
       <summary>Canonicalize managed XML serialization</summary>
       <term key="kind" value="quick" />
@@ -66,13 +66,25 @@
     </origin>
     <constraints />
     <acceptance>
-      <criterion id="20260904-task-f6-f7-canonical-xml-done" status="pending">Every managed write path emits stable structural indentation and exactly one trailing LF without altering prose text values, with round-trip and mutation regressions.</criterion>
+      <criterion id="20260904-task-f6-f7-canonical-xml-done" status="passed">Every managed write path emits stable structural indentation and exactly one trailing LF without altering prose text values, with round-trip and mutation regressions.</criterion>
     </acceptance>
     <context>
       <summary>External findings F6 and F7 make checkpointed governance state fail whitespace checks and resist meaningful review.</summary>
     </context>
-    <review required="true" />
-    <records><record id="20260904T080100Z-quick-f6-f7-canonical-xml-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:01:00Z" actor="quick-task" operation_id="20260904T080100Z-quick-f6-f7-canonical-xml"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="b48c7e5c7be60f9ff3717f76c7a073dd8ddb3fd2a83dda22320aabf47b5bcd2a" /></index><summary>Task addition receipt.</summary></record></records>
+    <review required="true"><submission id="20260904T115938Z-review-canonical-xml-submission" disposition="approved" actor="agy-xml-reviewer" reviewed_at="2026-09-04T11:59:38Z" record="20260904T115938Z-review-canonical-xml-submission-record" /></review>
+    <records><record id="20260904T080100Z-quick-f6-f7-canonical-xml-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:01:00Z" actor="quick-task" operation_id="20260904T080100Z-quick-f6-f7-canonical-xml"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="b48c7e5c7be60f9ff3717f76c7a073dd8ddb3fd2a83dda22320aabf47b5bcd2a" /></index><summary>Task addition receipt.</summary></record><record id="20260904T090410Z-record-start-e5b813545d1848fb9ee20bf3e7c3622d" kind="start" status="informational" created_at="2026-09-04T09:04:10Z" actor="agent" operation_id="20260904T090410Z-taskstart-e36aa9648214444f887a4a4cf91674b8">
+      <summary>Assigned to agy.exe implementer for canonical managed XML serialization.</summary>
+    </record><record id="20260904T115938Z-record-verify-c6cb737cbb8b4d13ba8a3c90aa3c0453" kind="verification" status="informational" created_at="2026-09-04T11:59:38Z" actor="kiro-supervisor" operation_id="20260904T115938Z-taskverify-9e1e44b270154219a512dafb387685b4">
+      <summary>Centralized every managed XML write path behind canonical LF-only structural serialization, preserved mixed/prose text semantics, and added 22 focused regressions; full build passed 727 tests.</summary>
+      <covers>
+        <ref scope="document" target="20260904-task-f6-f7-canonical-xml-done" relation="covers" />
+      </covers>
+    </record><record id="20260904T115938Z-review-canonical-xml-submission-record" kind="decision" status="informational" created_at="2026-09-04T11:59:38Z" actor="agy-xml-reviewer" operation_id="20260904T115938Z-review-canonical-xml"><index><summary>Structured task review submission.</summary><term key="review-disposition" value="approved" /><term key="request-sha256" value="521920b56d83896795e653e2e7e776b20bb78bd141738ae72b60df07b582d12b" /></index><summary>Approved after correction: all managed write paths and the final transaction boundary enforce canonical UTF-8 and one trailing LF, structural siblings are reviewable, mixed and prose text values are preserved, and the full suite passes 727 tests.</summary></record><record id="20260904T115956Z-record-complete-99aa1c756d2c4d94a830500c284a474b" kind="completion" status="informational" created_at="2026-09-04T11:59:56Z" actor="kiro-supervisor" operation_id="20260904T115956Z-taskcomplete-7f128626093b4ddba137c05dd5848826">
+      <summary>Completed after independent approval and 727 passing full-suite tests; canonical serializer and write-boundary regressions are ready for checkpoint.</summary>
+      <covers>
+        <ref scope="document" target="20260904-task-f6-f7-canonical-xml-done" relation="covers" />
+      </covers>
+    </record></records>
   </task><task id="20260904-task-f4-operational-task-add" status="pending" created_at="2026-09-04T08:02:00Z" updated_at="2026-09-04T08:02:00Z" agent="agy-task-add-implementer">
     <index>
       <summary>Accept canonical operational tasks in task add</summary>
@@ -233,4 +245,5 @@
     <review required="true" />
     <records><record id="20260904T080600Z-quick-f9-schema-drift-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:06:00Z" actor="quick-task" operation_id="20260904T080600Z-quick-f9-schema-drift"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="7cf298084769b69885486e70fd1cca77c8ad6c0e7534c3e9fcf0b9e4cbe3d9d8" /></index><summary>Task addition receipt.</summary></record></records>
   </task></tasks>
+
 

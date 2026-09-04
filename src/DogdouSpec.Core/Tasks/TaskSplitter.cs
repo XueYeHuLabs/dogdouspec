@@ -9,6 +9,7 @@ using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -468,27 +469,7 @@ public static class TaskSplitter
         tasksRoot.SetAttributeValue("revision", newRevision.ToString(CultureInfo.InvariantCulture));
 
         // 5. Serialize and Commit
-        var writerSettings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "  ",
-            OmitXmlDeclaration = false,
-            Encoding = Utf8NoBom,
-            NewLineHandling = NewLineHandling.Replace,
-            NewLineChars = "\n"
-        };
-
-        using var memoryStream = new MemoryStream();
-        using (var writer = XmlWriter.Create(memoryStream, writerSettings))
-        {
-            tasksDoc.Save(writer);
-        }
-
-        var replacementContent = Encoding.UTF8.GetString(memoryStream.ToArray());
-        if (!replacementContent.EndsWith('\n'))
-        {
-            replacementContent += "\n";
-        }
+        var replacementContent = ManagedDocumentSerializer.Serialize(tasksDoc);
 
         var operation = new TransactionDocumentOperation(
             normTasksDocPath,

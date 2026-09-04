@@ -8,6 +8,7 @@ using DogdouSpec.Core.Append;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.Workspace;
@@ -336,17 +337,8 @@ public static class TaskReviewer
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
-    private static string Serialize(XDocument document)
-    {
-        var settings = new XmlWriterSettings
-        {
-            Indent = true, IndentChars = "  ", OmitXmlDeclaration = false,
-            Encoding = new UTF8Encoding(false), NewLineHandling = NewLineHandling.Replace, NewLineChars = "\n"
-        };
-        using var stream = new MemoryStream();
-        using (var writer = XmlWriter.Create(stream, settings)) document.Save(writer);
-        return Encoding.UTF8.GetString(stream.ToArray()) + "\n";
-    }
+    private static string Serialize(XDocument document) =>
+        ManagedDocumentSerializer.Serialize(document);
 
     private static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Failure(string code, string message) =>
         (false, null, new[] { Diagnostic.Error(code, message) });
