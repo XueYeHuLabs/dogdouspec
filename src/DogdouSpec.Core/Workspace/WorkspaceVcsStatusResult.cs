@@ -92,7 +92,24 @@ public sealed class WorkspaceVcsStatusResult
         sb.AppendLine("Workspace VCS Status (Read-Only):");
         sb.AppendLine(CultureInfo.InvariantCulture, $"  Workspace Root:    {WorkspaceRoot}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"  Git Repository:    {(IsGitRepository ? "Yes" : "No")}");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"  Transport Ready:   {(IsTransportReady ? "YES (All authoritative files checkpointed)" : "NO (Uncheckpointed authoritative files exist)")}");
+        string transportReadyStr;
+        if (IsTransportReady)
+        {
+            transportReadyStr = "YES (All authoritative files checkpointed)";
+        }
+        else if (!IsGitRepository)
+        {
+            transportReadyStr = "NOT TRANSPORT-READY (no Git repository — workspace is locally durable only)";
+        }
+        else if (UncheckpointedFiles.Count > 0)
+        {
+            transportReadyStr = "NO (Uncheckpointed authoritative files exist)";
+        }
+        else
+        {
+            transportReadyStr = "NOT TRANSPORT-READY (transport evidence unavailable)";
+        }
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  Transport Ready:   {transportReadyStr}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"  Managed Files:     {ManagedFiles.Count}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"  Uncheckpointed:    {UncheckpointedFiles.Count}");
         sb.AppendLine();
@@ -167,6 +184,7 @@ public sealed class WorkspaceCheckpointPlanResult
             writer.WriteStartDocument();
             writer.WriteStartElement("checkpoint-plan");
             writer.WriteAttributeString("workspace_root", WorkspaceRoot);
+            writer.WriteAttributeString("is_git", IsGitRepository ? "true" : "false");
             writer.WriteAttributeString("satisfied", IsSatisfied ? "true" : "false");
             writer.WriteAttributeString("uncheckpointed_count", UncheckpointedFiles.Count.ToString(CultureInfo.InvariantCulture));
 
@@ -194,12 +212,40 @@ public sealed class WorkspaceCheckpointPlanResult
         var sb = new StringBuilder();
         sb.AppendLine("Workspace Checkpoint Plan (Read-Only Advisory):");
         sb.AppendLine(CultureInfo.InvariantCulture, $"  Workspace Root:    {WorkspaceRoot}");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"  Status:            {(IsSatisfied ? "SATISFIED (Workspace is transport-ready)" : "ACTION REQUIRED (Uncheckpointed files exist)")}");
+        string statusStr;
+        if (IsSatisfied)
+        {
+            statusStr = "SATISFIED (Workspace is transport-ready)";
+        }
+        else if (!IsGitRepository)
+        {
+            statusStr = "ACTION REQUIRED (No Git repository — workspace is locally durable only)";
+        }
+        else if (UncheckpointedFiles.Count > 0)
+        {
+            statusStr = "ACTION REQUIRED (Uncheckpointed files exist)";
+        }
+        else
+        {
+            statusStr = "ACTION REQUIRED (Transport evidence unavailable)";
+        }
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  Status:            {statusStr}");
         sb.AppendLine();
 
         if (UncheckpointedFiles.Count == 0)
         {
-            sb.AppendLine("  No uncheckpointed managed documents. Governance state is up to date.");
+            if (!IsGitRepository)
+            {
+                sb.AppendLine("  No Git repository detected. Workspace is locally durable only.");
+            }
+            else if (!IsSatisfied)
+            {
+                sb.AppendLine("  Transport evidence unavailable. Governance state cannot be verified as up to date.");
+            }
+            else
+            {
+                sb.AppendLine("  No uncheckpointed managed documents. Governance state is up to date.");
+            }
             return sb.ToString();
         }
 
@@ -211,9 +257,19 @@ public sealed class WorkspaceCheckpointPlanResult
         sb.AppendLine();
 
         sb.AppendLine("Recommended Governance Checkpoint Action:");
-        sb.AppendLine("  (Execute with repository write authority when ready)");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"  git add {string.Join(" ", UncheckpointedFiles)}");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"  git commit -m \"{RecommendedCommitMessage}\"");
+        if (!IsGitRepository)
+        {
+            sb.AppendLine("  (Establish a Git repository before checkpointing authoritative files)");
+            sb.AppendLine("  git init");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  git add {string.Join(" ", UncheckpointedFiles)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  git commit -m \"{RecommendedCommitMessage}\"");
+        }
+        else
+        {
+            sb.AppendLine("  (Execute with repository write authority when ready)");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  git add {string.Join(" ", UncheckpointedFiles)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  git commit -m \"{RecommendedCommitMessage}\"");
+        }
 
         return sb.ToString();
     }

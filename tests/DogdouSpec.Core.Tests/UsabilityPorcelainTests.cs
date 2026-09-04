@@ -180,11 +180,17 @@ public sealed class UsabilityPorcelainTests
         Assert.IsTrue(statusOk);
         Assert.AreEqual(0, statusDiags.Count);
         Assert.IsNotNull(statusRes);
+        Assert.IsFalse(statusRes.IsGitRepository);
+        Assert.IsFalse(statusRes.IsTransportReady);
+        Assert.IsTrue(statusRes.UncheckpointedFiles.Count > 0);
 
         var (planOk, planRes, planDiags) = WorkspaceVcsStatus.CreateCheckpointPlan(_workspaceRoot);
         Assert.IsTrue(planOk);
         Assert.AreEqual(0, planDiags.Count);
         Assert.IsNotNull(planRes);
+        Assert.IsFalse(planRes.IsGitRepository);
+        Assert.IsFalse(planRes.IsSatisfied);
+        Assert.IsTrue(planRes.UncheckpointedFiles.Count > 0);
 
         var human = planRes.ToHumanString();
         Assert.IsTrue(human.Contains("Workspace Checkpoint Plan"));

@@ -36,25 +36,33 @@ public static class WorkspaceVcsStatus
 
         if (!Directory.Exists(workspaceRoot))
         {
-            return (true, new WorkspaceVcsStatusResult(workspaceRoot, repoRoot, isGit, true, managedFiles, uncheckpointed), Array.Empty<Diagnostic>());
+            return (true, new WorkspaceVcsStatusResult(workspaceRoot, repoRoot, isGit, false, managedFiles, uncheckpointed), Array.Empty<Diagnostic>());
         }
 
-        // Enumerate local files in workspaceRoot (excluding _tmp)
+        // Enumerate local files in workspaceRoot (excluding _tmp relative to workspaceRoot)
         var allLocalFiles = Directory.EnumerateFiles(workspaceRoot, "*", SearchOption.AllDirectories)
-            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}_tmp{Path.DirectorySeparatorChar}") &&
-                        !f.EndsWith($"{Path.DirectorySeparatorChar}_tmp", StringComparison.OrdinalIgnoreCase))
+            .Where(f =>
+            {
+                var relFromWs = Path.GetRelativePath(workspaceRoot, f).Replace('\\', '/');
+                var segments = relFromWs.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                return !segments.Any(s => string.Equals(s, "_tmp", StringComparison.OrdinalIgnoreCase));
+            })
+            .OrderBy(f => f.Replace('\\', '/'), StringComparer.Ordinal)
             .ToList();
 
         // Get git status for workspace directory
+        bool gitStatusSucceeded = false;
+        var diagnostics = new List<Diagnostic>();
         var gitStatusMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (isGit)
         {
-            var (statSuccess, statExit, statStdout, _, _) = TaskScopeVerifier.RunGit(
+            var (statSuccess, statExit, statStdout, statStderr, statDiag) = TaskScopeVerifier.RunGit(
                 repoRoot,
                 StatusPorcelainArgs);
 
             if (statSuccess && statExit == 0)
             {
+                gitStatusSucceeded = true;
                 var lines = statStdout.Split(LineSeparators, StringSplitOptions.RemoveEmptyEntries);
                 foreach (var line in lines)
                 {
@@ -69,6 +77,15 @@ public static class WorkspaceVcsStatus
                     gitStatusMap[normalizedPath] = statusCode;
                 }
             }
+            else
+            {
+                var errorDetail = !string.IsNullOrWhiteSpace(statStderr)
+                    ? statStderr.Trim()
+                    : (statDiag?.Message ?? $"git status exited with code {statExit}");
+                diagnostics.Add(Diagnostic.Error(
+                    DiagnosticCodes.FilesystemError,
+                    $"Git status execution failed: {errorDetail}"));
+            }
         }
 
         foreach (var file in allLocalFiles)
@@ -80,8 +97,8 @@ public static class WorkspaceVcsStatus
             var fileName = Path.GetFileName(file);
             bool isAuth = fileName is "spec.xml" or "tasks.xml" or "knowledge.xml" or "backlog.xml";
 
-            string status = "clean";
-            if (isGit)
+            string status = "unknown";
+            if (isGit && gitStatusSucceeded)
             {
                 if (gitStatusMap.TryGetValue(normRel, out var code))
                 {
@@ -96,12 +113,25 @@ public static class WorkspaceVcsStatus
                         if (isAuth) uncheckpointed.Add(normRel);
                     }
                 }
+                else
+                {
+                    status = "clean";
+                }
+            }
+            else
+            {
+                // Non-Git workspace OR Git status failed (degraded)
+                // Fail-closed: mark every authoritative document uncheckpointed/unknown
+                if (isAuth)
+                {
+                    uncheckpointed.Add(normRel);
+                }
             }
 
             managedFiles.Add(new WorkspaceVcsFileStatus(normRel, status, isAuth));
         }
 
-        bool isTransportReady = uncheckpointed.Count == 0;
+        bool isTransportReady = isGit && gitStatusSucceeded && uncheckpointed.Count == 0;
 
         var result = new WorkspaceVcsStatusResult(
             workspaceRoot,
@@ -111,14 +141,15 @@ public static class WorkspaceVcsStatus
             managedFiles,
             uncheckpointed);
 
-        return (true, result, Array.Empty<Diagnostic>());
+        bool success = isGit ? gitStatusSucceeded : true;
+        return (success, result, diagnostics);
     }
 
     public static (bool Success, WorkspaceCheckpointPlanResult? Result, IReadOnlyList<Diagnostic> Diagnostics) CreateCheckpointPlan(
         string workspaceRoot)
     {
         var (success, statusResult, diagnostics) = CheckStatus(workspaceRoot);
-        if (!success || statusResult == null)
+        if (statusResult == null)
         {
             return (false, null, diagnostics);
         }
@@ -128,7 +159,9 @@ public static class WorkspaceVcsStatus
 
         var recommendedMsg = uncheckpointed.Count > 0
             ? $"Governance checkpoint: update {uncheckpointed.Count} authoritative .dogdouspec documents"
-            : "Governance checkpoint: workspace is clean";
+            : (isSatisfied
+                ? "Governance checkpoint: workspace is clean"
+                : "Governance checkpoint: transport evidence unavailable");
 
         var plan = new WorkspaceCheckpointPlanResult(
             workspaceRoot,
@@ -138,7 +171,7 @@ public static class WorkspaceVcsStatus
             uncheckpointed,
             recommendedMsg);
 
-        return (true, plan, Array.Empty<Diagnostic>());
+        return (success, plan, diagnostics);
     }
 
     private static string GetRepositoryRoot(string workspaceRoot)

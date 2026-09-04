@@ -256,6 +256,11 @@ public static class WorkspaceCommand
             }
 
             var (statusOk, result, diagnostics) = WorkspaceVcsStatus.CheckStatus(discoveredRoot);
+            if (result != null)
+            {
+                Console.Out.Write(result.Format(format));
+            }
+
             if (!statusOk || diagnostics.Count > 0 || result == null)
             {
                 var envelope = new DiagnosticsEnvelope("workspace vcs-status", diagnostics);
@@ -263,7 +268,6 @@ public static class WorkspaceCommand
                 return envelope.GetExitCode();
             }
 
-            Console.Out.Write(result.Format(format));
             return 0;
         });
 
@@ -306,6 +310,11 @@ public static class WorkspaceCommand
             }
 
             var (planOk, result, diagnostics) = WorkspaceVcsStatus.CreateCheckpointPlan(discoveredRoot);
+            if (result != null)
+            {
+                Console.Out.Write(result.Format(format));
+            }
+
             if (!planOk || diagnostics.Count > 0 || result == null)
             {
                 var envelope = new DiagnosticsEnvelope("workspace checkpoint-plan", diagnostics);
@@ -313,7 +322,6 @@ public static class WorkspaceCommand
                 return envelope.GetExitCode();
             }
 
-            Console.Out.Write(result.Format(format));
             return 0;
         });
 

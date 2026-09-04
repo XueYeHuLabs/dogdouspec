@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="8">
+<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="12">
   <index>
     <summary>Tasks for iteration 20260904-external-dogfood-remediation.</summary>
     <term key="iteration" value="20260904-external-dogfood-remediation" />
   </index>
-<task id="20260904-task-f10-transport-integrity" status="pending" created_at="2026-09-04T08:00:00Z" updated_at="2026-09-04T08:00:00Z" agent="agy-f10-implementer">
+<task id="20260904-task-f10-transport-integrity" status="done" created_at="2026-09-04T08:00:00Z" updated_at="2026-09-04T09:00:49Z" agent="agy-f10-implementer" started_at="2026-09-04T08:00:23Z" completed_at="2026-09-04T09:00:49Z">
     <index>
       <summary>Fail closed when transport evidence is unavailable</summary>
       <term key="kind" value="quick" />
@@ -26,13 +26,25 @@
     </origin>
     <constraints />
     <acceptance>
-      <criterion id="20260904-task-f10-transport-integrity-done" status="pending">Non-repositories and Git status failures are not transport-ready, authoritative files are reported, and clean repositories remain transport-ready under regression tests.</criterion>
+      <criterion id="20260904-task-f10-transport-integrity-done" status="passed">Non-repositories and Git status failures are not transport-ready, authoritative files are reported, and clean repositories remain transport-ready under regression tests.</criterion>
     </acceptance>
     <context>
       <summary>External finding F10 proves the current governance status can certify a checkpoint that does not exist.</summary>
     </context>
-    <review required="true" />
-    <records><record id="20260904T080000Z-quick-f10-transport-integrity-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:00:00Z" actor="quick-task" operation_id="20260904T080000Z-quick-f10-transport-integrity"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="eea4df6c0aad1e20faa0460c78218615ba5cc7b6b064202df5cf907c16434950" /></index><summary>Task addition receipt.</summary></record></records>
+    <review required="true"><submission id="20260904T090012Z-review-f10-transport-submission" disposition="approved" actor="agy-f10-reviewer" reviewed_at="2026-09-04T09:00:12Z" record="20260904T090012Z-review-f10-transport-submission-record" /></review>
+    <records><record id="20260904T080000Z-quick-f10-transport-integrity-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:00:00Z" actor="quick-task" operation_id="20260904T080000Z-quick-f10-transport-integrity"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="eea4df6c0aad1e20faa0460c78218615ba5cc7b6b064202df5cf907c16434950" /></index><summary>Task addition receipt.</summary></record><record id="20260904T080023Z-record-start-71919bbb35244c8983a216a53d31b75b" kind="start" status="informational" created_at="2026-09-04T08:00:23Z" actor="agent" operation_id="20260904T080023Z-taskstart-a5636da71edf440bbf0646f21f7a0e27">
+      <summary>Assigned to agy.exe implementer for fail-closed transport remediation.</summary>
+    </record><record id="20260904T085342Z-record-verify-82b0cb26ecb345d388c46bcd25fea266" kind="verification" status="informational" created_at="2026-09-04T08:53:42Z" actor="kiro-supervisor" operation_id="20260904T085342Z-taskverify-8313ef7b9ae142d49d506bedf19ccc3b">
+      <summary>Implemented fail-closed transport evaluation, coherent degraded output, relative _tmp filtering, and Core/CLI regressions; independent targeted validation passed 19 tests.</summary>
+      <covers>
+        <ref scope="document" target="20260904-task-f10-transport-integrity-done" relation="covers" />
+      </covers>
+    </record><record id="20260904T090012Z-review-f10-transport-submission-record" kind="decision" status="informational" created_at="2026-09-04T09:00:12Z" actor="agy-f10-reviewer" operation_id="20260904T090012Z-review-f10-transport"><index><summary>Structured task review submission.</summary><term key="review-disposition" value="approved" /><term key="request-sha256" value="3272086b9cd3af3099ec61502384feb7ea537d039a6645110dbaae7f4355944f" /></index><summary>Approved after correction: non-Git and failed Git evidence paths fail closed, enumerate authoritative files, render coherent status and checkpoint plans, preserve clean and dirty repository behavior, and pass 705 tests.</summary></record><record id="20260904T090049Z-record-complete-27173fd963594ae4ae58c5ecab015d4e" kind="completion" status="informational" created_at="2026-09-04T09:00:49Z" actor="kiro-supervisor" operation_id="20260904T090049Z-taskcomplete-6180ae3c840e442cbe2783ec909a0070">
+      <summary>Completed after independent approval; fail-closed transport behavior and focused Core/CLI regressions are ready for checkpoint.</summary>
+      <covers>
+        <ref scope="document" target="20260904-task-f10-transport-integrity-done" relation="covers" />
+      </covers>
+    </record></records>
   </task><task id="20260904-task-f6-f7-canonical-xml" status="pending" created_at="2026-09-04T08:01:00Z" updated_at="2026-09-04T08:01:00Z" agent="agy-xml-implementer">
     <index>
       <summary>Canonicalize managed XML serialization</summary>
@@ -221,3 +233,4 @@
     <review required="true" />
     <records><record id="20260904T080600Z-quick-f9-schema-drift-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:06:00Z" actor="quick-task" operation_id="20260904T080600Z-quick-f9-schema-drift"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="7cf298084769b69885486e70fd1cca77c8ad6c0e7534c3e9fcf0b9e4cbe3d9d8" /></index><summary>Task addition receipt.</summary></record></records>
   </task></tasks>
+
