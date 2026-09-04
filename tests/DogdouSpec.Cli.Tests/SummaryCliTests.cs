@@ -11,6 +11,7 @@ public sealed class SummaryCliTests
     private string _wsRoot = null!;
 
     private static readonly string[] MarkdownSummaryArgs = new[] { "summary", "--format", "markdown" };
+    private static readonly string[] TestCriteria = new[] { "Summary criterion defined." };
 
     [TestInitialize]
     public void SetUp()
@@ -34,7 +35,7 @@ public sealed class SummaryCliTests
     public void SummaryCommand_MarkdownFormat_OutputsProgressCard()
     {
         var iterId = "20260831-cli-test";
-        IterationCreator.Create(_wsRoot, iterId, "feature", activate: true);
+        IterationCreator.Create(_wsRoot, iterId, "feature", activate: true, criteria: TestCriteria);
         var input = new QuickTaskInput("CLI Task", new List<string> { "src/**" }, "Done", "Why",
             Array.Empty<string>(), Array.Empty<string>(), new List<string> { "component=core" }, iterId, 1, true, false,
             $"{iterId}-01", "20260831T120000Z-cli-task");
@@ -63,7 +64,7 @@ public sealed class SummaryCliTests
     public void IterationSummaryCommand_JsonFormat_OutputsJsonStructure()
     {
         var iterId = "20260831-json-test";
-        IterationCreator.Create(_wsRoot, iterId, "feature", activate: true);
+        IterationCreator.Create(_wsRoot, iterId, "feature", activate: true, criteria: TestCriteria);
 
         using var sw = new StringWriter();
         var originalOut = Console.Out;
@@ -87,7 +88,7 @@ public sealed class SummaryCliTests
     public void SummaryCommand_WhenWarningsPresent_OutputsSummaryAndReturnsZero()
     {
         var iterId = "20260831-warn-test";
-        IterationCreator.Create(_wsRoot, iterId, "feature", activate: true);
+        IterationCreator.Create(_wsRoot, iterId, "feature", activate: true, criteria: TestCriteria);
         var input = new QuickTaskInput("Warning Task", new List<string> { "src/**" }, "Done", "Why",
             Array.Empty<string>(), Array.Empty<string>(), new List<string> { "component=core" }, iterId, 1, true, false,
             $"{iterId}-01", "20260831T120000Z-warn-task");

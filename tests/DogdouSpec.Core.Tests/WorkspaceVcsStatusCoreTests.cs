@@ -8,6 +8,7 @@ namespace DogdouSpec.Core.Tests;
 [TestClass]
 public sealed class WorkspaceVcsStatusCoreTests
 {
+    private static readonly string[] TestCriteria = new[] { "Substantive criterion for vcs core test." };
     private string _tempDir = null!;
     private string _workspaceRoot = null!;
     private const string TestIterationId = "20260904-vcs-core-test";
@@ -19,7 +20,7 @@ public sealed class WorkspaceVcsStatusCoreTests
         Directory.CreateDirectory(_tempDir);
         WorkspaceInitializer.Initialize(_tempDir, _tempDir);
         _workspaceRoot = Path.Combine(_tempDir, ".dogdouspec");
-        IterationCreator.Create(_workspaceRoot, TestIterationId, "feature", activate: true);
+        IterationCreator.Create(_workspaceRoot, TestIterationId, "feature", activate: true, criteria: TestCriteria);
     }
 
     [TestCleanup]
@@ -248,7 +249,7 @@ public sealed class WorkspaceVcsStatusCoreTests
         Directory.CreateDirectory(ancestorWithTmp);
         WorkspaceInitializer.Initialize(ancestorWithTmp, ancestorWithTmp);
         var wsRoot = Path.Combine(ancestorWithTmp, ".dogdouspec");
-        IterationCreator.Create(wsRoot, "20260904-ancestor-test", "feature", activate: true);
+        IterationCreator.Create(wsRoot, "20260904-ancestor-test", "feature", activate: true, criteria: TestCriteria);
 
         // Add a file in wsRoot/_tmp to verify internal _tmp exclusion
         var internalTmpDir = Path.Combine(wsRoot, "_tmp");

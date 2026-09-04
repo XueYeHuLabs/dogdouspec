@@ -271,7 +271,7 @@ public static class IterationReadiness
 
         var critEl = (specDoc.Root?.Element("product")?.Element("acceptance")?.Elements("criterion") ??
                       specDoc.Root?.Element("research")?.Element("acceptance")?.Elements("criterion") ??
-                      Enumerable.Empty<XElement>());
+                      Enumerable.Empty<XElement>()).ToList();
         var pendingCriteria = critEl.Count(c => string.Equals(c.Attribute("decision")?.Value ?? "pending", "pending", StringComparison.Ordinal));
 
         var qEl = specDoc.Root?.Element("research")?.Element("questions")?.Elements("question") ?? Enumerable.Empty<XElement>();
@@ -283,12 +283,34 @@ public static class IterationReadiness
             pendingCriteria,
             pendingQuestions);
 
-        bool technicallyReady = lifecycleOk && elementsOk;
+        // 5. Defined acceptance criteria check
+        bool criteriaDefined = true;
+        if (critEl.Count == 0)
+        {
+            criteriaDefined = false;
+            technicalChecks.Add(new ReadinessTechnicalCheck("criteria_defined", "failed", "No acceptance criteria defined in specification"));
+        }
+        else
+        {
+            var undefinedCriteria = critEl.Where(c => !IterationCriterionPolicy.IsDefined(c.Value)).ToList();
+            if (undefinedCriteria.Count > 0)
+            {
+                criteriaDefined = false;
+                var firstUndefinedId = undefinedCriteria[0].Attribute("id")?.Value ?? "unknown";
+                technicalChecks.Add(new ReadinessTechnicalCheck("criteria_defined", "failed", $"Acceptance criterion '{firstUndefinedId}' contains undefined placeholder text"));
+            }
+            else
+            {
+                technicalChecks.Add(new ReadinessTechnicalCheck("criteria_defined", "passed", "All acceptance criteria have defined substantive text"));
+            }
+        }
+
+        bool technicallyReady = lifecycleOk && elementsOk && criteriaDefined;
 
         var dimensions = new List<ReadinessDimension>
         {
             new("execution_terminality", "passed", "Activation phase (tasks pending or draft)"),
-            new("verification_completeness", elementsOk ? "passed" : "failed", elementsOk ? "Specification baseline structural checks passed" : "Structural elements missing"),
+            new("verification_completeness", (elementsOk && criteriaDefined) ? "passed" : "failed", (elementsOk && criteriaDefined) ? "Specification baseline structural checks passed and criteria defined" : (!elementsOk ? "Structural elements missing" : "Acceptance criteria undefined or placeholder")),
             new("unresolved_findings", "passed", "No active findings blocking activation"),
             new("product_confirmation", productDecisions.Total > 0 ? "pending" : "passed", $"Owner confirmation required ({productDecisions.Total} pending items)"),
             new("vcs_checkpoint", "passed", "Advisory: checkpoint before activation")
@@ -464,11 +486,35 @@ public static class IterationReadiness
 
         var critEl = (specDoc.Root?.Element("product")?.Element("acceptance")?.Elements("criterion") ??
                       specDoc.Root?.Element("research")?.Element("acceptance")?.Elements("criterion") ??
-                      Enumerable.Empty<XElement>());
+                      Enumerable.Empty<XElement>()).ToList();
         var pendingCriteria = critEl.Count(c => string.Equals(c.Attribute("decision")?.Value ?? "pending", "pending", StringComparison.Ordinal));
 
         var qEl = specDoc.Root?.Element("research")?.Element("questions")?.Elements("question") ?? Enumerable.Empty<XElement>();
         var pendingQuestions = qEl.Count(q => string.Equals(q.Attribute("status")?.Value ?? "open", "open", StringComparison.Ordinal));
+
+        // Completion requires defined acceptance criteria
+        bool criteriaDefined = true;
+        if (critEl.Count == 0)
+        {
+            criteriaDefined = false;
+            allChecksPassed = false;
+            technicalChecks.Add(new ReadinessTechnicalCheck("criteria_defined", "failed", "No acceptance criteria defined in specification"));
+        }
+        else
+        {
+            var undefinedCriteria = critEl.Where(c => !IterationCriterionPolicy.IsDefined(c.Value)).ToList();
+            if (undefinedCriteria.Count > 0)
+            {
+                criteriaDefined = false;
+                allChecksPassed = false;
+                var firstUndefinedId = undefinedCriteria[0].Attribute("id")?.Value ?? "unknown";
+                technicalChecks.Add(new ReadinessTechnicalCheck("criteria_defined", "failed", $"Acceptance criterion '{firstUndefinedId}' contains undefined placeholder text"));
+            }
+            else
+            {
+                technicalChecks.Add(new ReadinessTechnicalCheck("criteria_defined", "passed", "All acceptance criteria have defined substantive text"));
+            }
+        }
 
         // Completion requires no proposed requirements and no proposed design decisions
         if (pendingRequirements > 0)
@@ -501,10 +547,15 @@ public static class IterationReadiness
         var critCheck = technicalChecks.FirstOrDefault(c => c.Name == "task_criteria_and_records_terminal");
         var activeFindingCheck = technicalChecks.FirstOrDefault(c => c.Name == "task_criteria_and_records_terminal" && c.Result == "failed" && (c.Message?.Contains("finding") ?? false));
 
+        var verificationPassed = (critCheck?.Result != "failed") && criteriaDefined && (critEl.Count > 0);
+        var verificationMsg = !criteriaDefined
+            ? "Acceptance criteria undefined or placeholder"
+            : (critCheck?.Message ?? (allChecksPassed ? "Verification completeness assessed" : "Verification requirements incomplete"));
+
         var dimensions = new List<ReadinessDimension>
         {
             new("execution_terminality", termCheck?.Result ?? (allChecksPassed ? "passed" : "failed"), termCheck?.Message ?? (allChecksPassed ? "All tasks are in a terminal state" : "Non-terminal tasks exist")),
-            new("verification_completeness", critCheck?.Result ?? (allChecksPassed ? "passed" : "failed"), critCheck?.Message ?? "Verification completeness assessed"),
+            new("verification_completeness", verificationPassed ? "passed" : "failed", verificationMsg),
             new("unresolved_findings", activeFindingCheck != null ? "failed" : "passed", activeFindingCheck != null ? "Unresolved active findings exist" : "No unresolved blocking findings"),
             new("product_confirmation", productDecisions.Total > 0 ? "pending" : "passed", $"Owner confirmation required ({productDecisions.Total} pending items)"),
             new("vcs_checkpoint", "passed", "Authoritative documents ready for governance checkpoint")
