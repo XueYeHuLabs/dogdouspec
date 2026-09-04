@@ -1,13 +1,13 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
 PackageIdentifier: Vixasol.DogdouSpec
-PackageVersion: 1.0.0
+PackageVersion: 1.0.1
 InstallerType: portable
 Commands:
   - dogdouspec
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/XueYeHuLabs/dogdouspec/releases/download/v1.0.0/dogdouspec-win-x64.zip
-    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+    InstallerUrl: https://github.com/XueYeHuLabs/dogdouspec/releases/download/v1.0.1/dogdouspec-win-x64.zip
+    InstallerSha256: 3C2EAA297669C7454AFB501BAB3FA537D526F2CE4A2F9DCEA69985F7839D3246
     NestedInstallerType: portable
     NestedInstallerFiles:
       - RelativeFilePath: dogdouspec.exe
