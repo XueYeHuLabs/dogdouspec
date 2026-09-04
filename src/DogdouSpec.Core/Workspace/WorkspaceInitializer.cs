@@ -2,6 +2,7 @@ using System.Text;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 
 namespace DogdouSpec.Core.Workspace;
 
@@ -137,7 +138,7 @@ In a Git-backed governed workspace, version the managed `.dogdouspec/` documents
 </knowledge>
 
 """;
-            File.WriteAllText(knowledgePath, knowledgeContent.Replace("\r\n", "\n"), Utf8NoBom);
+            File.WriteAllText(knowledgePath, ManagedDocumentSerializer.Normalize(knowledgeContent), Utf8NoBom);
             createdFiles.Add(knowledgePath);
 
             // Write backlog.xml
@@ -156,7 +157,7 @@ In a Git-backed governed workspace, version the managed `.dogdouspec/` documents
 </backlog>
 
 """;
-            File.WriteAllText(backlogPath, backlogContent.Replace("\r\n", "\n"), Utf8NoBom);
+            File.WriteAllText(backlogPath, ManagedDocumentSerializer.Normalize(backlogContent), Utf8NoBom);
             createdFiles.Add(backlogPath);
 
             // Copy embedded skill files to <projectRoot>/.agents/skills/dogdouspec/

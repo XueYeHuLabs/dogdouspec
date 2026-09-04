@@ -4,6 +4,7 @@ using System.Xml;
 using System.Xml.Linq;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.XPath;
@@ -129,7 +130,7 @@ public static class WorkspaceTransactionCommitter
 
             // 4. Operation preconditions validation before any target read/stage/backup
             var seenTargetPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var normalizedOps = new List<(string NormalizedPath, string FullTarget, TransactionDocumentOperation Op)>();
+            var normalizedOps = new List<(string NormalizedPath, string FullTarget, TransactionDocumentOperation Op, string CanonicalContent)>();
 
             foreach (var op in operations)
             {
@@ -147,6 +148,27 @@ public static class WorkspaceTransactionCommitter
                 }
 
                 if (Encoding.UTF8.GetByteCount(op.ReplacementContent) > XPathQueryLimits.MaxDocumentBytes)
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.LimitExceeded, $"Replacement XML for '{normPath}' exceeds maximum allowed size of {XPathQueryLimits.MaxDocumentBytes} bytes.", normPath) });
+                }
+
+                // Normalize replacement XML to canonical managed document format
+                string canonicalContent;
+                try
+                {
+                    canonicalContent = ManagedDocumentSerializer.Normalize(op.ReplacementContent);
+                }
+                catch (XmlException xmlEx)
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Replacement XML for '{normPath}' is malformed: {xmlEx.Message}", normPath) });
+                }
+                catch (Exception ex)
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to parse replacement XML for '{normPath}': {ex.Message}", normPath) });
+                }
+
+                // Enforce byte limits on canonical output
+                if (Encoding.UTF8.GetByteCount(canonicalContent) > XPathQueryLimits.MaxDocumentBytes)
                 {
                     return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.LimitExceeded, $"Replacement XML for '{normPath}' exceeds maximum allowed size of {XPathQueryLimits.MaxDocumentBytes} bytes.", normPath) });
                 }
@@ -220,7 +242,7 @@ public static class WorkspaceTransactionCommitter
                 int replacementRev;
                 try
                 {
-                    using var strR = new StringReader(op.ReplacementContent);
+                    using var strR = new StringReader(canonicalContent);
                     using var r = SecureXmlReaderFactory.CreateReader(strR);
                     var replXDoc = XDocument.Load(r);
                     var revStr = replXDoc.Root?.Attribute("revision")?.Value;
@@ -250,7 +272,7 @@ public static class WorkspaceTransactionCommitter
                     return (false, null, new[] { diag });
                 }
 
-                normalizedOps.Add((normPath, fullTarget, op));
+                normalizedOps.Add((normPath, fullTarget, op, canonicalContent));
             }
 
             // 5. Staging directory under _tmp (same filesystem volume)
@@ -268,20 +290,20 @@ public static class WorkspaceTransactionCommitter
 
                 var prospectiveDocs = new List<ProspectiveDocument>();
 
-                foreach (var (normPath, _, op) in normalizedOps)
+                foreach (var (normPath, _, op, canonicalContent) in normalizedOps)
                 {
                     var stagedFile = Path.Combine(stagedDir, normPath.Replace('/', '_'));
                     using (var fs = new FileStream(stagedFile, FileMode.Create, FileAccess.Write, FileShare.None))
                     using (var sw = new StreamWriter(fs, Utf8NoBom))
                     {
-                        sw.Write(op.ReplacementContent);
+                        sw.Write(canonicalContent);
                         sw.Flush();
                         fs.Flush(true);
                     }
 
                     prospectiveDocs.Add(new ProspectiveDocument(
                         normPath,
-                        op.ReplacementContent,
+                        canonicalContent,
                         IsNew: false,
                         ExpectedRevision: op.ExpectedRevision));
                 }
@@ -297,7 +319,7 @@ public static class WorkspaceTransactionCommitter
                 }
 
                 // 7. Backup existing files and flush
-                foreach (var (normPath, fullTarget, _) in normalizedOps)
+                foreach (var (normPath, fullTarget, _, _) in normalizedOps)
                 {
                     var backupFile = Path.Combine(backupDir, normPath.Replace('/', '_'));
                     using (var src = File.OpenRead(fullTarget))
@@ -323,7 +345,7 @@ public static class WorkspaceTransactionCommitter
                 var mutatedDocs = new List<MutatedDocument>();
                 var isFirst = true;
 
-                foreach (var (normPath, fullTarget, op) in normalizedOps)
+                foreach (var (normPath, fullTarget, op, _) in normalizedOps)
                 {
                     var stagedFile = Path.Combine(stagedDir, normPath.Replace('/', '_'));
 
@@ -361,48 +383,35 @@ public static class WorkspaceTransactionCommitter
         string markerPath,
         string txId,
         string state,
-        IReadOnlyList<(string NormalizedPath, string FullTarget, TransactionDocumentOperation Op)> operations,
+        IReadOnlyList<(string NormalizedPath, string FullTarget, TransactionDocumentOperation Op, string CanonicalContent)> operations,
         string stagedDir,
         string backupDir,
         DateTime createdAt)
     {
-        var settings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "  ",
-            OmitXmlDeclaration = false,
-            Encoding = Utf8NoBom,
-            NewLineHandling = NewLineHandling.Replace,
-            NewLineChars = "\n"
-        };
+        var root = new XElement("recovery-marker",
+            new XAttribute("id", txId),
+            new XAttribute("state", state),
+            new XAttribute("created_at", createdAt.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture)));
 
-        using var fs = new FileStream(markerPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        using var writer = XmlWriter.Create(fs, settings);
-
-        writer.WriteStartDocument();
-        writer.WriteStartElement("recovery-marker");
-        writer.WriteAttributeString("id", txId);
-        writer.WriteAttributeString("state", state);
-        writer.WriteAttributeString("created_at", createdAt.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture));
-
-        foreach (var (normPath, _, op) in operations)
+        foreach (var (normPath, _, op, _) in operations)
         {
             var stagedFile = Path.Combine(stagedDir, normPath.Replace('/', '_'));
             var backupFile = Path.Combine(backupDir, normPath.Replace('/', '_'));
 
-            writer.WriteStartElement("operation");
-            writer.WriteAttributeString("type", "replace");
-            writer.WriteAttributeString("target", normPath);
-            writer.WriteAttributeString("staged", stagedFile);
-            writer.WriteAttributeString("backup", backupFile);
-            writer.WriteAttributeString("expected_revision", op.ExpectedRevision.ToString(CultureInfo.InvariantCulture));
-            writer.WriteAttributeString("new_revision", op.NewRevision.ToString(CultureInfo.InvariantCulture));
-            writer.WriteEndElement();
+            root.Add(new XElement("operation",
+                new XAttribute("type", "replace"),
+                new XAttribute("target", normPath),
+                new XAttribute("staged", stagedFile),
+                new XAttribute("backup", backupFile),
+                new XAttribute("expected_revision", op.ExpectedRevision.ToString(CultureInfo.InvariantCulture)),
+                new XAttribute("new_revision", op.NewRevision.ToString(CultureInfo.InvariantCulture))));
         }
 
-        writer.WriteEndElement();
-        writer.WriteEndDocument();
-        writer.Flush();
+        var xml = ManagedDocumentSerializer.Serialize(new XDocument(root));
+        using var fs = new FileStream(markerPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        using var sw = new StreamWriter(fs, Utf8NoBom);
+        sw.Write(xml);
+        sw.Flush();
         fs.Flush(true);
     }
 }

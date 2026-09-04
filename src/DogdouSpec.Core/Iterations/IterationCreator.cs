@@ -1,10 +1,12 @@
 using System.Globalization;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 using System.Xml.Schema;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -88,6 +90,9 @@ public static class IterationCreator
             }
 
             var tasksContent = GenerateTasksXml(normalizedId, timePrefix, slug);
+
+            specContent = ManagedDocumentSerializer.Normalize(specContent);
+            tasksContent = ManagedDocumentSerializer.Normalize(tasksContent);
 
             // 7. Prospective validation against prospective workspace view
             var specRelPath = $"{normalizedId}/spec.xml";
@@ -189,10 +194,13 @@ public static class IterationCreator
 
     private static void WriteCreateMarkerXml(string markerPath, string txId, string iterationId, string state, string isoTime)
     {
-        var markerXml = $"""
-<?xml version="1.0" encoding="utf-8"?>
-<create-marker id="{txId}" iteration_id="{iterationId}" state="{state}" created_at="{isoTime}"/>
-""";
+        var markerDoc = new XDocument(
+            new XElement("create-marker",
+                new XAttribute("id", txId),
+                new XAttribute("iteration_id", iterationId),
+                new XAttribute("state", state),
+                new XAttribute("created_at", isoTime)));
+        var markerXml = ManagedDocumentSerializer.Serialize(markerDoc);
         using var fs = new FileStream(markerPath, FileMode.Create, FileAccess.Write, FileShare.None);
         using var sw = new StreamWriter(fs, Utf8NoBom);
         sw.Write(markerXml);

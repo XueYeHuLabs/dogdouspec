@@ -9,6 +9,7 @@ using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -518,31 +519,8 @@ public static class ChangeProposer
         tasksRoot.SetAttributeValue("revision", newTasksRevision.ToString(CultureInfo.InvariantCulture));
 
         // 7. Serialize Both Documents
-        var writerSettings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "  ",
-            OmitXmlDeclaration = false,
-            Encoding = Utf8NoBom,
-            NewLineHandling = NewLineHandling.Replace,
-            NewLineChars = "\n"
-        };
-
-        using var specMs = new MemoryStream();
-        using (var writer = XmlWriter.Create(specMs, writerSettings))
-        {
-            specDoc.Save(writer);
-        }
-        var specReplacementContent = Encoding.UTF8.GetString(specMs.ToArray());
-        if (!specReplacementContent.EndsWith('\n')) specReplacementContent += "\n";
-
-        using var tasksMs = new MemoryStream();
-        using (var writer = XmlWriter.Create(tasksMs, writerSettings))
-        {
-            tasksDoc.Save(writer);
-        }
-        var tasksReplacementContent = Encoding.UTF8.GetString(tasksMs.ToArray());
-        if (!tasksReplacementContent.EndsWith('\n')) tasksReplacementContent += "\n";
+        var specReplacementContent = ManagedDocumentSerializer.Serialize(specDoc);
+        var tasksReplacementContent = ManagedDocumentSerializer.Serialize(tasksDoc);
 
         var operations = new[]
         {
