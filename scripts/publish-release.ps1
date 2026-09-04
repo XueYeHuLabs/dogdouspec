@@ -93,8 +93,11 @@ try {
     Write-Host "[OK] Updated $installerYaml"
 
     # 5. Automated Upload via GitHub CLI (Optional / Automatic)
-    $ghCli = Get-Command "gh" -ErrorAction SilentlyContinue
-    if ($AutoUpload -or $ghCli) {
+    if ($AutoUpload) {
+        $ghCli = Get-Command "gh" -ErrorAction SilentlyContinue
+        if (-not $ghCli) {
+            throw "GitHub CLI was requested with -AutoUpload but 'gh' is not available."
+        }
         Write-Host "`n[Step 5/5] Automated GitHub Release Upload via GitHub CLI..." -ForegroundColor Yellow
         try {
             $releaseCheck = & gh release view $tag 2>&1
