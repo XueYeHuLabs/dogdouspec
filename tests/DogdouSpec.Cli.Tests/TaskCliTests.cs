@@ -770,4 +770,230 @@ public sealed class TaskCliTests
         Assert.AreEqual(2, exitCode);
         Assert.IsTrue(stderr.Contains("Specify exactly one of --stdin or --file.", StringComparison.Ordinal));
     }
+
+    [TestMethod]
+    public void TaskAdd_Cli_OperationalOrigin_FromTaskQuickDryRun_SucceedsUnmodified()
+    {
+        CreateWorkspaceCopy();
+
+        // 1. Generate canonical request XML via task quick --dry-run
+        var (quickExit, quickOut, quickErr) = RunCli(
+            "task", "quick",
+            "--iteration", "20260823-xpath-core",
+            "--title", "Composed operational task",
+            "--scope", "src/**",
+            "--done-when", "operational composition succeeds",
+            "--why", "test composition between task quick and task add",
+            "--dry-run",
+            "--format", "xml",
+            "--workspace-root", _tempDir);
+
+        Assert.AreEqual(0, quickExit, $"task quick dry-run failed: {quickErr}");
+        Assert.IsTrue(quickOut.Contains("<task-add", StringComparison.Ordinal));
+        Assert.IsTrue(quickOut.Contains("relation=\"supports\"", StringComparison.Ordinal));
+
+        // 2. Submit unmodified output through task add via stdin
+        var (addExit, addOut, addErr) = RunCliWithStdin(
+            quickOut,
+            "task", "add",
+            "--iteration", "20260823-xpath-core",
+            "--expected-revision", "9",
+            "--stdin",
+            "--workspace-root", _tempDir,
+            "--format", "xml");
+
+        Assert.AreEqual(0, addExit, $"task add failed on unmodified operational request: {addErr}");
+        Assert.IsTrue(addOut.Contains("command=\"task add\"", StringComparison.Ordinal));
+
+        // 3. Verify task was persisted into tasks.xml
+        var tasksPath = Path.Combine(_tempDir, ".dogdouspec", "20260823-xpath-core", "tasks.xml");
+        var tasksDoc = XDocument.Load(tasksPath);
+        Assert.AreEqual("10", (string?)tasksDoc.Root?.Attribute("revision"));
+        var addedTask = tasksDoc.Descendants("task").FirstOrDefault(t => t.Element("title")?.Value == "Composed operational task");
+        Assert.IsNotNull(addedTask);
+        Assert.AreEqual("pending", (string?)addedTask.Attribute("status"));
+        var origin = addedTask.Element("origin")?.Elements("ref").SingleOrDefault();
+        Assert.IsNotNull(origin);
+        Assert.AreEqual("supports", (string?)origin.Attribute("relation"));
+        Assert.AreEqual("20260823-xpath-core", (string?)origin.Attribute("target"));
+        Assert.AreEqual("iteration", (string?)origin.Attribute("scope"));
+
+        // 4. Test submitting via --file also works
+        var fileQuickPath = Path.Combine(_tempDir, "request.xml");
+        var (fileQuickExit, fileQuickOut, fileQuickErr) = RunCli(
+            "task", "quick",
+            "--iteration", "20260823-xpath-core",
+            "--title", "File-based operational task",
+            "--scope", "src/**",
+            "--done-when", "file add succeeds",
+            "--why", "test file submission",
+            "--dry-run",
+            "--format", "xml",
+            "--workspace-root", _tempDir);
+        Assert.AreEqual(0, fileQuickExit, fileQuickErr);
+        File.WriteAllText(fileQuickPath, fileQuickOut);
+
+        var (fileAddExit, fileAddOut, fileAddErr) = RunCli(
+            "task", "add",
+            "--iteration", "20260823-xpath-core",
+            "--expected-revision", "10",
+            "--file", fileQuickPath,
+            "--workspace-root", _tempDir,
+            "--format", "xml");
+        Assert.AreEqual(0, fileAddExit, $"task add with --file failed: {fileAddErr}");
+        Assert.IsTrue(fileAddOut.Contains("command=\"task add\"", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void TaskAdd_Cli_OperationalOrigin_StructuralValidationFailures_ReportActualVsExpectedDiagnostics()
+    {
+        CreateWorkspaceCopy();
+
+        var (quickExit, quickOut, quickErr) = RunCli(
+            "task", "quick",
+            "--iteration", "20260823-xpath-core",
+            "--title", "Base operational probe",
+            "--scope", "src/**",
+            "--done-when", "probe completes",
+            "--why", "generate baseline operational XML",
+            "--dry-run",
+            "--format", "xml",
+            "--workspace-root", _tempDir);
+        Assert.AreEqual(0, quickExit, quickErr);
+
+        // Case 1: Wrong target
+        var wrongTargetXml = quickOut.Replace(
+            "target=\"20260823-xpath-core\"",
+            "target=\"20260823-wrong-target\"",
+            StringComparison.Ordinal);
+        var (wtExit, _, wtErr) = RunCliWithStdin(
+            wrongTargetXml,
+            "task", "add",
+            "--iteration", "20260823-xpath-core",
+            "--expected-revision", "9",
+            "--stdin",
+            "--workspace-root", _tempDir,
+            "--format", "xml");
+        Assert.AreEqual(3, wtExit, "Wrong target must fail with exit code 3.");
+        Assert.IsTrue(wtErr.Contains(DiagnosticCodes.InvalidReferenceTargetType), $"Expected INVALID_REFERENCE_TARGET_TYPE in: {wtErr}");
+        Assert.IsTrue(wtErr.Contains("target='20260823-xpath-core'"), $"Expected target in: {wtErr}");
+        Assert.IsTrue(wtErr.Contains("target='20260823-wrong-target'"), $"Actual target in: {wtErr}");
+
+        // Case 2: Wrong relation
+        var wrongRelXml = quickOut.Replace(
+            "relation=\"supports\"",
+            "relation=\"implements\"",
+            StringComparison.Ordinal);
+        var (wrExit, _, wrErr) = RunCliWithStdin(
+            wrongRelXml,
+            "task", "add",
+            "--iteration", "20260823-xpath-core",
+            "--expected-revision", "9",
+            "--stdin",
+            "--workspace-root", _tempDir,
+            "--format", "xml");
+        Assert.AreEqual(3, wrExit, "Wrong relation must fail with exit code 3.");
+        Assert.IsTrue(wrErr.Contains(DiagnosticCodes.InvalidReferenceTargetType), $"Expected INVALID_REFERENCE_TARGET_TYPE in: {wrErr}");
+        Assert.IsTrue(wrErr.Contains("relation='supports'"), $"Expected relation in: {wrErr}");
+        Assert.IsTrue(wrErr.Contains("relation='implements'"), $"Actual relation in: {wrErr}");
+
+        // Case 3: Wrong scope
+        var wrongScopeXml = quickOut.Replace(
+            "scope=\"iteration\"",
+            "scope=\"document\"",
+            StringComparison.Ordinal);
+        var (wsExit, _, wsErr) = RunCliWithStdin(
+            wrongScopeXml,
+            "task", "add",
+            "--iteration", "20260823-xpath-core",
+            "--expected-revision", "9",
+            "--stdin",
+            "--workspace-root", _tempDir,
+            "--format", "xml");
+        Assert.AreEqual(3, wsExit, "Wrong scope must fail with exit code 3.");
+        Assert.IsTrue(wsErr.Contains(DiagnosticCodes.InvalidReferenceTargetType), $"Expected INVALID_REFERENCE_TARGET_TYPE in: {wsErr}");
+        Assert.IsTrue(wsErr.Contains("scope='iteration'"), $"Expected scope in: {wsErr}");
+        Assert.IsTrue(wsErr.Contains("scope='document'"), $"Actual scope in: {wsErr}");
+
+        // Case 4: Multiple refs
+        var multiRefXml = quickOut.Replace(
+            "<ref scope=\"iteration\" target=\"20260823-xpath-core\" relation=\"supports\" />",
+            "<ref scope=\"iteration\" target=\"20260823-xpath-core\" relation=\"supports\" /><ref scope=\"iteration\" target=\"20260823-xpath-core\" relation=\"supports\" />",
+            StringComparison.Ordinal);
+        var (mrExit, _, mrErr) = RunCliWithStdin(
+            multiRefXml,
+            "task", "add",
+            "--iteration", "20260823-xpath-core",
+            "--expected-revision", "9",
+            "--stdin",
+            "--workspace-root", _tempDir,
+            "--format", "xml");
+        Assert.AreEqual(3, mrExit, "Multiple refs must fail with exit code 3.");
+        Assert.IsTrue(mrErr.Contains(DiagnosticCodes.InvalidReferenceTargetType), $"Expected INVALID_REFERENCE_TARGET_TYPE in: {mrErr}");
+        Assert.IsTrue(mrErr.Contains("count=1"), $"Expected count in: {mrErr}");
+        Assert.IsTrue(mrErr.Contains("count=2"), $"Actual count in: {mrErr}");
+    }
+
+    [TestMethod]
+    public void TaskAdd_Cli_NormalImplementsOriginAndTaskQuick_RemainUnchanged()
+    {
+        CreateWorkspaceCopy();
+
+        // 1. task quick without dry-run continues to work unchanged
+        var (qExit, qOut, qErr) = RunCli(
+            "task", "quick",
+            "--iteration", "20260823-xpath-core",
+            "--title", "Live quick task",
+            "--scope", "src/**",
+            "--done-when", "quick task works",
+            "--why", "verify live task quick",
+            "--workspace-root", _tempDir,
+            "--format", "xml");
+        Assert.AreEqual(0, qExit, $"Live task quick failed: {qErr}");
+        Assert.IsTrue(qOut.Contains("command=\"task quick\"", StringComparison.Ordinal));
+
+        // 2. task quick with requirement origin continues to work unchanged
+        var (qReqExit, qReqOut, qReqErr) = RunCli(
+            "task", "quick",
+            "--iteration", "20260823-xpath-core",
+            "--title", "Requirement-backed quick task",
+            "--scope", "src/**",
+            "--done-when", "req quick task works",
+            "--why", "verify requirement task quick",
+            "--origin", "20260823-req-iteration-discovery",
+            "--workspace-root", _tempDir,
+            "--format", "xml");
+        Assert.AreEqual(0, qReqExit, $"Requirement task quick failed: {qReqErr}");
+        Assert.IsTrue(qReqOut.Contains("command=\"task quick\"", StringComparison.Ordinal));
+
+        // 3. task add with normal implements origin continues to work unchanged
+        var normalAddXml = """
+<task-add id="20260825T130000Z-taskadd-normal" actor="codex" occurred_at="2026-08-25T13:00:00Z">
+  <task id="20260825-task-normal-impl" status="pending" created_at="2026-08-25T13:00:00Z" updated_at="2026-08-25T13:00:00Z">
+    <index><summary>Normal implements task.</summary></index>
+    <title>Normal Implements Task</title>
+    <objective>Implements requirement directly.</objective>
+    <rationale>Verify normal implements task add path.</rationale>
+    <scope><repository path="."><include path="src/**"/></repository></scope>
+    <origin>
+      <ref scope="iteration" target="20260823-req-iteration-discovery" relation="implements"/>
+    </origin>
+    <constraints/>
+    <acceptance><criterion id="20260825-crit-normal" status="pending">Verified.</criterion></acceptance>
+    <context><summary>Context.</summary></context>
+    <records/>
+  </task>
+</task-add>
+""";
+        var (normalExit, normalOut, normalErr) = RunCliWithStdin(
+            normalAddXml,
+            "task", "add",
+            "--iteration", "20260823-xpath-core",
+            "--expected-revision", "11",
+            "--stdin",
+            "--workspace-root", _tempDir,
+            "--format", "xml");
+        Assert.AreEqual(0, normalExit, $"Normal task add failed: {normalErr}");
+        Assert.IsTrue(normalOut.Contains("command=\"task add\"", StringComparison.Ordinal));
+    }
 }

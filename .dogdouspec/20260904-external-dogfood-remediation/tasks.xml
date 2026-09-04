@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="16">
+<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="20">
   <index>
     <summary>Tasks for iteration 20260904-external-dogfood-remediation.</summary>
     <term key="iteration" value="20260904-external-dogfood-remediation" />
@@ -85,7 +85,7 @@
         <ref scope="document" target="20260904-task-f6-f7-canonical-xml-done" relation="covers" />
       </covers>
     </record></records>
-  </task><task id="20260904-task-f4-operational-task-add" status="pending" created_at="2026-09-04T08:02:00Z" updated_at="2026-09-04T08:02:00Z" agent="agy-task-add-implementer">
+  </task><task id="20260904-task-f4-operational-task-add" status="done" created_at="2026-09-04T08:02:00Z" updated_at="2026-09-04T12:22:54Z" agent="agy-task-add-implementer" started_at="2026-09-04T12:01:00Z" completed_at="2026-09-04T12:22:54Z">
     <index>
       <summary>Accept canonical operational tasks in task add</summary>
       <term key="kind" value="quick" />
@@ -106,13 +106,25 @@
     </origin>
     <constraints />
     <acceptance>
-      <criterion id="20260904-task-f4-operational-task-add-done" status="pending">An unmodified task quick dry-run request with one valid current-iteration supports origin succeeds through task add, while invalid origins report actual versus expected structure.</criterion>
+      <criterion id="20260904-task-f4-operational-task-add-done" status="passed">An unmodified task quick dry-run request with one valid current-iteration supports origin succeeds through task add, while invalid origins report actual versus expected structure.</criterion>
     </acceptance>
     <context>
       <summary>External finding F4 shows task add rejects the CLI's own canonical request solely because of command-name provenance.</summary>
     </context>
-    <review required="true" />
-    <records><record id="20260904T080200Z-quick-f4-operational-task-add-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:02:00Z" actor="quick-task" operation_id="20260904T080200Z-quick-f4-operational-task-add"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="fa4f65518eab7d00abc1f4555f89ae1b6e05da99210ab5c7eb2c51015ea88957" /></index><summary>Task addition receipt.</summary></record></records>
+    <review required="true"><submission id="20260904T122210Z-review-f4-submission" disposition="approved" actor="agy-task-add-reviewer" reviewed_at="2026-09-04T12:22:10Z" record="20260904T122210Z-review-f4-submission-record" /></review>
+    <records><record id="20260904T080200Z-quick-f4-operational-task-add-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:02:00Z" actor="quick-task" operation_id="20260904T080200Z-quick-f4-operational-task-add"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="fa4f65518eab7d00abc1f4555f89ae1b6e05da99210ab5c7eb2c51015ea88957" /></index><summary>Task addition receipt.</summary></record><record id="20260904T120100Z-record-start-b29c9238f9cc4de098ac98649ce37b94" kind="start" status="informational" created_at="2026-09-04T12:01:00Z" actor="agent" operation_id="20260904T120100Z-taskstart-c0ea821af9ff4a63999d7cc92087f4f1">
+      <summary>Assigned to agy.exe implementer for canonical operational task composition.</summary>
+    </record><record id="20260904T122145Z-record-verify-54f29876a7dd4803b3e6f873daec68cb" kind="verification" status="informational" created_at="2026-09-04T12:21:45Z" actor="kiro-supervisor" operation_id="20260904T122145Z-taskverify-fd03e244f7ab4f2a9c2b5174af66da92">
+      <summary>Canonical task quick dry-run requests now compose through task add based on origin structure, with bounded actual-versus-expected diagnostics and passing core and CLI regressions.</summary>
+      <covers>
+        <ref scope="document" target="20260904-task-f4-operational-task-add-done" relation="covers" />
+      </covers>
+    </record><record id="20260904T122210Z-review-f4-submission-record" kind="decision" status="informational" created_at="2026-09-04T12:22:10Z" actor="agy-task-add-reviewer" operation_id="20260904T122210Z-review-f4"><index><summary>Structured task review submission.</summary><term key="review-disposition" value="approved" /><term key="request-sha256" value="cea6f2332f0d59cf5546bfaa300f88c0f5a5d211c94bd5253ca5ddcd2fe44dd0" /></index><summary>Independent agy review approved the structural operational-origin handling, bounded diagnostics, and regression coverage with no blocking findings.</summary></record><record id="20260904T122254Z-record-complete-c842538e1df34dfa8f8cce286d4c7573" kind="completion" status="informational" created_at="2026-09-04T12:22:54Z" actor="kiro-supervisor" operation_id="20260904T122254Z-taskcomplete-2e181eb9477046479837656b1a884251">
+      <summary>Completed after targeted core and CLI regressions and independent agy approval; task add now accepts canonical operational origins independent of command provenance.</summary>
+      <covers>
+        <ref scope="document" target="20260904-task-f4-operational-task-add-done" relation="covers" />
+      </covers>
+    </record></records>
   </task><task id="20260904-task-f2-defined-criteria" status="pending" created_at="2026-09-04T08:03:00Z" updated_at="2026-09-04T08:03:00Z" agent="agy-criteria-implementer">
     <index>
       <summary>Add owner-authorized defined criteria lifecycle</summary>
@@ -245,5 +257,6 @@
     <review required="true" />
     <records><record id="20260904T080600Z-quick-f9-schema-drift-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:06:00Z" actor="quick-task" operation_id="20260904T080600Z-quick-f9-schema-drift"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="7cf298084769b69885486e70fd1cca77c8ad6c0e7534c3e9fcf0b9e4cbe3d9d8" /></index><summary>Task addition receipt.</summary></record></records>
   </task></tasks>
+
 
 

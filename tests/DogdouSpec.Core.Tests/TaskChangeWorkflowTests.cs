@@ -286,6 +286,263 @@ public sealed class TaskChangeWorkflowTests
     }
 
     [TestMethod]
+    public void TaskAdd_OperationalOrigin_FromTaskQuickDryRun_SucceedsUnmodified()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        var quickInput = new QuickTaskInput(
+            "Composed operational task",
+            new List<string> { "src/**" },
+            "operational task completed",
+            "test composition across commands",
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            new List<string> { "kind=quick" },
+            iterId,
+            1,
+            false,
+            true,
+            "20260824-task-quick-op-dry",
+            "20260824T120000Z-quick-op-dry");
+
+        var (drySuccess, dryResult, _, dryDiags) = TaskQuick.Create(_workspace, quickInput);
+        Assert.IsTrue(drySuccess, $"task quick dry-run failed: {string.Join(", ", dryDiags.Select(d => d.Message))}");
+        Assert.IsNotNull(dryResult);
+        var requestXml = dryResult.RequestXml;
+
+        // Submit the dry-run output completely unmodified through TaskAdder.Add
+        var (addSuccess, addEnv, addDiags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsTrue(addSuccess, $"task add failed with unmodified operational request: {string.Join(", ", addDiags.Select(d => d.Message))}");
+        Assert.IsNotNull(addEnv);
+        Assert.IsFalse(addEnv.AlreadyApplied);
+
+        var tasksXmlPath = Path.Combine(_workspace, iterId, "tasks.xml");
+        var tasksDoc = XDocument.Load(tasksXmlPath);
+        var addedTask = tasksDoc.Descendants("task").SingleOrDefault(t => (string?)t.Attribute("id") == "20260824-task-quick-op-dry");
+        Assert.IsNotNull(addedTask);
+        Assert.AreEqual("pending", (string?)addedTask.Attribute("status"));
+
+        var originRef = addedTask.Element("origin")?.Elements("ref").SingleOrDefault();
+        Assert.IsNotNull(originRef);
+        Assert.AreEqual("iteration", (string?)originRef.Attribute("scope"));
+        Assert.AreEqual("supports", (string?)originRef.Attribute("relation"));
+        Assert.AreEqual(iterId, (string?)originRef.Attribute("target"));
+
+        // Idempotent retry succeeds
+        var (retrySuccess, retryEnv, retryDiags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsTrue(retrySuccess, $"Retry failed: {string.Join(", ", retryDiags.Select(d => d.Message))}");
+        Assert.IsNotNull(retryEnv);
+        Assert.IsTrue(retryEnv.AlreadyApplied);
+    }
+
+    [TestMethod]
+    public void TaskAdd_OperationalOrigin_WrongTarget_FailsWithUsefulDiagnostics()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        var requestXml = $"""
+<task-add
+  id="20260824T120001Z-taskadd-wrong-target"
+  actor="codex"
+  occurred_at="2026-08-24T12:00:01Z">
+  <task
+    id="20260824-task-wrong-target"
+    status="pending"
+    created_at="2026-08-24T12:00:01Z"
+    updated_at="2026-08-24T12:00:01Z">
+    <index><summary>Wrong target.</summary></index>
+    <title>Wrong Target</title>
+    <objective>Fails on wrong target.</objective>
+    <rationale>Test wrong target diagnostic.</rationale>
+    <scope><repository path="src/test.cs"/></scope>
+    <origin>
+      <ref scope="iteration" target="20260824-other-iteration" relation="supports"/>
+    </origin>
+    <constraints/>
+    <acceptance><criterion id="20260824-crit-wt" status="pending">Done.</criterion></acceptance>
+    <context><summary>Test.</summary></context>
+    <records/>
+  </task>
+</task-add>
+""";
+
+        var (success, _, diags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.SingleOrDefault(d => d.Code == DiagnosticCodes.InvalidReferenceTargetType);
+        Assert.IsNotNull(diag, $"Expected INVALID_REFERENCE_TARGET_TYPE, got: {string.Join(", ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains($"target='{iterId}'"), $"Expected target '{iterId}' in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("target='20260824-other-iteration'"), $"Actual target in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("count=1"), $"Count in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("scope='iteration'"), $"Scope in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("relation='supports'"), $"Relation in message: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void TaskAdd_OperationalOrigin_WrongRelation_FailsWithUsefulDiagnostics()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        var requestXml = $"""
+<task-add
+  id="20260824T120002Z-taskadd-wrong-rel"
+  actor="codex"
+  occurred_at="2026-08-24T12:00:02Z">
+  <task
+    id="20260824-task-wrong-rel"
+    status="pending"
+    created_at="2026-08-24T12:00:02Z"
+    updated_at="2026-08-24T12:00:02Z">
+    <index><summary>Wrong relation.</summary></index>
+    <title>Wrong Relation</title>
+    <objective>Fails on wrong relation.</objective>
+    <rationale>Test wrong relation diagnostic.</rationale>
+    <scope><repository path="src/test.cs"/></scope>
+    <origin>
+      <ref scope="iteration" target="{iterId}" relation="implements"/>
+    </origin>
+    <constraints/>
+    <acceptance><criterion id="20260824-crit-wr" status="pending">Done.</criterion></acceptance>
+    <context><summary>Test.</summary></context>
+    <records/>
+  </task>
+</task-add>
+""";
+
+        var (success, _, diags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.SingleOrDefault(d => d.Code == DiagnosticCodes.InvalidReferenceTargetType);
+        Assert.IsNotNull(diag, $"Expected INVALID_REFERENCE_TARGET_TYPE, got: {string.Join(", ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains("relation='supports'"), $"Expected relation in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("relation='implements'"), $"Actual relation in message: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void TaskAdd_OperationalOrigin_WrongScope_FailsWithUsefulDiagnostics()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        var requestXml = $"""
+<task-add
+  id="20260824T120003Z-taskadd-wrong-scope"
+  actor="codex"
+  occurred_at="2026-08-24T12:00:03Z">
+  <task
+    id="20260824-task-wrong-scope"
+    status="pending"
+    created_at="2026-08-24T12:00:03Z"
+    updated_at="2026-08-24T12:00:03Z">
+    <index><summary>Wrong scope.</summary></index>
+    <title>Wrong Scope</title>
+    <objective>Fails on wrong scope.</objective>
+    <rationale>Test wrong scope diagnostic.</rationale>
+    <scope><repository path="src/test.cs"/></scope>
+    <origin>
+      <ref scope="document" target="{iterId}" relation="supports"/>
+    </origin>
+    <constraints/>
+    <acceptance><criterion id="20260824-crit-ws" status="pending">Done.</criterion></acceptance>
+    <context><summary>Test.</summary></context>
+    <records/>
+  </task>
+</task-add>
+""";
+
+        var (success, _, diags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.SingleOrDefault(d => d.Code == DiagnosticCodes.InvalidReferenceTargetType);
+        Assert.IsNotNull(diag, $"Expected INVALID_REFERENCE_TARGET_TYPE, got: {string.Join(", ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains("scope='iteration'"), $"Expected scope in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("scope='document'"), $"Actual scope in message: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void TaskAdd_OperationalOrigin_MultipleRefs_FailsWithUsefulDiagnostics()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        var requestXml = $"""
+<task-add
+  id="20260824T120004Z-taskadd-multiple-refs"
+  actor="codex"
+  occurred_at="2026-08-24T12:00:04Z">
+  <task
+    id="20260824-task-multiple-refs"
+    status="pending"
+    created_at="2026-08-24T12:00:04Z"
+    updated_at="2026-08-24T12:00:04Z">
+    <index><summary>Multiple refs.</summary></index>
+    <title>Multiple Refs</title>
+    <objective>Fails on multiple refs.</objective>
+    <rationale>Test multiple refs diagnostic.</rationale>
+    <scope><repository path="src/test.cs"/></scope>
+    <origin>
+      <ref scope="iteration" target="{iterId}" relation="supports"/>
+      <ref scope="iteration" target="{iterId}" relation="supports"/>
+    </origin>
+    <constraints/>
+    <acceptance><criterion id="20260824-crit-mr" status="pending">Done.</criterion></acceptance>
+    <context><summary>Test.</summary></context>
+    <records/>
+  </task>
+</task-add>
+""";
+
+        var (success, _, diags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.SingleOrDefault(d => d.Code == DiagnosticCodes.InvalidReferenceTargetType);
+        Assert.IsNotNull(diag, $"Expected INVALID_REFERENCE_TARGET_TYPE, got: {string.Join(", ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains("count=1"), $"Expected count in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("count=2"), $"Actual count in message: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void TaskAdd_OperationalOrigin_DiagnosticsSanitizesWithoutLeakingUnsafeContent()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        // Target with control characters and extra length
+        var longTarget = "20260824-long-" + new string('a', 100);
+        var requestXml = $"""
+<task-add
+  id="20260824T120005Z-taskadd-unsafe"
+  actor="codex"
+  occurred_at="2026-08-24T12:00:05Z">
+  <task
+    id="20260824-task-unsafe"
+    status="pending"
+    created_at="2026-08-24T12:00:05Z"
+    updated_at="2026-08-24T12:00:05Z">
+    <index><summary>Unsafe target.</summary></index>
+    <title>Unsafe Target</title>
+    <objective>Sanitizes without leaking.</objective>
+    <rationale>Test sanitization.</rationale>
+    <scope><repository path="src/test.cs"/></scope>
+    <origin>
+      <ref scope="iteration" target="{longTarget}" relation="supports"/>
+    </origin>
+    <constraints/>
+    <acceptance><criterion id="20260824-crit-unsafe" status="pending">Done.</criterion></acceptance>
+    <context><summary>Test.</summary></context>
+    <records/>
+  </task>
+</task-add>
+""";
+
+        var (success, _, diags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.Single(d => d.Code == DiagnosticCodes.InvalidReferenceTargetType);
+        Assert.IsTrue(diag.Message.Contains("..."), "Diagnostic should truncate overly long input with ellipsis.");
+        Assert.IsFalse(diag.Message.Contains(longTarget), "Raw overly long content must not leak unconstrained.");
+        Assert.IsFalse(diag.Message.Any(char.IsControl), "Diagnostic must contain no raw control characters.");
+    }
+
+    [TestMethod]
     public void TaskAdd_NonPendingStatus_FailsClosed()
     {
         var iterId = "20260824-test-feature";
