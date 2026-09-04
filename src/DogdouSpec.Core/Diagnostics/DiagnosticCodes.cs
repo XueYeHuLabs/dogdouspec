@@ -72,6 +72,7 @@ public static class DiagnosticCodes
     public const string OwnerDecisionRequired = "OWNER_DECISION_REQUIRED";
     public const string RequirementSuccessorMissing = "REQUIREMENT_SUCCESSOR_MISSING";
     public const string ChangeApplicationInvalid = "CHANGE_APPLICATION_INVALID";
+    public const string CriterionUndefined = "CRITERION_UNDEFINED";
 
     // Atomic write, locking, and recovery
     public const string LockConflict = "LOCK_CONFLICT";

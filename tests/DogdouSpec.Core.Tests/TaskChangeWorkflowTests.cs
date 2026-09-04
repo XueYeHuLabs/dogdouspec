@@ -77,11 +77,14 @@ public sealed class TaskChangeWorkflowTests
         }
     }
 
-    private void InitWorkspaceWithFeatureIteration(string iterId = "20260824-test-feature")
+    private static readonly string[] DefaultFeatureCriteria = new[] { "Workflow integration verified." };
+
+    private void InitWorkspaceWithFeatureIteration(string iterId = "20260824-test-feature", IEnumerable<string>? criteria = null)
     {
         _workspace = CreateWorkspaceCopy();
         var clock = new TestClock(new DateTime(2026, 8, 24, 9, 0, 0, DateTimeKind.Utc));
-        var (iSuccess, _, iDiags) = IterationCreator.Create(_workspace, iterId, "feature", clock);
+        criteria ??= DefaultFeatureCriteria;
+        var (iSuccess, _, iDiags) = IterationCreator.Create(_workspace, iterId, "feature", clock, criteria: criteria);
         Assert.IsTrue(iSuccess, $"Iteration create failed: {string.Join(", ", iDiags.Select(d => d.Message))}");
     }
 

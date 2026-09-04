@@ -13,6 +13,7 @@ public sealed class UsabilityPorcelainTests
     private static readonly string[] CoreScopes = { "src/Core" };
     private static readonly string[] CliScopes = { "src/Cli" };
 
+    private static readonly string[] TestCriteria = new[] { "Substantive criterion for porcelain test." };
     private string _tempDir = null!;
     private string _workspaceRoot = null!;
     private const string TestIterationId = "20260902-porcelain-test";
@@ -26,7 +27,7 @@ public sealed class UsabilityPorcelainTests
         _workspaceRoot = Path.Combine(_tempDir, ".dogdouspec");
 
         // Create an active iteration
-        IterationCreator.Create(_workspaceRoot, TestIterationId, "feature", activate: true);
+        IterationCreator.Create(_workspaceRoot, TestIterationId, "feature", activate: true, criteria: TestCriteria);
     }
 
     [TestCleanup]

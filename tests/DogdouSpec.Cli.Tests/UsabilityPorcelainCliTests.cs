@@ -18,7 +18,7 @@ public sealed class UsabilityPorcelainCliTests
         WorkspaceInitializer.Initialize(_tempDir, _tempDir);
 
         // Create active iteration
-        Program.Main(new[] { "iteration", "create", "--id", TestIterationId, "--kind", "feature", "--activate", "--workspace-root", _tempDir });
+        Program.Main(new[] { "iteration", "create", "--id", TestIterationId, "--kind", "feature", "--activate", "--criterion", "Porcelain CLI functionality verified.", "--workspace-root", _tempDir });
     }
 
     [TestCleanup]

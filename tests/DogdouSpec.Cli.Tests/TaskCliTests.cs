@@ -380,6 +380,7 @@ public sealed class TaskCliTests
             "iteration", "create",
             "--id", "20260824-e2e-feature",
             "--kind", "feature",
+            "--criterion", "E2E feature acceptance criteria defined.",
             "--workspace-root", e2eDir);
         Assert.AreEqual(0, createCode, $"Create iteration failed: {createErr}");
 

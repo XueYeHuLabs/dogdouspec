@@ -24,6 +24,7 @@ public static class IterationCommand
         var activateCmd = BuildActivateCommand();
         var completeCmd = BuildCompleteCommand();
         var summaryCmd = SummaryCommand.BuildCommand();
+        var criterionCmd = BuildCriterionCommand();
 
         iterationCmd.Add(listCmd);
         iterationCmd.Add(createCmd);
@@ -32,6 +33,7 @@ public static class IterationCommand
         iterationCmd.Add(activateCmd);
         iterationCmd.Add(completeCmd);
         iterationCmd.Add(summaryCmd);
+        iterationCmd.Add(criterionCmd);
 
         return iterationCmd;
     }
@@ -113,6 +115,12 @@ public static class IterationCommand
             Description = "Create iteration in active state immediately (with initial requirement approved)"
         };
 
+        var criterionOption = new Option<string[]>("--criterion")
+        {
+            Description = "Acceptance criterion text (repeatable)",
+            AllowMultipleArgumentsPerToken = false
+        };
+
         var workspaceRootOption = new Option<string?>("--workspace-root")
         {
             Description = "Explicit path to workspace root or project directory containing .dogdouspec"
@@ -127,6 +135,7 @@ public static class IterationCommand
         createCmd.Add(idOption);
         createCmd.Add(kindOption);
         createCmd.Add(activateOption);
+        createCmd.Add(criterionOption);
         createCmd.Add(workspaceRootOption);
         createCmd.Add(formatOption);
 
@@ -135,6 +144,7 @@ public static class IterationCommand
             var id = parseResult.GetValue(idOption);
             var kind = parseResult.GetValue(kindOption);
             var activate = parseResult.GetValue(activateOption);
+            var criteria = parseResult.GetValue(criterionOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
@@ -165,6 +175,31 @@ public static class IterationCommand
                 return 2;
             }
 
+            if (activate)
+            {
+                if (criteria == null || criteria.Length == 0)
+                {
+                    var envelope = new DiagnosticsEnvelope("iteration create", Diagnostic.Error(
+                        DiagnosticCodes.CriterionUndefined,
+                        "Iteration creation with --activate requires at least one defined --criterion. Cannot activate with default placeholder criteria."));
+                    Console.Error.Write(envelope.Format(format));
+                    return 5;
+                }
+
+                for (var i = 0; i < criteria.Length; i++)
+                {
+                    var (isValid, reason) = IterationCriterionPolicy.Validate(criteria[i], $"index-{i + 1}");
+                    if (!isValid)
+                    {
+                        var envelope = new DiagnosticsEnvelope("iteration create", Diagnostic.Error(
+                            DiagnosticCodes.CriterionUndefined,
+                            reason ?? "Acceptance criterion text is undefined."));
+                        Console.Error.Write(envelope.Format(format));
+                        return 5;
+                    }
+                }
+            }
+
             var (discoverSuccess, discoveredRoot, discoverError) = WorkspaceDiscovery.FindWorkspaceRoot(
                 workspaceRoot,
                 Environment.CurrentDirectory);
@@ -180,7 +215,8 @@ public static class IterationCommand
                 discoveredRoot,
                 id,
                 kind,
-                activate: activate);
+                activate: activate,
+                criteria: criteria);
 
             if (!success || diagnostics.Count > 0)
             {
@@ -823,6 +859,152 @@ public static class IterationCommand
         });
 
         return cmd;
+    }
+
+    private static Command BuildCriterionCommand()
+    {
+        var criterionCmd = new Command("criterion", "Author and manage iteration acceptance criteria (mutating)");
+
+        int ExecuteCriterionAction(
+            string commandName,
+            string? explicitIterId,
+            string? text,
+            string? targetId,
+            bool isAdd,
+            int? expectedSpecRev,
+            string? workspaceRoot,
+            string? formatArg)
+        {
+            var format = WorkspaceCommand.ResolveFormat(formatArg);
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                var envelope = new DiagnosticsEnvelope(commandName, Diagnostic.Error(
+                    DiagnosticCodes.CriterionUndefined,
+                    "--text option is required and cannot be blank."));
+                Console.Error.Write(envelope.Format(format));
+                return 5;
+            }
+
+            var (discoverSuccess, discoveredRoot, discoverError) = WorkspaceDiscovery.FindWorkspaceRoot(
+                workspaceRoot,
+                Environment.CurrentDirectory);
+
+            if (!discoverSuccess || discoverError != null)
+            {
+                var envelope = new DiagnosticsEnvelope(commandName, discoverError!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var iterId = ResolveIterationId(explicitIterId, discoveredRoot);
+            if (string.IsNullOrWhiteSpace(iterId))
+            {
+                var envelope = new DiagnosticsEnvelope(commandName, Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "--iteration is required when multiple or zero candidate iterations exist."));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var (success, envelopeResult, diagnostics) = isAdd
+                ? IterationCriterionAuthor.Add(
+                    discoveredRoot,
+                    iterId,
+                    text,
+                    criterionId: targetId,
+                    expectedSpecRevision: expectedSpecRev)
+                : IterationCriterionAuthor.Define(
+                    discoveredRoot,
+                    iterId,
+                    text,
+                    criterionId: targetId,
+                    expectedSpecRevision: expectedSpecRev);
+
+            if (!success || diagnostics.Count > 0)
+            {
+                var diagEnvelope = new DiagnosticsEnvelope(commandName, diagnostics);
+                Console.Error.Write(diagEnvelope.Format(format));
+                return diagEnvelope.GetExitCode();
+            }
+
+            if (envelopeResult != null)
+            {
+                Console.Out.Write(envelopeResult.Format(format));
+            }
+
+            return 0;
+        }
+
+        Command BuildSetOrDefineCommand(string cmdName)
+        {
+            var cmd = new Command(cmdName, "Define or replace an acceptance criterion (mutating)");
+            var iterOpt = new Option<string?>("--iteration") { Description = "Iteration identifier (omitted auto-resolves candidate iteration)" };
+            var textOpt = new Option<string>("--text") { Description = "Acceptance criterion text", Required = true };
+            var critIdOpt = new Option<string?>("--criterion-id") { Description = "Target criterion ID or 1-based index (omitted targets single undefined criterion or single criterion)" };
+            var revOpt = new Option<int?>("--expected-spec-revision") { Description = "Expected revision of spec.xml (optimistic concurrency check)" };
+            var wsOpt = new Option<string?>("--workspace-root") { Description = "Explicit path to workspace root or project directory containing .dogdouspec" };
+            var fmtOpt = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+            fmtOpt.AcceptOnlyFromAmong("xml", "human");
+
+            cmd.Add(iterOpt);
+            cmd.Add(textOpt);
+            cmd.Add(critIdOpt);
+            cmd.Add(revOpt);
+            cmd.Add(wsOpt);
+            cmd.Add(fmtOpt);
+            cmd.SetAction(parseResult =>
+            {
+                return ExecuteCriterionAction(
+                    $"iteration criterion {cmdName}",
+                    parseResult.GetValue(iterOpt),
+                    parseResult.GetValue(textOpt),
+                    parseResult.GetValue(critIdOpt),
+                    isAdd: false,
+                    parseResult.GetValue(revOpt),
+                    parseResult.GetValue(wsOpt),
+                    parseResult.GetValue(fmtOpt));
+            });
+            return cmd;
+        }
+
+        var setCmd = BuildSetOrDefineCommand("set");
+        var defineCmd = BuildSetOrDefineCommand("define");
+
+        // Subcommand: add
+        var addCmd = new Command("add", "Add a new acceptance criterion (mutating)");
+        var addIterOpt = new Option<string?>("--iteration") { Description = "Iteration identifier (omitted auto-resolves candidate iteration)" };
+        var addTextOpt = new Option<string>("--text") { Description = "Acceptance criterion text", Required = true };
+        var addCritIdOpt = new Option<string?>("--criterion-id") { Description = "Explicit criterion ID (omitted auto-generates deterministic ID)" };
+        var addRevOpt = new Option<int?>("--expected-spec-revision") { Description = "Expected revision of spec.xml (optimistic concurrency check)" };
+        var addWsOpt = new Option<string?>("--workspace-root") { Description = "Explicit path to workspace root or project directory containing .dogdouspec" };
+        var addFmtOpt = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        addFmtOpt.AcceptOnlyFromAmong("xml", "human");
+
+        addCmd.Add(addIterOpt);
+        addCmd.Add(addTextOpt);
+        addCmd.Add(addCritIdOpt);
+        addCmd.Add(addRevOpt);
+        addCmd.Add(addWsOpt);
+        addCmd.Add(addFmtOpt);
+        addCmd.SetAction(parseResult =>
+        {
+            return ExecuteCriterionAction(
+                "iteration criterion add",
+                parseResult.GetValue(addIterOpt),
+                parseResult.GetValue(addTextOpt),
+                parseResult.GetValue(addCritIdOpt),
+                isAdd: true,
+                parseResult.GetValue(addRevOpt),
+                parseResult.GetValue(addWsOpt),
+                parseResult.GetValue(addFmtOpt));
+        });
+
+        criterionCmd.Add(setCmd);
+        criterionCmd.Add(defineCmd);
+        criterionCmd.Add(addCmd);
+
+        return criterionCmd;
     }
 
     internal static string? ResolveIterationId(string? explicitId, string workspaceRoot)

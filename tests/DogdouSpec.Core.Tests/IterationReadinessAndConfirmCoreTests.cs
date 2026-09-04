@@ -14,6 +14,9 @@ namespace DogdouSpec.Core.Tests;
 public sealed class IterationReadinessAndConfirmCoreTests
 {
     private static string RepoRoot = null!;
+    private static readonly string[] SubstantiveCriterion = new[] { "Substantive criterion defined." };
+    private static readonly string[] FeatureActivationCriterion = new[] { "Feature activation criterion defined." };
+    private static readonly string[] InitialApprovedCriterion = new[] { "Initial approved criterion." };
     private string _tempDir = null!;
 
     [ClassInitialize]
@@ -253,8 +256,19 @@ public sealed class IterationReadinessAndConfirmCoreTests
         Assert.IsNotNull(result);
         Assert.AreEqual(iterId, result.IterationId);
         Assert.AreEqual("activation", result.Phase);
-        Assert.IsTrue(result.TechnicallyReady);
+        Assert.IsFalse(result.TechnicallyReady);
+        var critCheck = result.TechnicalChecks.FirstOrDefault(c => c.Name == "criteria_defined");
+        Assert.IsNotNull(critCheck);
+        Assert.AreEqual("failed", critCheck.Result);
         Assert.AreEqual("activate", result.RequiredAction.Action);
+
+        var definedIterId = "20260824-test-defined";
+        var (createDefinedOk, _, _) = IterationCreator.Create(workspace, definedIterId, "feature", criteria: SubstantiveCriterion);
+        Assert.IsTrue(createDefinedOk);
+        var (definedSuccess, definedResult, _) = IterationReadiness.Assess(workspace, definedIterId, "activation");
+        Assert.IsTrue(definedSuccess);
+        Assert.IsNotNull(definedResult);
+        Assert.IsTrue(definedResult.TechnicallyReady);
     }
 
     [TestMethod]
@@ -307,7 +321,7 @@ public sealed class IterationReadinessAndConfirmCoreTests
         var workspace = CreateWorkspaceCopy();
         var iterId = "20260824-feature-activate";
         var clock = new TestClock(new DateTime(2026, 8, 24, 12, 0, 0, DateTimeKind.Utc));
-        var (createOk, _, _) = IterationCreator.Create(workspace, iterId, "feature", clock);
+        var (createOk, _, _) = IterationCreator.Create(workspace, iterId, "feature", clock, criteria: FeatureActivationCriterion);
         Assert.IsTrue(createOk);
 
         var tasksPath = Path.Combine(workspace, iterId, "tasks.xml");
@@ -1102,6 +1116,284 @@ public sealed class IterationReadinessAndConfirmCoreTests
 
         var valResult = SchemaValidator.Validate(workspace);
         Assert.IsTrue(valResult.IsValid, string.Join("; ", valResult.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+    }
+
+    [TestMethod]
+    public void CriterionAuthor_DefineAndAdd_Success_FeatureAndResearch()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var fixedTime = new DateTime(2026, 8, 27, 10, 0, 0, DateTimeKind.Utc);
+        var clock = new TestClock(fixedTime);
+
+        // 1. Feature iteration define and add
+        var featIterId = "20260827-crit-feat";
+        var (fCreateOk, _, _) = IterationCreator.Create(workspace, featIterId, "feature", clock);
+        Assert.IsTrue(fCreateOk);
+
+        var (defOk, defEnv, defDiags) = IterationCriterionAuthor.Define(
+            workspace,
+            featIterId,
+            "Defined first feature criterion.",
+            clock: clock);
+        Assert.IsTrue(defOk, string.Join("; ", defDiags.Select(d => d.Message)));
+        Assert.IsNotNull(defEnv);
+
+        var featSpec1 = XDocument.Load(Path.Combine(workspace, featIterId, "spec.xml"));
+        Assert.AreEqual("2", featSpec1.Root?.Attribute("revision")?.Value);
+        var featCrit1 = featSpec1.Descendants("criterion").ToList();
+        Assert.AreEqual(1, featCrit1.Count);
+        Assert.AreEqual("20260827-crit-crit-feat", featCrit1[0].Attribute("id")?.Value);
+        Assert.AreEqual("Defined first feature criterion.", featCrit1[0].Value);
+
+        var (addOk, addEnv, addDiags) = IterationCriterionAuthor.Add(
+            workspace,
+            featIterId,
+            "Added second feature criterion.",
+            clock: clock);
+        Assert.IsTrue(addOk, string.Join("; ", addDiags.Select(d => d.Message)));
+        Assert.IsNotNull(addEnv);
+
+        var featSpec2 = XDocument.Load(Path.Combine(workspace, featIterId, "spec.xml"));
+        Assert.AreEqual("3", featSpec2.Root?.Attribute("revision")?.Value);
+        var featCrit2 = featSpec2.Descendants("criterion").ToList();
+        Assert.AreEqual(2, featCrit2.Count);
+        Assert.AreEqual("20260827-crit-crit-feat", featCrit2[0].Attribute("id")?.Value);
+        Assert.AreEqual("20260827-crit-crit-feat-2", featCrit2[1].Attribute("id")?.Value);
+        Assert.AreEqual("Added second feature criterion.", featCrit2[1].Value);
+
+        // 2. Research iteration define and add
+        var resIterId = "20260827-crit-res";
+        var (rCreateOk, _, _) = IterationCreator.Create(workspace, resIterId, "research", clock);
+        Assert.IsTrue(rCreateOk);
+
+        var (rDefOk, _, rDefDiags) = IterationCriterionAuthor.Define(
+            workspace,
+            resIterId,
+            "Defined first research criterion.",
+            clock: clock);
+        Assert.IsTrue(rDefOk, string.Join("; ", rDefDiags.Select(d => d.Message)));
+
+        var (rAddOk, _, rAddDiags) = IterationCriterionAuthor.Add(
+            workspace,
+            resIterId,
+            "Added second research criterion.",
+            clock: clock);
+        Assert.IsTrue(rAddOk, string.Join("; ", rAddDiags.Select(d => d.Message)));
+
+        var resSpec = XDocument.Load(Path.Combine(workspace, resIterId, "spec.xml"));
+        Assert.AreEqual("3", resSpec.Root?.Attribute("revision")?.Value);
+        var resCrit = resSpec.Descendants("criterion").ToList();
+        Assert.AreEqual(2, resCrit.Count);
+        Assert.AreEqual("20260827-crit-crit-res", resCrit[0].Attribute("id")?.Value);
+        Assert.AreEqual("20260827-crit-crit-res-2", resCrit[1].Attribute("id")?.Value);
+
+        // Whole workspace validation
+        var valResult = SchemaValidator.Validate(workspace);
+        Assert.IsTrue(valResult.IsValid, string.Join("; ", valResult.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+    }
+
+    [TestMethod]
+    public void CriterionAuthor_StaleRevision_FailsClosed()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260827-stale-rev";
+        var (createOk, _, _) = IterationCreator.Create(workspace, iterId, "feature");
+        Assert.IsTrue(createOk);
+
+        var specPath = Path.Combine(workspace, iterId, "spec.xml");
+        var hashBefore = ComputeFileSha256(specPath);
+
+        // 1. Define with stale expected revision (expected 99, actual is 1)
+        var (defOk, _, defDiags) = IterationCriterionAuthor.Define(
+            workspace,
+            iterId,
+            "Defined criterion",
+            expectedSpecRevision: 99);
+        Assert.IsFalse(defOk);
+        Assert.IsTrue(defDiags.Any(d => d.Code == DiagnosticCodes.RevisionConflict));
+        Assert.AreEqual(hashBefore, ComputeFileSha256(specPath));
+
+        // 2. Add with stale expected revision (expected 99, actual is 1)
+        var (addOk, _, addDiags) = IterationCriterionAuthor.Add(
+            workspace,
+            iterId,
+            "Added criterion",
+            expectedSpecRevision: 99);
+        Assert.IsFalse(addOk);
+        Assert.IsTrue(addDiags.Any(d => d.Code == DiagnosticCodes.RevisionConflict));
+        Assert.AreEqual(hashBefore, ComputeFileSha256(specPath));
+    }
+
+    [TestMethod]
+    public void CriterionAuthor_BlankAndPlaceholder_Rejected()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260827-blank-crit";
+        var (createOk, _, _) = IterationCreator.Create(workspace, iterId, "feature");
+        Assert.IsTrue(createOk);
+
+        var specPath = Path.Combine(workspace, iterId, "spec.xml");
+        var hashBefore = ComputeFileSha256(specPath);
+
+        // Blank text
+        var (defEmptyOk, _, defEmptyDiags) = IterationCriterionAuthor.Define(workspace, iterId, "   \t ");
+        Assert.IsFalse(defEmptyOk);
+        Assert.IsTrue(defEmptyDiags.Any(d => d.Code == DiagnosticCodes.CriterionUndefined));
+        Assert.AreEqual(hashBefore, ComputeFileSha256(specPath));
+
+        // Seeded placeholder literal
+        var (defPlOk, _, defPlDiags) = IterationCriterionAuthor.Define(workspace, iterId, "Product criterion pending definition.");
+        Assert.IsFalse(defPlOk);
+        Assert.IsTrue(defPlDiags.Any(d => d.Code == DiagnosticCodes.CriterionUndefined));
+        Assert.AreEqual(hashBefore, ComputeFileSha256(specPath));
+
+        // Add with placeholder literal
+        var (addPlOk, _, addPlDiags) = IterationCriterionAuthor.Add(workspace, iterId, "Research criterion pending definition.");
+        Assert.IsFalse(addPlOk);
+        Assert.IsTrue(addPlDiags.Any(d => d.Code == DiagnosticCodes.CriterionUndefined));
+        Assert.AreEqual(hashBefore, ComputeFileSha256(specPath));
+    }
+
+    [TestMethod]
+    public void CriterionAuthor_DecidedCriterionRewrite_Rejected()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260827-decided-rewrite";
+        var clock = new TestClock(new DateTime(2026, 8, 27, 12, 0, 0, DateTimeKind.Utc));
+        var (createOk, _, _) = IterationCreator.Create(workspace, iterId, "feature", clock, criteria: InitialApprovedCriterion);
+        Assert.IsTrue(createOk);
+
+        // Activate iteration with accepted criterion
+        var activateXml = $"""
+<iteration-confirmation id="20260827T120000Z-confirm-activate" iteration="{iterId}" action="activate" expected_spec_revision="1" actor="owner" decided_at="2026-08-27T12:00:00Z">
+  <summary>Activation.</summary>
+  <requirements><requirement target="20260827-req-decided-rewrite" decision="approved"/></requirements>
+  <acceptance><criterion target="20260827-crit-decided-rewrite" decision="accepted"/></acceptance>
+</iteration-confirmation>
+""";
+        var (actOk, _, actDiags) = IterationConfirmer.Confirm(workspace, activateXml);
+        Assert.IsTrue(actOk, string.Join("; ", actDiags.Select(d => d.Message)));
+
+        var specPath = Path.Combine(workspace, iterId, "spec.xml");
+        var hashBefore = ComputeFileSha256(specPath);
+
+        // Attempt to rewrite decided criterion
+        var (rewriteOk, _, rewriteDiags) = IterationCriterionAuthor.Define(
+            workspace,
+            iterId,
+            "Rewriting decided criterion text",
+            criterionId: "20260827-crit-decided-rewrite");
+        Assert.IsFalse(rewriteOk);
+        Assert.IsTrue(rewriteDiags.Any(d => d.Code == DiagnosticCodes.OwnerDecisionRequired));
+        Assert.IsTrue(rewriteDiags.First(d => d.Code == DiagnosticCodes.OwnerDecisionRequired).Message.Contains("Decided criteria cannot be rewritten"));
+        Assert.AreEqual(hashBefore, ComputeFileSha256(specPath));
+    }
+
+    [TestMethod]
+    public void Readiness_ActivationAndCompletion_ReportsCriteriaDefinedFailed_WhenPlaceholder()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260827-readiness-placeholder";
+        var (createOk, _, _) = IterationCreator.Create(workspace, iterId, "feature");
+        Assert.IsTrue(createOk);
+
+        // 1. Activation phase: placeholder fails criteria_defined
+        var (actSuccess, actResult, _) = IterationReadiness.Assess(workspace, iterId, "activation");
+        Assert.IsTrue(actSuccess);
+        Assert.IsNotNull(actResult);
+        Assert.IsFalse(actResult.TechnicallyReady);
+        var actCritCheck = actResult.TechnicalChecks.FirstOrDefault(c => c.Name == "criteria_defined");
+        Assert.IsNotNull(actCritCheck);
+        Assert.AreEqual("failed", actCritCheck.Result);
+        var actVerifDim = actResult.Dimensions.FirstOrDefault(d => d.Name == "verification_completeness");
+        Assert.IsNotNull(actVerifDim);
+        Assert.AreEqual("failed", actVerifDim.Status);
+
+        // 2. Completion phase: active iteration with all tasks terminal but criterion still placeholder
+        MakeAllTasksTerminal(workspace, "20260823-xpath-core");
+        var activeSpecPath = Path.Combine(workspace, "20260823-xpath-core", "spec.xml");
+        var activeSpecDoc = XDocument.Load(activeSpecPath);
+        var firstCrit = activeSpecDoc.Descendants("criterion").First();
+        firstCrit.Value = "Product criterion pending definition.";
+        activeSpecDoc.Save(activeSpecPath);
+
+        var (compSuccess, compResult, compDiags) = IterationReadiness.Assess(workspace, "20260823-xpath-core", "completion");
+        Assert.IsTrue(compSuccess, string.Join("; ", compDiags.Select(d => d.Message)));
+        Assert.IsNotNull(compResult);
+        Assert.IsFalse(compResult.TechnicallyReady);
+        var compCritCheck = compResult.TechnicalChecks.FirstOrDefault(c => c.Name == "criteria_defined");
+        Assert.IsNotNull(compCritCheck);
+        Assert.AreEqual("failed", compCritCheck.Result);
+        var compVerifDim = compResult.Dimensions.FirstOrDefault(d => d.Name == "verification_completeness");
+        Assert.IsNotNull(compVerifDim);
+        Assert.AreEqual("failed", compVerifDim.Status);
+    }
+
+    [TestMethod]
+    public void Confirm_RawActivateContinueComplete_FailsClosed_OnUndefinedCriterion()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260827-failclosed-conf";
+        var clock = new TestClock(new DateTime(2026, 8, 27, 14, 0, 0, DateTimeKind.Utc));
+        var (createOk, _, _) = IterationCreator.Create(workspace, iterId, "feature", clock);
+        Assert.IsTrue(createOk);
+
+        var specPath = Path.Combine(workspace, iterId, "spec.xml");
+        var tasksPath = Path.Combine(workspace, iterId, "tasks.xml");
+        var specHashBefore = ComputeFileSha256(specPath);
+        var tasksHashBefore = ComputeFileSha256(tasksPath);
+
+        // 1. Raw activate on draft iteration with placeholder criterion fails closed
+        var activateXml = $"""
+<iteration-confirmation id="20260827T140000Z-confirm-act-fail" iteration="{iterId}" action="activate" expected_spec_revision="1" actor="owner" decided_at="2026-08-27T14:00:00Z">
+  <summary>Activate with placeholder.</summary>
+  <requirements><requirement target="20260827-req-failclosed-conf" decision="approved"/></requirements>
+</iteration-confirmation>
+""";
+        var (actOk, _, actDiags) = IterationConfirmer.Confirm(workspace, activateXml);
+        Assert.IsFalse(actOk);
+        Assert.IsTrue(actDiags.Any(d => d.Code == DiagnosticCodes.CriterionUndefined));
+        Assert.AreEqual(specHashBefore, ComputeFileSha256(specPath));
+        Assert.AreEqual(tasksHashBefore, ComputeFileSha256(tasksPath));
+
+        // 2. Raw continue on replanning iteration with placeholder criterion fails closed
+        var specDoc = XDocument.Load(specPath);
+        specDoc.Root!.SetAttributeValue("status", "replanning");
+        specDoc.Save(specPath);
+        var specHashReplanning = ComputeFileSha256(specPath);
+
+        var continueXml = $"""
+<iteration-confirmation id="20260827T140100Z-confirm-cont-fail" iteration="{iterId}" action="continue" expected_spec_revision="1" actor="owner" decided_at="2026-08-27T14:01:00Z">
+  <summary>Continue with placeholder.</summary>
+  <requirements><requirement target="20260827-req-failclosed-conf" decision="approved"/></requirements>
+</iteration-confirmation>
+""";
+        var (contOk, _, contDiags) = IterationConfirmer.Confirm(workspace, continueXml);
+        Assert.IsFalse(contOk);
+        Assert.IsTrue(contDiags.Any(d => d.Code == DiagnosticCodes.CriterionUndefined));
+        Assert.AreEqual(specHashReplanning, ComputeFileSha256(specPath));
+        Assert.AreEqual(tasksHashBefore, ComputeFileSha256(tasksPath));
+
+        // 3. Raw complete on active iteration with placeholder criterion fails closed
+        specDoc = XDocument.Load(specPath);
+        specDoc.Root!.SetAttributeValue("status", "active");
+        specDoc.Save(specPath);
+        MakeAllTasksTerminal(workspace, iterId);
+        var specHashActive = ComputeFileSha256(specPath);
+        var tasksHashTerminal = ComputeFileSha256(tasksPath);
+
+        var completeXml = $"""
+<iteration-confirmation id="20260827T140200Z-confirm-comp-fail" iteration="{iterId}" action="complete" expected_spec_revision="1" expected_tasks_revision="1" actor="owner" decided_at="2026-08-27T14:02:00Z">
+  <summary>Complete with placeholder.</summary>
+  <requirements><requirement target="20260827-req-failclosed-conf" decision="approved"/></requirements>
+  <acceptance><criterion target="20260827-crit-failclosed-conf" decision="accepted"/></acceptance>
+</iteration-confirmation>
+""";
+        var (compOk, _, compDiags) = IterationConfirmer.Confirm(workspace, completeXml);
+        Assert.IsFalse(compOk);
+        Assert.IsTrue(compDiags.Any(d => d.Code == DiagnosticCodes.CriterionUndefined));
+        Assert.AreEqual(specHashActive, ComputeFileSha256(specPath));
+        Assert.AreEqual(tasksHashTerminal, ComputeFileSha256(tasksPath));
     }
 
     #endregion

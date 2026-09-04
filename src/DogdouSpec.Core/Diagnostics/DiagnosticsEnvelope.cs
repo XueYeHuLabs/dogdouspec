@@ -136,6 +136,7 @@ public sealed class DiagnosticsEnvelope
             DiagnosticCodes.ManagedStateExists => 4,
 
             DiagnosticCodes.OwnerDecisionRequired => 5,
+            DiagnosticCodes.CriterionUndefined => 5,
             DiagnosticCodes.IterationReplanningExecutionFrozen => 5,
 
             DiagnosticCodes.FilesystemError => 6,

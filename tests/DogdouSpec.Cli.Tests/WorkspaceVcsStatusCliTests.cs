@@ -11,6 +11,7 @@ public sealed class WorkspaceVcsStatusCliTests
     private string _tempDir = null!;
     private string _workspaceRoot = null!;
     private const string TestIterationId = "20260904-vcs-cli-test";
+    private static readonly string[] TestCriteria = new[] { "VCS status criterion defined." };
 
     [TestInitialize]
     public void SetUp()
@@ -19,7 +20,7 @@ public sealed class WorkspaceVcsStatusCliTests
         Directory.CreateDirectory(_tempDir);
         WorkspaceInitializer.Initialize(_tempDir, _tempDir);
         _workspaceRoot = Path.Combine(_tempDir, ".dogdouspec");
-        IterationCreator.Create(_workspaceRoot, TestIterationId, "feature", activate: true);
+        IterationCreator.Create(_workspaceRoot, TestIterationId, "feature", activate: true, criteria: TestCriteria);
     }
 
     [TestCleanup]

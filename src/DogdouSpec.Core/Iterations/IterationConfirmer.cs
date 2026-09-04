@@ -877,6 +877,30 @@ public static class IterationConfirmer
                         $"Activation/continue cannot leave proposed design decisions. New design decision '{newDesignDecisionId}' is in 'proposed' status.") });
                 }
             }
+
+            var allCriteria = (specRoot.Element("product")?.Element("acceptance")?.Elements("criterion") ??
+                               specRoot.Element("research")?.Element("acceptance")?.Elements("criterion") ??
+                               Enumerable.Empty<XElement>()).ToList();
+            if (allCriteria.Count == 0)
+            {
+                return (false, null, new[] { Diagnostic.Error(
+                    DiagnosticCodes.CriterionUndefined,
+                    "Iteration activation requires at least one defined acceptance criterion. No criteria found.",
+                    normSpecDocPath) });
+            }
+
+            foreach (var crit in allCriteria)
+            {
+                var critId = crit.Attribute("id")?.Value ?? string.Empty;
+                var (isValid, reason) = IterationCriterionPolicy.Validate(crit.Value, critId);
+                if (!isValid)
+                {
+                    return (false, null, new[] { Diagnostic.Error(
+                        DiagnosticCodes.CriterionUndefined,
+                        reason ?? $"Acceptance criterion '{critId}' is undefined or placeholder.",
+                        normSpecDocPath) });
+                }
+            }
         }
 
         if (action == "continue")
@@ -1095,9 +1119,26 @@ public static class IterationConfirmer
             var allCriteria = (specRoot.Element("product")?.Element("acceptance")?.Elements("criterion") ??
                                specRoot.Element("research")?.Element("acceptance")?.Elements("criterion") ??
                                Enumerable.Empty<XElement>()).ToList();
+            if (allCriteria.Count == 0)
+            {
+                return (false, null, new[] { Diagnostic.Error(
+                    DiagnosticCodes.CriterionUndefined,
+                    "Iteration completion requires at least one defined acceptance criterion. No criteria found.",
+                    normSpecDocPath) });
+            }
+
             foreach (var crit in allCriteria)
             {
                 var critId = crit.Attribute("id")?.Value ?? string.Empty;
+                var (isValid, reason) = IterationCriterionPolicy.Validate(crit.Value, critId);
+                if (!isValid)
+                {
+                    return (false, null, new[] { Diagnostic.Error(
+                        DiagnosticCodes.CriterionUndefined,
+                        $"Iteration completion rejected: {reason}",
+                        normSpecDocPath) });
+                }
+
                 var finalDecision = critDecisions.TryGetValue(critId, out var dec) ? dec : (crit.Attribute("decision")?.Value ?? "pending");
                 if (!string.Equals(finalDecision, "accepted", StringComparison.Ordinal) &&
                     !string.Equals(finalDecision, "waived", StringComparison.Ordinal))

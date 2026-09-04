@@ -10,6 +10,7 @@ namespace DogdouSpec.Core.Tests;
 [TestClass]
 public sealed class IterationSummaryTests
 {
+    private static readonly string[] TestCriteria = new[] { "Substantive criterion for summary test." };
     private string _tempDir = null!;
     private string _wsRoot = null!;
 
@@ -35,7 +36,7 @@ public sealed class IterationSummaryTests
     public void IterationSummary_GeneratesAccurateProgressAndBreakdown()
     {
         var iterId = "20260831-feature-test";
-        var (createSuccess, _, _) = IterationCreator.Create(_wsRoot, iterId, "feature", activate: true);
+        var (createSuccess, _, _) = IterationCreator.Create(_wsRoot, iterId, "feature", activate: true, criteria: TestCriteria);
         Assert.IsTrue(createSuccess);
 
         // Add 2 tasks
@@ -92,7 +93,7 @@ public sealed class IterationSummaryTests
     public void IterationSummary_PendingGates_OnlyIncludesExplicitPendingCriteria()
     {
         var iterId = "20260831-criteria-test";
-        var (createSuccess, _, _) = IterationCreator.Create(_wsRoot, iterId, "feature", activate: true);
+        var (createSuccess, _, _) = IterationCreator.Create(_wsRoot, iterId, "feature", activate: true, criteria: TestCriteria);
         Assert.IsTrue(createSuccess);
 
         // Modify spec.xml to add one criterion without decision, and one with decision="pending"
@@ -135,7 +136,7 @@ public sealed class IterationSummaryTests
     public void IterationSummary_UnrecognizedTaskStatus_EmitsWarningDiagnostic_AndTreatsAsActive()
     {
         var iterId = "20260831-unknown-status";
-        var (createSuccess, _, _) = IterationCreator.Create(_wsRoot, iterId, "feature", activate: true);
+        var (createSuccess, _, _) = IterationCreator.Create(_wsRoot, iterId, "feature", activate: true, criteria: TestCriteria);
         Assert.IsTrue(createSuccess);
 
         var input = new QuickTaskInput("Task One", new List<string> { "src/**" }, "Done", "Why",
@@ -166,7 +167,7 @@ public sealed class IterationSummaryTests
     public void IterationSummary_Markdown_RendersInactiveAndUnknownTasks_Consistently()
     {
         var iterId = "20260831-md-status";
-        var (createSuccess, _, _) = IterationCreator.Create(_wsRoot, iterId, "feature", activate: true);
+        var (createSuccess, _, _) = IterationCreator.Create(_wsRoot, iterId, "feature", activate: true, criteria: TestCriteria);
         Assert.IsTrue(createSuccess);
 
         var input1 = new QuickTaskInput("Task Cancelled", new List<string> { "src/**" }, "Done", "Why",
