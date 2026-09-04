@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="8">
+  <index>
+    <summary>Tasks for iteration 20260904-external-dogfood-remediation.</summary>
+    <term key="iteration" value="20260904-external-dogfood-remediation" />
+  </index>
+<task id="20260904-task-f10-transport-integrity" status="pending" created_at="2026-09-04T08:00:00Z" updated_at="2026-09-04T08:00:00Z" agent="agy-f10-implementer">
+    <index>
+      <summary>Fail closed when transport evidence is unavailable</summary>
+      <term key="kind" value="quick" />
+      <term key="finding" value="F10" />
+      <term key="priority" value="p0" />
+    </index>
+    <title>Fail closed when transport evidence is unavailable</title>
+    <objective>Non-repositories and Git status failures are not transport-ready, authoritative files are reported, and clean repositories remain transport-ready under regression tests.</objective>
+    <rationale>External finding F10 proves the current governance status can certify a checkpoint that does not exist.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Workspace/" />
+        <include path="src/DogdouSpec.Cli/Commands/WorkspaceCommand.cs" />
+        <include path="tests/" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260904-req-transport-integrity" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260904-task-f10-transport-integrity-done" status="pending">Non-repositories and Git status failures are not transport-ready, authoritative files are reported, and clean repositories remain transport-ready under regression tests.</criterion>
+    </acceptance>
+    <context>
+      <summary>External finding F10 proves the current governance status can certify a checkpoint that does not exist.</summary>
+    </context>
+    <review required="true" />
+    <records><record id="20260904T080000Z-quick-f10-transport-integrity-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:00:00Z" actor="quick-task" operation_id="20260904T080000Z-quick-f10-transport-integrity"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="eea4df6c0aad1e20faa0460c78218615ba5cc7b6b064202df5cf907c16434950" /></index><summary>Task addition receipt.</summary></record></records>
+  </task><task id="20260904-task-f6-f7-canonical-xml" status="pending" created_at="2026-09-04T08:01:00Z" updated_at="2026-09-04T08:01:00Z" agent="agy-xml-implementer">
+    <index>
+      <summary>Canonicalize managed XML serialization</summary>
+      <term key="kind" value="quick" />
+      <term key="finding" value="F6-F7" />
+      <term key="priority" value="p0" />
+    </index>
+    <title>Canonicalize managed XML serialization</title>
+    <objective>Every managed write path emits stable structural indentation and exactly one trailing LF without altering prose text values, with round-trip and mutation regressions.</objective>
+    <rationale>External findings F6 and F7 make checkpointed governance state fail whitespace checks and resist meaningful review.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/" />
+        <include path="tests/DogdouSpec.Core.Tests/" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260904-req-canonical-serialization" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260904-task-f6-f7-canonical-xml-done" status="pending">Every managed write path emits stable structural indentation and exactly one trailing LF without altering prose text values, with round-trip and mutation regressions.</criterion>
+    </acceptance>
+    <context>
+      <summary>External findings F6 and F7 make checkpointed governance state fail whitespace checks and resist meaningful review.</summary>
+    </context>
+    <review required="true" />
+    <records><record id="20260904T080100Z-quick-f6-f7-canonical-xml-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:01:00Z" actor="quick-task" operation_id="20260904T080100Z-quick-f6-f7-canonical-xml"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="b48c7e5c7be60f9ff3717f76c7a073dd8ddb3fd2a83dda22320aabf47b5bcd2a" /></index><summary>Task addition receipt.</summary></record></records>
+  </task><task id="20260904-task-f4-operational-task-add" status="pending" created_at="2026-09-04T08:02:00Z" updated_at="2026-09-04T08:02:00Z" agent="agy-task-add-implementer">
+    <index>
+      <summary>Accept canonical operational tasks in task add</summary>
+      <term key="kind" value="quick" />
+      <term key="finding" value="F4" />
+      <term key="priority" value="p1" />
+    </index>
+    <title>Accept canonical operational tasks in task add</title>
+    <objective>An unmodified task quick dry-run request with one valid current-iteration supports origin succeeds through task add, while invalid origins report actual versus expected structure.</objective>
+    <rationale>External finding F4 shows task add rejects the CLI's own canonical request solely because of command-name provenance.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks/TaskAdder.cs" />
+        <include path="tests/" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260904-req-operational-task-composition" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260904-task-f4-operational-task-add-done" status="pending">An unmodified task quick dry-run request with one valid current-iteration supports origin succeeds through task add, while invalid origins report actual versus expected structure.</criterion>
+    </acceptance>
+    <context>
+      <summary>External finding F4 shows task add rejects the CLI's own canonical request solely because of command-name provenance.</summary>
+    </context>
+    <review required="true" />
+    <records><record id="20260904T080200Z-quick-f4-operational-task-add-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:02:00Z" actor="quick-task" operation_id="20260904T080200Z-quick-f4-operational-task-add"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="fa4f65518eab7d00abc1f4555f89ae1b6e05da99210ab5c7eb2c51015ea88957" /></index><summary>Task addition receipt.</summary></record></records>
+  </task><task id="20260904-task-f2-defined-criteria" status="pending" created_at="2026-09-04T08:03:00Z" updated_at="2026-09-04T08:03:00Z" agent="agy-criteria-implementer">
+    <index>
+      <summary>Add owner-authorized defined criteria lifecycle</summary>
+      <term key="kind" value="quick" />
+      <term key="finding" value="F2" />
+      <term key="priority" value="p0" />
+    </index>
+    <title>Add owner-authorized defined criteria lifecycle</title>
+    <objective>Owners can author criteria at creation and later through porcelain, and activation, readiness, and completion reject blank or seeded placeholder criteria.</objective>
+    <rationale>External finding F2 proves DogdouSpec can certify product acceptance against undefined text.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Iterations/" />
+        <include path="src/DogdouSpec.Cli/Commands/IterationCommand.cs" />
+        <include path="tests/" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260904-req-defined-criteria" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260904-task-f6-f7-canonical-xml" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260904-task-f2-defined-criteria-done" status="pending">Owners can author criteria at creation and later through porcelain, and activation, readiness, and completion reject blank or seeded placeholder criteria.</criterion>
+    </acceptance>
+    <context>
+      <summary>External finding F2 proves DogdouSpec can certify product acceptance against undefined text.</summary>
+    </context>
+    <review required="true" />
+    <records><record id="20260904T080300Z-quick-f2-defined-criteria-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:03:00Z" actor="quick-task" operation_id="20260904T080300Z-quick-f2-defined-criteria"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="3981f1e2569eb025d2fc09d76780c22b5dccea4e64de7883c5ca1137a49373e5" /></index><summary>Task addition receipt.</summary></record></records>
+  </task><task id="20260904-task-f1-f5-f8-preflight" status="pending" created_at="2026-09-04T08:04:00Z" updated_at="2026-09-04T08:04:00Z" agent="agy-preflight-implementer">
+    <index>
+      <summary>Unify mutation preflight and addressing</summary>
+      <term key="kind" value="quick" />
+      <term key="finding" value="F1-F5-F8" />
+      <term key="priority" value="p1" />
+    </index>
+    <title>Unify mutation preflight and addressing</title>
+    <objective>Request validation or dry-run and explain surfaces expose mutation preconditions without writes, conditional help is accurate, and query, validate, revisions, and confirmation addressing are consistent.</objective>
+    <rationale>External findings F1, F5, and F8 show one underlying lack of a coherent preflight and addressing contract.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/" />
+        <include path="src/DogdouSpec.Cli/Commands/" />
+        <include path="tests/" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260904-req-mutation-preflight" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260904-task-f6-f7-canonical-xml" relation="depends-on" />
+      <ref scope="document" target="20260904-task-f2-defined-criteria" relation="depends-on" />
+      <ref scope="document" target="20260904-task-f4-operational-task-add" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260904-task-f1-f5-f8-preflight-done" status="pending">Request validation or dry-run and explain surfaces expose mutation preconditions without writes, conditional help is accurate, and query, validate, revisions, and confirmation addressing are consistent.</criterion>
+    </acceptance>
+    <context>
+      <summary>External findings F1, F5, and F8 show one underlying lack of a coherent preflight and addressing contract.</summary>
+    </context>
+    <review required="true" />
+    <records><record id="20260904T080400Z-quick-f1-f5-f8-preflight-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:04:00Z" actor="quick-task" operation_id="20260904T080400Z-quick-f1-f5-f8-preflight"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="660afb8cf8211eb23c99080a4f61f03df69dfe3a05890749d5b9c7212c02fa5d" /></index><summary>Task addition receipt.</summary></record></records>
+  </task><task id="20260904-task-f3-knowledge-porcelain" status="pending" created_at="2026-09-04T08:05:00Z" updated_at="2026-09-04T08:05:00Z" agent="agy-knowledge-implementer">
+    <index>
+      <summary>Add first-class knowledge porcelain</summary>
+      <term key="kind" value="quick" />
+      <term key="finding" value="F3" />
+      <term key="priority" value="p2" />
+    </index>
+    <title>Add first-class knowledge porcelain</title>
+    <objective>Users can add and list validated knowledge entries without raw XML and iteration completion output advises recording durable cross-iteration facts.</objective>
+    <rationale>External finding F3 shows the durable knowledge store is practically unused without a first-class workflow.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Knowledge/" />
+        <include path="src/DogdouSpec.Cli/Commands/" />
+        <include path="tests/" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260904-req-knowledge-porcelain" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260904-task-f1-f5-f8-preflight" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260904-task-f3-knowledge-porcelain-done" status="pending">Users can add and list validated knowledge entries without raw XML and iteration completion output advises recording durable cross-iteration facts.</criterion>
+    </acceptance>
+    <context>
+      <summary>External finding F3 shows the durable knowledge store is practically unused without a first-class workflow.</summary>
+    </context>
+    <review required="true" />
+    <records><record id="20260904T080500Z-quick-f3-knowledge-porcelain-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:05:00Z" actor="quick-task" operation_id="20260904T080500Z-quick-f3-knowledge-porcelain"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="646f4828eca70bcc70fe6c799c48cbf4fbc9bd7542f2940c6c1a60517c93228a" /></index><summary>Task addition receipt.</summary></record></records>
+  </task><task id="20260904-task-f9-schema-drift" status="pending" created_at="2026-09-04T08:06:00Z" updated_at="2026-09-04T08:06:00Z" agent="agy-schema-implementer">
+    <index>
+      <summary>Detect workspace schema drift</summary>
+      <term key="kind" value="quick" />
+      <term key="finding" value="F9" />
+      <term key="priority" value="p2" />
+    </index>
+    <title>Detect workspace schema drift</title>
+    <objective>Validate compares workspace schema copies with embedded authoritative schemas, reports drift without silent trust, and leaves normal initialized workspaces valid.</objective>
+    <rationale>External finding F9 leaves independently copied schema caches unpinned across CLI upgrades.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Validation/" />
+        <include path="src/DogdouSpec.Core/Workspace/" />
+        <include path="src/DogdouSpec.Cli/Commands/ValidateCommand.cs" />
+        <include path="tests/" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260904-req-schema-drift" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260904-task-f1-f5-f8-preflight" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260904-task-f9-schema-drift-done" status="pending">Validate compares workspace schema copies with embedded authoritative schemas, reports drift without silent trust, and leaves normal initialized workspaces valid.</criterion>
+    </acceptance>
+    <context>
+      <summary>External finding F9 leaves independently copied schema caches unpinned across CLI upgrades.</summary>
+    </context>
+    <review required="true" />
+    <records><record id="20260904T080600Z-quick-f9-schema-drift-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:06:00Z" actor="quick-task" operation_id="20260904T080600Z-quick-f9-schema-drift"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="7cf298084769b69885486e70fd1cca77c8ad6c0e7534c3e9fcf0b9e4cbe3d9d8" /></index><summary>Task addition receipt.</summary></record></records>
+  </task></tasks>
