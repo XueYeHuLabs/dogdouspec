@@ -13,6 +13,9 @@ param(
     [string]$TimestampUrl = "",
 
     [Parameter(Mandatory = $false)]
+    [switch]$SkipSigning,
+
+    [Parameter(Mandatory = $false)]
     [switch]$AutoUpload
 )
 
@@ -37,16 +40,20 @@ try {
         -o $winOutDir
     if ($LASTEXITCODE -ne 0) { throw "Native AOT compilation failed." }
 
-    # 2. Sign binary
-    Write-Host "`n[Step 2/5] Signing binary with code signing certificate..." -ForegroundColor Yellow
-    $signParams = @{ ExePath = "$winOutDir/dogdouspec.exe" }
-    if (-not [string]::IsNullOrWhiteSpace($CertSubject))    { $signParams["CertSubject"]    = $CertSubject }
-    if (-not [string]::IsNullOrWhiteSpace($CertThumbprint)) { $signParams["CertThumbprint"] = $CertThumbprint }
-    if (-not [string]::IsNullOrWhiteSpace($TimestampUrl))   { $signParams["TimestampUrl"]   = $TimestampUrl }
-    & (Join-Path $PSScriptRoot "sign-local.ps1") @signParams
+    # 2. Sign binary unless the caller explicitly accepts an unsigned portable package.
+    if ($SkipSigning) {
+        Write-Warning "[Step 2/5] Signing explicitly skipped; the release executable is unsigned."
+    } else {
+        Write-Host "`n[Step 2/5] Signing binary with code signing certificate..." -ForegroundColor Yellow
+        $signParams = @{ ExePath = "$winOutDir/dogdouspec.exe" }
+        if (-not [string]::IsNullOrWhiteSpace($CertSubject))    { $signParams["CertSubject"]    = $CertSubject }
+        if (-not [string]::IsNullOrWhiteSpace($CertThumbprint)) { $signParams["CertThumbprint"] = $CertThumbprint }
+        if (-not [string]::IsNullOrWhiteSpace($TimestampUrl))   { $signParams["TimestampUrl"]   = $TimestampUrl }
+        & (Join-Path $PSScriptRoot "sign-local.ps1") @signParams
+    }
 
     # 3. Package and compute SHA256
-    Write-Host "`n[Step 3/5] Packaging signed zip and computing SHA256..." -ForegroundColor Yellow
+    Write-Host "`n[Step 3/5] Packaging release zip and computing SHA256..." -ForegroundColor Yellow
     if (Test-Path $zipName) { Remove-Item $zipName -Force }
     Compress-Archive -Path "$winOutDir/dogdouspec.exe" -DestinationPath $zipName
     $hash = (Get-FileHash -Path $zipName -Algorithm SHA256).Hash
