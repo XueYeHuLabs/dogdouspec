@@ -29,7 +29,244 @@ public static class TaskAdder
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0") => AddInternal(workspaceRoot, iterationId, expectedRevision, requestXml, false, false, "task add", clock, faultInjector, version, null);
+        string version = "1.0",
+        bool dryRun = false)
+    {
+        var start = IsCanonicalQuickStartRequest(requestXml);
+        return AddInternal(workspaceRoot, iterationId, expectedRevision, requestXml, start, dryRun, "task add", clock, faultInjector, version, null);
+    }
+
+    private static bool IsCanonicalQuickStartRequest(string requestXml)
+    {
+        try
+        {
+            using var sr = new StringReader(requestXml);
+            using var reader = SecureXmlReaderFactory.CreateReader(sr);
+            var request = XDocument.Load(reader);
+            var root = request.Root;
+            if (root?.Name != "task-add" ||
+                !HasOnlyAttributes(root, "id", "actor", "occurred_at") ||
+                root.Elements().Count() != 1 ||
+                root.Element("task") is not { } task)
+            {
+                return false;
+            }
+
+            var operationId = root.Attribute("id")?.Value;
+            var occurredAt = root.Attribute("occurred_at")?.Value;
+            if (!string.Equals(root.Attribute("actor")?.Value, "quick-task", StringComparison.Ordinal) ||
+                !QuickOperationTimestampMatches(operationId, occurredAt))
+            {
+                return false;
+            }
+
+            var taskId = task.Attribute("id")?.Value;
+            var agent = task.Attribute("agent")?.Value;
+            var allowedTaskAttributes = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "id", "status", "created_at", "updated_at", "agent", "started_at"
+            };
+            if (string.IsNullOrWhiteSpace(taskId) ||
+                task.Attributes().Any(a => !allowedTaskAttributes.Contains(a.Name.LocalName)) ||
+                task.Attributes().Count() is < 5 or > 6 ||
+                !string.Equals(task.Attribute("status")?.Value, "in-progress", StringComparison.Ordinal) ||
+                !string.Equals(task.Attribute("created_at")?.Value, occurredAt, StringComparison.Ordinal) ||
+                !string.Equals(task.Attribute("updated_at")?.Value, occurredAt, StringComparison.Ordinal) ||
+                !string.Equals(task.Attribute("started_at")?.Value, occurredAt, StringComparison.Ordinal) ||
+                (task.Attribute("agent") != null && string.IsNullOrWhiteSpace(agent)))
+            {
+                return false;
+            }
+
+            var expectedChildren = new List<string>
+            {
+                "index", "title", "objective", "rationale", "scope", "origin"
+            };
+            if (task.Element("dependencies") != null)
+            {
+                expectedChildren.Add("dependencies");
+            }
+            expectedChildren.Add("constraints");
+            expectedChildren.Add("acceptance");
+            expectedChildren.Add("context");
+            if (task.Element("review") != null)
+            {
+                expectedChildren.Add("review");
+            }
+            expectedChildren.Add("records");
+            if (!task.Elements().Select(e => e.Name.LocalName).SequenceEqual(expectedChildren, StringComparer.Ordinal))
+            {
+                return false;
+            }
+
+            var index = task.Element("index")!;
+            var indexChildren = index.Elements().ToList();
+            var indexSummary = indexChildren.FirstOrDefault();
+            var terms = indexChildren.Skip(1).ToList();
+            if (index.Attributes().Any() ||
+                indexSummary?.Name != "summary" ||
+                indexSummary.Attributes().Any() ||
+                indexSummary.Elements().Any() ||
+                terms.Count == 0 ||
+                terms.Any(t => t.Name != "term" || !HasOnlyAttributes(t, "key", "value") || t.Elements().Any() ||
+                    string.IsNullOrWhiteSpace(t.Attribute("key")?.Value) || string.IsNullOrWhiteSpace(t.Attribute("value")?.Value)) ||
+                terms.Count(t => string.Equals(t.Attribute("key")?.Value, "kind", StringComparison.Ordinal) &&
+                    string.Equals(t.Attribute("value")?.Value, "quick", StringComparison.Ordinal)) != 1 ||
+                terms.Any(t => string.Equals(t.Attribute("key")?.Value, "kind", StringComparison.Ordinal) &&
+                    !string.Equals(t.Attribute("value")?.Value, "quick", StringComparison.Ordinal)))
+            {
+                return false;
+            }
+
+            var statusTerms = terms.Where(t => string.Equals(t.Attribute("key")?.Value, "status", StringComparison.Ordinal)).ToList();
+            if (statusTerms.Count > 1 ||
+                (statusTerms.Count == 1 && !string.Equals(statusTerms[0].Attribute("value")?.Value, "in-progress", StringComparison.Ordinal)))
+            {
+                return false;
+            }
+
+            var title = task.Element("title")!;
+            var objective = task.Element("objective")!;
+            var rationale = task.Element("rationale")!;
+            if (title.Attributes().Any() || title.Elements().Any() ||
+                objective.Attributes().Any() || objective.Elements().Any() ||
+                rationale.Attributes().Any() || rationale.Elements().Any() ||
+                !string.Equals(indexSummary.Value, title.Value, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            var scope = task.Element("scope")!;
+            var repositories = scope.Elements().ToList();
+            if (scope.Attributes().Any() || repositories.Count != 1 || repositories[0].Name != "repository" ||
+                !HasOnlyAttributes(repositories[0], "path") ||
+                !string.Equals(repositories[0].Attribute("path")?.Value, ".", StringComparison.Ordinal))
+            {
+                return false;
+            }
+            var includes = repositories[0].Elements().ToList();
+            if (includes.Count == 0 || includes.Any(include => include.Name != "include" ||
+                !HasOnlyAttributes(include, "path") || include.Elements().Any() ||
+                string.IsNullOrWhiteSpace(include.Attribute("path")?.Value)))
+            {
+                return false;
+            }
+
+            var origin = task.Element("origin")!;
+            var originRefs = origin.Elements().ToList();
+            if (origin.Attributes().Any() || originRefs.Count == 0 ||
+                originRefs.Any(reference => reference.Name != "ref" || !HasOnlyAttributes(reference, "scope", "target", "relation") ||
+                    reference.Elements().Any() || !string.Equals(reference.Attribute("scope")?.Value, "iteration", StringComparison.Ordinal) ||
+                    string.IsNullOrWhiteSpace(reference.Attribute("target")?.Value)) ||
+                originRefs.Select(reference => reference.Attribute("target")!.Value).Distinct(StringComparer.Ordinal).Count() != originRefs.Count)
+            {
+                return false;
+            }
+            var operationalOrigin = originRefs.Count == 1 &&
+                string.Equals(originRefs[0].Attribute("relation")?.Value, "supports", StringComparison.Ordinal);
+            if (!operationalOrigin && originRefs.Any(reference =>
+                    !string.Equals(reference.Attribute("relation")?.Value, "implements", StringComparison.Ordinal)))
+            {
+                return false;
+            }
+
+            var dependencies = task.Element("dependencies");
+            if (dependencies != null)
+            {
+                var dependencyRefs = dependencies.Elements().ToList();
+                if (dependencies.Attributes().Any() || dependencyRefs.Count == 0 ||
+                    dependencyRefs.Any(reference => reference.Name != "ref" || !HasOnlyAttributes(reference, "scope", "target", "relation") ||
+                        reference.Elements().Any() ||
+                        !string.Equals(reference.Attribute("scope")?.Value, "document", StringComparison.Ordinal) ||
+                        !string.Equals(reference.Attribute("relation")?.Value, "depends-on", StringComparison.Ordinal) ||
+                        string.IsNullOrWhiteSpace(reference.Attribute("target")?.Value)) ||
+                    dependencyRefs.Select(reference => reference.Attribute("target")!.Value).Distinct(StringComparer.Ordinal).Count() != dependencyRefs.Count)
+                {
+                    return false;
+                }
+            }
+
+            var constraints = task.Element("constraints")!;
+            var acceptance = task.Element("acceptance")!;
+            var criteria = acceptance.Elements().ToList();
+            var criterion = criteria.SingleOrDefault();
+            if (constraints.Attributes().Any() || constraints.Elements().Any() || !string.IsNullOrWhiteSpace(constraints.Value) ||
+                acceptance.Attributes().Any() || criterion?.Name != "criterion" || criteria.Count != 1 ||
+                !HasOnlyAttributes(criterion, "id", "status") || criterion.Elements().Any() ||
+                !string.Equals(criterion.Attribute("id")?.Value, taskId + "-done", StringComparison.Ordinal) ||
+                !string.Equals(criterion.Attribute("status")?.Value, "pending", StringComparison.Ordinal) ||
+                !string.Equals(criterion.Value, objective.Value, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            var context = task.Element("context")!;
+            var contextChildren = context.Elements().ToList();
+            if (context.Attributes().Any() || contextChildren.Count != 1 || contextChildren[0].Name != "summary" ||
+                contextChildren[0].Attributes().Any() || contextChildren[0].Elements().Any() ||
+                !string.Equals(contextChildren[0].Value, rationale.Value, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            var review = task.Element("review");
+            if (review != null &&
+                (!HasOnlyAttributes(review, "required") || review.Elements().Any() ||
+                 !string.Equals(review.Attribute("required")?.Value, "true", StringComparison.Ordinal) ||
+                 string.IsNullOrWhiteSpace(agent)))
+            {
+                return false;
+            }
+
+            var records = task.Element("records")!;
+            var recordElements = records.Elements().ToList();
+            var startRecord = recordElements.SingleOrDefault();
+            return records.Attributes().Any() == false &&
+                recordElements.Count == 1 &&
+                startRecord?.Name == "record" &&
+                HasOnlyAttributes(startRecord, "id", "kind", "status", "created_at", "actor") &&
+                startRecord.Elements().Count() == 1 &&
+                startRecord.Element("summary") is { } recordSummary &&
+                recordSummary.Attributes().Any() == false &&
+                recordSummary.Elements().Any() == false &&
+                string.Equals(recordSummary.Value, "Quick task created and started atomically.", StringComparison.Ordinal) &&
+                string.Equals(startRecord.Attribute("id")?.Value, operationId + "-start", StringComparison.Ordinal) &&
+                string.Equals(startRecord.Attribute("kind")?.Value, "start", StringComparison.Ordinal) &&
+                string.Equals(startRecord.Attribute("status")?.Value, "informational", StringComparison.Ordinal) &&
+                string.Equals(startRecord.Attribute("created_at")?.Value, occurredAt, StringComparison.Ordinal) &&
+                string.Equals(startRecord.Attribute("actor")?.Value, "quick-task", StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool HasOnlyAttributes(XElement element, params string[] attributeNames)
+    {
+        var expected = attributeNames.ToHashSet(StringComparer.Ordinal);
+        var actual = element.Attributes().Select(attribute => attribute.Name.LocalName).ToList();
+        return actual.Count == expected.Count && actual.All(expected.Contains);
+    }
+
+    private static bool QuickOperationTimestampMatches(string? operationId, string? occurredAt)
+    {
+        return !string.IsNullOrWhiteSpace(operationId) &&
+            operationId.Length >= 16 &&
+            DateTimeOffset.TryParseExact(
+                operationId[..16],
+                "yyyyMMddTHHmmssZ",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var operationTimestamp) &&
+            DateTimeOffset.TryParseExact(
+                occurredAt,
+                "yyyy-MM-ddTHH:mm:ssZ",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var requestTimestamp) &&
+            operationTimestamp == requestTimestamp;
+    }
 
     /// <summary>Creates a normal task from the compact quick-task request.  The start form is one write, not add then update.</summary>
     public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) AddQuick(
@@ -77,6 +314,15 @@ public static class TaskAdder
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         var normTasksDocPath = $"{normIterId}/tasks.xml";
@@ -295,6 +541,11 @@ public static class TaskAdder
         {
             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to read '{normSpecDocPath}': {ex.Message}", normSpecDocPath) });
         }
+        var specRevisionText = specDoc.Root?.Attribute("revision")?.Value;
+        if (!int.TryParse(specRevisionText, CultureInfo.InvariantCulture, out var actualSpecRevision) || actualSpecRevision <= 0)
+        {
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Document '{normSpecDocPath}' revision is invalid.", normSpecDocPath) });
+        }
         if (start && !string.Equals(specDoc.Root?.Attribute("status")?.Value, "active", StringComparison.Ordinal))
         {
             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IterationReplanningExecutionFrozen, $"Quick --start requires iteration '{normIterId}' to be active.", normSpecDocPath) });
@@ -359,6 +610,66 @@ public static class TaskAdder
                     return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.OwnerDecisionRequired, "Quick --start requires every origin requirement to be approved.", normTasksDocPath) });
             }
         }
+
+        IReadOnlyList<TransactionReadPrecondition> dependencyReadPreconditions = Array.Empty<TransactionReadPrecondition>();
+        if (start)
+        {
+            var (dependenciesSatisfied, dependencyDiagnostics, resolvedDependencyReadPreconditions) =
+                TaskDependencyGate.EvaluateTaskDependencies(
+                    workspaceRoot,
+                    taskId,
+                    taskElem,
+                    normTasksDocPath);
+            if (!dependenciesSatisfied || dependencyDiagnostics.Count > 0)
+            {
+                return (false, null, dependencyDiagnostics);
+            }
+
+            dependencyReadPreconditions = resolvedDependencyReadPreconditions;
+        }
+
+        var mergedReadPreconditions = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var read in readPreconditions ?? Array.Empty<TransactionReadPrecondition>())
+        {
+            if (mergedReadPreconditions.TryGetValue(read.RelativePath, out var existingRevision) &&
+                existingRevision != read.ExpectedRevision)
+            {
+                return (false, null, new[] { Diagnostic.Error(
+                    DiagnosticCodes.RevisionConflict,
+                    $"Read document '{read.RelativePath}' resolved with conflicting revisions {existingRevision} and {read.ExpectedRevision}.",
+                    read.RelativePath) });
+            }
+            mergedReadPreconditions[read.RelativePath] = read.ExpectedRevision;
+        }
+
+        var specReadPrecondition = new TransactionReadPrecondition(normSpecDocPath, actualSpecRevision);
+        if (mergedReadPreconditions.TryGetValue(specReadPrecondition.RelativePath, out var specExistingRevision) &&
+            specExistingRevision != specReadPrecondition.ExpectedRevision)
+        {
+            return (false, null, new[] { Diagnostic.Error(
+                DiagnosticCodes.RevisionConflict,
+                $"Read document '{specReadPrecondition.RelativePath}' resolved with conflicting revisions {specExistingRevision} and {specReadPrecondition.ExpectedRevision}.",
+                specReadPrecondition.RelativePath) });
+        }
+        mergedReadPreconditions[specReadPrecondition.RelativePath] = specReadPrecondition.ExpectedRevision;
+
+        foreach (var read in dependencyReadPreconditions)
+        {
+            if (mergedReadPreconditions.TryGetValue(read.RelativePath, out var existingRevision) &&
+                existingRevision != read.ExpectedRevision)
+            {
+                return (false, null, new[] { Diagnostic.Error(
+                    DiagnosticCodes.RevisionConflict,
+                    $"Read document '{read.RelativePath}' resolved with conflicting revisions {existingRevision} and {read.ExpectedRevision}.",
+                    read.RelativePath) });
+            }
+            mergedReadPreconditions[read.RelativePath] = read.ExpectedRevision;
+        }
+
+        readPreconditions = mergedReadPreconditions
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .Select(pair => new TransactionReadPrecondition(pair.Key, pair.Value))
+            .ToArray();
 
         // 3. Project-wide Idempotency Check
         var (enumSuccess, allDocs, enumDiags) = WorkspaceDiscovery.EnumerateDocuments(workspaceRoot);
@@ -448,22 +759,6 @@ public static class TaskAdder
             actualRevision,
             newRevision);
 
-        if (dryRun)
-        {
-            // This is intentionally the same prospective whole-workspace validation
-            // used by the committer, but does not acquire a writer lock or create
-            // transaction staging/recovery state.
-            var previewValidation = SchemaValidator.ValidateProspective(
-                workspaceRoot,
-                new[] { new ProspectiveDocument(normTasksDocPath, replacementContent, IsNew: false, ExpectedRevision: actualRevision) },
-                version);
-            if (!previewValidation.IsValid)
-            {
-                return (false, null, previewValidation.Diagnostics);
-            }
-            return (true, new MutationEnvelope(commandName, new[] { new MutatedDocument(normTasksDocPath, newRevision, actualRevision) }), Array.Empty<Diagnostic>());
-        }
-
         return WorkspaceTransactionCommitter.Commit(
             workspaceRoot,
             commandName,
@@ -472,7 +767,8 @@ public static class TaskAdder
             faultInjector,
             version,
             correlationId: addId,
-            readPreconditions: readPreconditions);
+            readPreconditions: readPreconditions,
+            dryRun: dryRun);
     }
 
     private static XElement CreateReceipt(string operationId, string actor, string occurredAt, string fingerprint, string summary) =>

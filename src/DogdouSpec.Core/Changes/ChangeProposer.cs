@@ -30,7 +30,8 @@ public static class ChangeProposer
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         if (string.IsNullOrWhiteSpace(workspaceRoot))
         {
@@ -71,6 +72,15 @@ public static class ChangeProposer
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         var normSpecDocPath = $"{normIterId}/spec.xml";
@@ -535,7 +545,8 @@ public static class ChangeProposer
             clock,
             faultInjector,
             version,
-            correlationId: proposeId);
+            correlationId: proposeId,
+            dryRun: dryRun);
     }
 
     private static bool IsValidUtcTimestamp(string? value, out DateTimeOffset dto)

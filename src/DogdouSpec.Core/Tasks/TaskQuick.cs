@@ -96,11 +96,27 @@ public static class TaskQuick
         if (input.Start && input.Origins.Any(id => !string.Equals(requirementStatus[id], "approved", StringComparison.Ordinal)))
             return (false, null, null, new[] { Diagnostic.Error(DiagnosticCodes.OwnerDecisionRequired, "Quick --start requires every origin requirement to be approved.", specRelative) });
         var terms = new List<XElement> { new("term", new XAttribute("key", "kind"), new XAttribute("value", "quick")) };
+        var expectedStatusTerm = input.Start ? "in-progress" : "pending";
+        var statusTermSeen = false;
         foreach (var text in input.Terms)
         {
             var split = text.IndexOf('=');
             if (split <= 0 || split == text.Length - 1) return (false, null, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Each --term must be key=value.") });
-            terms.Add(new XElement("term", new XAttribute("key", text[..split]), new XAttribute("value", text[(split + 1)..])));
+            var key = text[..split];
+            var value = text[(split + 1)..];
+            if (string.Equals(key, "kind", StringComparison.Ordinal))
+            {
+                if (!string.Equals(value, "quick", StringComparison.Ordinal))
+                    return (false, null, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "The task quick kind term is reserved and must be kind=quick.") });
+                continue;
+            }
+            if (string.Equals(key, "status", StringComparison.Ordinal))
+            {
+                if (statusTermSeen || !string.Equals(value, expectedStatusTerm, StringComparison.Ordinal))
+                    return (false, null, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"The task quick status term must be unique and equal status={expectedStatusTerm}.") });
+                statusTermSeen = true;
+            }
+            terms.Add(new XElement("term", new XAttribute("key", key), new XAttribute("value", value)));
         }
         var task = new XElement("task",
             new XAttribute("id", taskId), new XAttribute("status", input.Start ? "in-progress" : "pending"),

@@ -2,10 +2,12 @@ using System.CommandLine;
 using System.Globalization;
 using System.Security;
 using System.Text;
+using System.Xml;
 using System.Xml.Linq;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Iterations;
+using DogdouSpec.Core.Revisions;
 using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Workspace;
 
@@ -331,16 +333,36 @@ public static class IterationCommand
 
     private static Command BuildConfirmCommand()
     {
-        var confirmCmd = new Command("confirm", "Atomically confirm iteration product decisions and lifecycle (mutating)");
+        var confirmCmd = new Command("confirm", "Atomically confirm iteration product decisions and lifecycle (mutating); --dry-run validates without writing");
 
         var stdinOption = new Option<bool>("--stdin")
         {
-            Description = "Read iteration-confirmation XML request from standard input"
+            Description = "Read iteration-confirmation XML request from standard input (mutually exclusive with --file; exactly one required)"
         };
 
         var fileOption = new Option<string?>("--file")
         {
-            Description = "Path to file containing iteration-confirmation XML request"
+            Description = "Path to file containing iteration-confirmation XML request (mutually exclusive with --stdin; exactly one required)"
+        };
+
+        var iterationOption = new Option<string?>("--iteration")
+        {
+            Description = "Iteration identifier; must match request attribute if both specified"
+        };
+
+        var expectedRevisionOption = new Option<int?>("--expected-revision")
+        {
+            Description = "Expected spec.xml revision; must match request attribute if both specified"
+        };
+
+        var expectedTasksRevisionOption = new Option<int?>("--expected-tasks-revision")
+        {
+            Description = "Expected tasks.xml revision; must match request attribute if both specified"
+        };
+
+        var dryRunOption = new Option<bool>("--dry-run")
+        {
+            Description = "Validate mutation preconditions and report prospective revision without writing"
         };
 
         var workspaceRootOption = new Option<string?>("--workspace-root")
@@ -356,6 +378,10 @@ public static class IterationCommand
 
         confirmCmd.Add(stdinOption);
         confirmCmd.Add(fileOption);
+        confirmCmd.Add(iterationOption);
+        confirmCmd.Add(expectedRevisionOption);
+        confirmCmd.Add(expectedTasksRevisionOption);
+        confirmCmd.Add(dryRunOption);
         confirmCmd.Add(workspaceRootOption);
         confirmCmd.Add(formatOption);
 
@@ -363,6 +389,10 @@ public static class IterationCommand
         {
             var hasStdin = parseResult.GetValue(stdinOption);
             var filePath = parseResult.GetValue(fileOption);
+            var iterationId = parseResult.GetValue(iterationOption);
+            var expectedRevision = parseResult.GetValue(expectedRevisionOption);
+            var expectedTasksRevision = parseResult.GetValue(expectedTasksRevisionOption);
+            var dryRun = parseResult.GetValue(dryRunOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
@@ -426,9 +456,53 @@ public static class IterationCommand
                 return 2;
             }
 
+            XDocument requestDoc;
+            try
+            {
+                using var sr = new StringReader(requestXml);
+                using var reader = SecureXmlReaderFactory.CreateReader(sr);
+                requestDoc = XDocument.Load(reader, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
+            }
+            catch (XmlException xmlEx)
+            {
+                var envelope = new DiagnosticsEnvelope("iteration confirm", Diagnostic.Error(
+                    DiagnosticCodes.XmlParseError,
+                    $"Failed to parse iteration-confirmation XML request: {xmlEx.Message}"));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var rootEl = requestDoc.Root;
+            if (rootEl == null || rootEl.Name.LocalName != "iteration-confirmation")
+            {
+                var envelope = new DiagnosticsEnvelope("iteration confirm", Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "Root element must be iteration-confirmation."));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var (requestResolved, finalXml, resolutionError) = IterationConfirmationRequestResolver.Reconcile(
+                discoveredRoot,
+                requestDoc,
+                iterationId,
+                expectedRevision,
+                expectedTasksRevision);
+            if (!requestResolved || resolutionError != null || string.IsNullOrWhiteSpace(finalXml))
+            {
+                var envelope = new DiagnosticsEnvelope(
+                    "iteration confirm",
+                    resolutionError ?? Diagnostic.Error(
+                        DiagnosticCodes.InvalidArgument,
+                        "Iteration confirmation request could not be resolved."));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
             var (success, envelopeResult, diagnostics) = IterationConfirmer.Confirm(
                 discoveredRoot,
-                requestXml);
+                finalXml,
+                dryRun: dryRun);
 
             if (!success || diagnostics.Count > 0)
             {
@@ -561,32 +635,31 @@ public static class IterationCommand
                 return 2;
             }
 
-            if (!specRev.HasValue)
+            var (specRevOk, resolvedSpecRev, specRevErr) = DocumentRevisionResolver.ResolveExpectedRevision(
+                discoveredRoot,
+                $"{iterId}/spec.xml",
+                specRev);
+            if (!specRevOk || specRevErr != null)
             {
-                if (int.TryParse(specDoc.Root?.Attribute("revision")?.Value, out var parsedSpecRev))
-                    specRev = parsedSpecRev;
-                else
-                    specRev = 1;
+                var envelope = new DiagnosticsEnvelope("iteration activate", specRevErr!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
             }
+            specRev = resolvedSpecRev;
 
-            if (!tasksRev.HasValue && File.Exists(tasksPath))
+            if (File.Exists(tasksPath) || tasksRev.HasValue)
             {
-                try
+                var (tasksRevOk, resolvedTasksRev, tasksRevErr) = DocumentRevisionResolver.ResolveExpectedRevision(
+                    discoveredRoot,
+                    $"{iterId}/tasks.xml",
+                    tasksRev);
+                if (!tasksRevOk || tasksRevErr != null)
                 {
-                    var tasksDoc = XDocument.Load(tasksPath);
-                    if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var parsedTasksRev))
-                        tasksRev = parsedTasksRev;
-                    else
-                        tasksRev = 1;
+                    var envelope = new DiagnosticsEnvelope("iteration activate", tasksRevErr!);
+                    Console.Error.Write(envelope.Format(format));
+                    return 2;
                 }
-                catch
-                {
-                    tasksRev = 1;
-                }
-            }
-            else if (!tasksRev.HasValue)
-            {
-                tasksRev = 1;
+                tasksRev = resolvedTasksRev;
             }
 
             var nowUtc = DateTimeOffset.UtcNow;
@@ -627,6 +700,7 @@ public static class IterationCommand
                 design.AppendLine("  </design>");
             }
 
+            var tasksRevLine = tasksRev.HasValue ? $"  expected_tasks_revision=\"{tasksRev.Value}\"\n" : "";
             var confirmXml = $"""
 <?xml version="1.0" encoding="utf-8"?>
 <iteration-confirmation
@@ -634,8 +708,7 @@ public static class IterationCommand
   iteration="{iterId}"
   action="activate"
   expected_spec_revision="{specRev}"
-  expected_tasks_revision="{tasksRev}"
-  actor="{actor}"
+{tasksRevLine}  actor="{actor}"
   decided_at="{isoTime}">
   <summary>{SecurityElement.Escape(summary)}</summary>
 {reqs}{design}</iteration-confirmation>
@@ -776,33 +849,29 @@ public static class IterationCommand
                 return 2;
             }
 
-            if (!specRev.HasValue)
+            var (specRevOk, resolvedSpecRev, specRevErr) = DocumentRevisionResolver.ResolveExpectedRevision(
+                discoveredRoot,
+                $"{iterId}/spec.xml",
+                specRev);
+            if (!specRevOk || specRevErr != null)
             {
-                if (int.TryParse(specDoc.Root?.Attribute("revision")?.Value, out var parsedSpecRev))
-                    specRev = parsedSpecRev;
-                else
-                    specRev = 1;
+                var envelope = new DiagnosticsEnvelope("iteration complete", specRevErr!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
             }
+            specRev = resolvedSpecRev;
 
-            if (!tasksRev.HasValue && File.Exists(tasksPath))
+            var (tasksRevOk, resolvedTasksRev, tasksRevErr) = DocumentRevisionResolver.ResolveExpectedRevision(
+                discoveredRoot,
+                $"{iterId}/tasks.xml",
+                tasksRev);
+            if (!tasksRevOk || tasksRevErr != null)
             {
-                try
-                {
-                    var tasksDoc = XDocument.Load(tasksPath);
-                    if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var parsedTasksRev))
-                        tasksRev = parsedTasksRev;
-                    else
-                        tasksRev = 1;
-                }
-                catch
-                {
-                    tasksRev = 1;
-                }
+                var envelope = new DiagnosticsEnvelope("iteration complete", tasksRevErr!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
             }
-            else if (!tasksRev.HasValue)
-            {
-                tasksRev = 1;
-            }
+            tasksRev = resolvedTasksRev;
 
             var nowUtc = DateTimeOffset.UtcNow;
             var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);

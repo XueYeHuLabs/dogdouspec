@@ -37,7 +37,8 @@ public static class TransactionApplier
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         clock ??= SystemClock.Instance;
 
@@ -57,6 +58,15 @@ public static class TransactionApplier
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         // 3. Secure parse and validate against requests.xsd
@@ -656,7 +666,8 @@ public static class TransactionApplier
             clock,
             faultInjector,
             version,
-            correlationId: operationId);
+            correlationId: operationId,
+            dryRun: dryRun);
     }
 
     private static bool ToEffectiveBooleanValue(object? evalResult)

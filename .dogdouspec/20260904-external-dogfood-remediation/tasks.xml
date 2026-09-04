@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="24">
+<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="28">
   <index>
     <summary>Tasks for iteration 20260904-external-dogfood-remediation.</summary>
     <term key="iteration" value="20260904-external-dogfood-remediation" />
@@ -169,7 +169,7 @@
         <ref scope="document" target="20260904-task-f2-defined-criteria-done" relation="covers" />
       </covers>
     </record></records>
-  </task><task id="20260904-task-f1-f5-f8-preflight" status="pending" created_at="2026-09-04T08:04:00Z" updated_at="2026-09-04T08:04:00Z" agent="agy-preflight-implementer">
+  </task><task id="20260904-task-f1-f5-f8-preflight" status="done" created_at="2026-09-04T08:04:00Z" updated_at="2026-09-04T17:27:04Z" agent="agy-preflight-implementer" started_at="2026-09-04T13:39:22Z" completed_at="2026-09-04T17:27:04Z">
     <index>
       <summary>Unify mutation preflight and addressing</summary>
       <term key="kind" value="quick" />
@@ -196,13 +196,25 @@
     </dependencies>
     <constraints />
     <acceptance>
-      <criterion id="20260904-task-f1-f5-f8-preflight-done" status="pending">Request validation or dry-run and explain surfaces expose mutation preconditions without writes, conditional help is accurate, and query, validate, revisions, and confirmation addressing are consistent.</criterion>
+      <criterion id="20260904-task-f1-f5-f8-preflight-done" status="passed">Request validation or dry-run and explain surfaces expose mutation preconditions without writes, conditional help is accurate, and query, validate, revisions, and confirmation addressing are consistent.</criterion>
     </acceptance>
     <context>
       <summary>External findings F1, F5, and F8 show one underlying lack of a coherent preflight and addressing contract.</summary>
     </context>
-    <review required="true" />
-    <records><record id="20260904T080400Z-quick-f1-f5-f8-preflight-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:04:00Z" actor="quick-task" operation_id="20260904T080400Z-quick-f1-f5-f8-preflight"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="660afb8cf8211eb23c99080a4f61f03df69dfe3a05890749d5b9c7212c02fa5d" /></index><summary>Task addition receipt.</summary></record></records>
+    <review required="true"><submission id="20260904T172649Z-sub-4c96750ea6ee42b28bfc01f9e683b563" disposition="approved" actor="agy-preflight-reviewer" reviewed_at="2026-09-04T17:26:49Z" record="20260904T172649Z-sub-4c96750ea6ee42b28bfc01f9e683b563-record" /></review>
+    <records><record id="20260904T080400Z-quick-f1-f5-f8-preflight-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:04:00Z" actor="quick-task" operation_id="20260904T080400Z-quick-f1-f5-f8-preflight"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="660afb8cf8211eb23c99080a4f61f03df69dfe3a05890749d5b9c7212c02fa5d" /></index><summary>Task addition receipt.</summary></record><record id="20260904T133922Z-record-start-c0ff6cbb3eab4170874bf7f11b4c9f4c" kind="start" status="informational" created_at="2026-09-04T13:39:22Z" actor="kiro-supervisor" operation_id="20260904T133922Z-taskstart-4c60a4cc760a459cb307173c9557d7cf">
+      <summary>Assigned to agy.exe implementer for unified mutation preflight, addressing, help, and revision contracts.</summary>
+    </record><record id="20260904T172619Z-record-verify-87c8534b73324d3798e34ce4378e6e78" kind="verification" status="informational" created_at="2026-09-04T17:26:19Z" actor="kiro-supervisor" operation_id="20260904T172619Z-taskverify-25c935dddb0b470ebc17c0e85023dc47">
+      <summary>Implemented unified mutation preflight, dry-run recovery gates, canonical quick-start composition, document and revision addressing, confirmation reconciliation, and lock-time authorization read checks. Full build passed 771/771 with zero failures; git diff --check and workspace validation passed.</summary>
+      <covers>
+        <ref scope="document" target="20260904-task-f1-f5-f8-preflight-done" relation="covers" />
+      </covers>
+    </record><record id="20260904T172649Z-sub-4c96750ea6ee42b28bfc01f9e683b563-record" kind="decision" status="informational" created_at="2026-09-04T17:26:49Z" actor="agy-preflight-reviewer" operation_id="20260904T172649Z-taskrev-c1fb0ebf6ebe4c95842f94b92f37a634"><index><summary>Structured task review submission.</summary><term key="review-disposition" value="approved" /><term key="request-sha256" value="89f058e5a64f9f5f8a0c6965bd91ad1138f5dbee35a62a1161faf18042635043" /></index><summary>Independent agy.exe review approved the complete diff after reconstructing preflight, canonical quick-start, locked read-precondition, and exact recovery replay behavior; reviewer independently confirmed 771/771 tests, clean whitespace, and valid workspace with no material blockers.</summary></record><record id="20260904T172704Z-record-complete-00950cde5ad9420da43027df3a835489" kind="completion" status="informational" created_at="2026-09-04T17:27:04Z" actor="kiro-supervisor" operation_id="20260904T172704Z-taskcomplete-6b50c54311064cdebf562dcdc12d68c8">
+      <summary>Completed F1/F5/F8 after independent agy-preflight-reviewer approval. Unified preflight and addressing contracts are implemented, exact replay recovery paths are regression-tested, and the full 771-test build plus workspace and whitespace validation pass.</summary>
+      <covers>
+        <ref scope="document" target="20260904-task-f1-f5-f8-preflight-done" relation="covers" />
+      </covers>
+    </record></records>
   </task><task id="20260904-task-f3-knowledge-porcelain" status="pending" created_at="2026-09-04T08:05:00Z" updated_at="2026-09-04T08:05:00Z" agent="agy-knowledge-implementer">
     <index>
       <summary>Add first-class knowledge porcelain</summary>
@@ -269,6 +281,7 @@
     <review required="true" />
     <records><record id="20260904T080600Z-quick-f9-schema-drift-receipt" kind="discussion" status="informational" created_at="2026-09-04T08:06:00Z" actor="quick-task" operation_id="20260904T080600Z-quick-f9-schema-drift"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="7cf298084769b69885486e70fd1cca77c8ad6c0e7534c3e9fcf0b9e4cbe3d9d8" /></index><summary>Task addition receipt.</summary></record></records>
   </task></tasks>
+
 
 
 

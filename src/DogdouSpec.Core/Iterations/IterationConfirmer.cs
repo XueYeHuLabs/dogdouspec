@@ -35,7 +35,8 @@ public static class IterationConfirmer
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         clock ??= SystemClock.Instance;
 
@@ -55,6 +56,15 @@ public static class IterationConfirmer
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         // 3. Schema validation against requests.xsd
@@ -1366,9 +1376,10 @@ public static class IterationConfirmer
             faultInjector: faultInjector,
             version: version,
             correlationId: id,
-            readPreconditions: action == "continue"
+            readPreconditions: (action == "continue" || action == "complete" || expectedTasksRev.HasValue)
                 ? new[] { new TransactionReadPrecondition(normTasksDocPath, actualTasksRev) }
-                : null);
+                : null,
+            dryRun: dryRun);
     }
 
     private static bool AreTargetDecisionElementsMatching(IEnumerable<XElement> list1, IEnumerable<XElement> list2)
