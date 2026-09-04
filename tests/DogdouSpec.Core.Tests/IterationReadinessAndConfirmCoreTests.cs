@@ -841,6 +841,21 @@ public sealed class IterationReadinessAndConfirmCoreTests
         Assert.IsTrue(retryOk2, retryDiags2.Count > 0 ? retryDiags2[0].Message : "");
         Assert.IsTrue(retryEnv2!.AlreadyApplied);
 
+        var replaySpecPath = Path.Combine(workspace, "20260823-xpath-core", "spec.xml");
+        var replayTasksPath = Path.Combine(workspace, "20260823-xpath-core", "tasks.xml");
+        var replaySpecHash = ComputeFileSha256(replaySpecPath);
+        var replayTasksHash = ComputeFileSha256(replayTasksPath);
+        var pendingRoot = Path.Combine(workspace, "_tmp", "tx_pending_iteration_confirm_replay");
+        var pendingDirectory = Path.Combine(pendingRoot, "staged");
+        Directory.CreateDirectory(pendingDirectory);
+        var (blockedReplay, _, blockedDiagnostics) = IterationConfirmer.Confirm(workspace, requestXml, dryRun: true);
+        Assert.IsFalse(blockedReplay);
+        Assert.IsTrue(blockedDiagnostics.Any(d => d.Code == DiagnosticCodes.RecoveryFailed));
+        Assert.IsTrue(Directory.Exists(pendingDirectory), "Iteration-confirm dry-run must preserve pending recovery artifacts.");
+        Assert.AreEqual(replaySpecHash, ComputeFileSha256(replaySpecPath));
+        Assert.AreEqual(replayTasksHash, ComputeFileSha256(replayTasksPath));
+        Directory.Delete(pendingRoot, recursive: true);
+
         // 4. Retry same ID with different summary or action -> fails with IDEMPOTENCY_CONFLICT
         var conflictXml = requestXml.Replace("Replan iteration for testing idempotency.", "Changed summary content.");
         var (conflictOk, _, conflictDiags) = IterationConfirmer.Confirm(workspace, conflictXml);

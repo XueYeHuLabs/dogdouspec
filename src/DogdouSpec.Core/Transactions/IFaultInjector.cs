@@ -6,6 +6,7 @@ namespace DogdouSpec.Core.Transactions;
 public enum FaultPhase
 {
     None,
+    AfterRecoveryBeforePreconditionValidation,
     BeforeStaging,
     AfterStagingBeforeValidation,
     AfterValidationBeforeCommitMarker,

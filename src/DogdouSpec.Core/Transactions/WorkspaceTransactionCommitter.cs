@@ -31,6 +31,23 @@ public static class WorkspaceTransactionCommitter
 {
     private static readonly UTF8Encoding Utf8NoBom = new(false);
 
+    public static Diagnostic? GetDryRunBlocker(string workspaceRoot)
+    {
+        var (inspectionSucceeded, pendingRecovery, inspectionError) = StartupRecovery.InspectPending(workspaceRoot);
+        if (!inspectionSucceeded || inspectionError != null)
+        {
+            return inspectionError ?? Diagnostic.Error(
+                DiagnosticCodes.RecoveryFailed,
+                "Pending recovery state could not be inspected for dry-run.");
+        }
+
+        return pendingRecovery
+            ? Diagnostic.Error(
+                DiagnosticCodes.RecoveryFailed,
+                "Dry-run cannot preview a workspace with pending CLI recovery artifacts; run a normal governed write or recovery first.")
+            : null;
+    }
+
     public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Commit(
         string workspaceRoot,
         string commandName,
@@ -39,7 +56,8 @@ public static class WorkspaceTransactionCommitter
         IFaultInjector? faultInjector = null,
         string version = "1.0",
         string? correlationId = null,
-        IReadOnlyList<TransactionReadPrecondition>? readPreconditions = null)
+        IReadOnlyList<TransactionReadPrecondition>? readPreconditions = null,
+        bool dryRun = false)
     {
         clock ??= SystemClock.Instance;
 
@@ -60,6 +78,37 @@ public static class WorkspaceTransactionCommitter
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
         }
 
+        if (dryRun)
+        {
+            var dryRunBlocker = GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
+
+            var (preSuccess, normalizedOpsDry, preDiags) = ValidatePreconditions(workspaceRoot, operations, readPreconditions);
+            if (!preSuccess || preDiags.Count > 0 || normalizedOpsDry == null)
+            {
+                return (false, null, preDiags);
+            }
+
+            var prospectiveDocsDry = normalizedOpsDry
+                .Select(o => new ProspectiveDocument(o.NormalizedPath, o.CanonicalContent, IsNew: false, ExpectedRevision: o.Op.ExpectedRevision))
+                .ToList();
+
+            var valResult = SchemaValidator.ValidateProspective(workspaceRoot, prospectiveDocsDry, version);
+            if (!valResult.IsValid)
+            {
+                return (false, null, valResult.Diagnostics);
+            }
+
+            var mutatedDocs = normalizedOpsDry
+                .Select(o => new MutatedDocument(o.NormalizedPath, o.Op.NewRevision, o.Op.ExpectedRevision))
+                .ToList();
+
+            return (true, new MutationEnvelope(commandName, mutatedDocs), Array.Empty<Diagnostic>());
+        }
+
         // 2. Acquire writer lock
         var (lockAcquired, wsLock, lockError) = WorkspaceLock.Acquire(workspaceRoot);
         if (!lockAcquired || wsLock == null)
@@ -76,203 +125,12 @@ public static class WorkspaceTransactionCommitter
                 return (false, null, new[] { recError! });
             }
 
-            // Read-only documents can influence a high-level command's
-            // decision. Recheck their revisions while holding the writer lock
-            // so a read-then-write command cannot commit against stale input.
-            var readPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var read in readPreconditions ?? Array.Empty<TransactionReadPrecondition>())
+            faultInjector?.InjectFaultIfMatched(FaultPhase.AfterRecoveryBeforePreconditionValidation);
+
+            var (preSuccess, normalizedOps, preDiags) = ValidatePreconditions(workspaceRoot, operations, readPreconditions);
+            if (!preSuccess || preDiags.Count > 0 || normalizedOps == null)
             {
-                var (isRelValid, normPath, relErr) = PathSecurity.ValidateRelativeDocumentPath(read.RelativePath);
-                if (!isRelValid || relErr != null)
-                {
-                    return (false, null, new[] { relErr ?? Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid read-precondition document path '{read.RelativePath}'.") });
-                }
-                if (!readPaths.Add(normPath) || read.ExpectedRevision <= 0)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Read precondition for '{normPath}' must be unique and use a positive expected revision.", normPath) });
-                }
-
-                var fullReadPath = Path.Combine(workspaceRoot, normPath.Replace('/', Path.DirectorySeparatorChar));
-                var (isContained, contErr) = PathSecurity.CheckContainmentAndReparsePoints(workspaceRoot, fullReadPath);
-                if (!isContained || contErr != null)
-                {
-                    return (false, null, new[] { contErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, $"Read-precondition path escapes workspace: '{normPath}'.") });
-                }
-                if (!File.Exists(fullReadPath))
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DocumentNotFound, $"Read-precondition document '{normPath}' does not exist in workspace.", normPath) });
-                }
-
-                try
-                {
-                    using var stream = File.OpenRead(fullReadPath);
-                    using var reader = SecureXmlReaderFactory.CreateReader(stream);
-                    var document = XDocument.Load(reader);
-                    var revisionText = document.Root?.Attribute("revision")?.Value;
-                    if (!int.TryParse(revisionText, CultureInfo.InvariantCulture, out var actualRevision) || actualRevision <= 0)
-                    {
-                        return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Document '{normPath}' root revision attribute is missing, non-positive, or malformed.", normPath) });
-                    }
-                    if (actualRevision != read.ExpectedRevision)
-                    {
-                        return (false, null, new[] { new Diagnostic(DiagnosticCodes.RevisionConflict, "error", $"Expected read revision {read.ExpectedRevision} does not match actual revision {actualRevision} for document '{normPath}'.", normPath, ExpectedRevision: read.ExpectedRevision, ActualRevision: actualRevision) });
-                    }
-                }
-                catch (XmlException xmlEx)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to parse read-precondition document '{normPath}': {xmlEx.Message}", normPath) });
-                }
-                catch (Exception ex)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to read read-precondition document '{normPath}': {ex.Message}", normPath) });
-                }
-            }
-
-            // 4. Operation preconditions validation before any target read/stage/backup
-            var seenTargetPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var normalizedOps = new List<(string NormalizedPath, string FullTarget, TransactionDocumentOperation Op, string CanonicalContent)>();
-
-            foreach (var op in operations)
-            {
-                // Validate and normalize relative path as a managed document reference
-                var (isRelValid, normPath, relErr) = PathSecurity.ValidateRelativeDocumentPath(op.RelativePath);
-                if (!isRelValid || relErr != null)
-                {
-                    return (false, null, new[] { relErr ?? Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid document path '{op.RelativePath}'.") });
-                }
-
-                // Reject duplicate target paths
-                if (!seenTargetPaths.Add(normPath))
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Duplicate operation target path '{normPath}' in transaction.") });
-                }
-
-                if (Encoding.UTF8.GetByteCount(op.ReplacementContent) > XPathQueryLimits.MaxDocumentBytes)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.LimitExceeded, $"Replacement XML for '{normPath}' exceeds maximum allowed size of {XPathQueryLimits.MaxDocumentBytes} bytes.", normPath) });
-                }
-
-                // Normalize replacement XML to canonical managed document format
-                string canonicalContent;
-                try
-                {
-                    canonicalContent = ManagedDocumentSerializer.Normalize(op.ReplacementContent);
-                }
-                catch (XmlException xmlEx)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Replacement XML for '{normPath}' is malformed: {xmlEx.Message}", normPath) });
-                }
-                catch (Exception ex)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to parse replacement XML for '{normPath}': {ex.Message}", normPath) });
-                }
-
-                // Enforce byte limits on canonical output
-                if (Encoding.UTF8.GetByteCount(canonicalContent) > XPathQueryLimits.MaxDocumentBytes)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.LimitExceeded, $"Replacement XML for '{normPath}' exceeds maximum allowed size of {XPathQueryLimits.MaxDocumentBytes} bytes.", normPath) });
-                }
-
-                // Verify containment and reparse points before opening target
-                var fullTarget = Path.Combine(workspaceRoot, normPath.Replace('/', Path.DirectorySeparatorChar));
-                var (isContained, contErr) = PathSecurity.CheckContainmentAndReparsePoints(workspaceRoot, fullTarget);
-                if (!isContained || contErr != null)
-                {
-                    return (false, null, new[] { contErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, $"Target path escapes workspace: '{normPath}'.") });
-                }
-
-                // Existing-file operation must fail if target missing
-                if (!File.Exists(fullTarget))
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DocumentNotFound, $"Target document '{normPath}' does not exist in workspace.", normPath) });
-                }
-
-                // Revision validation: ExpectedRevision and NewRevision must be positive integers
-                if (op.ExpectedRevision <= 0)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Expected revision for '{normPath}' must be a positive integer, but got {op.ExpectedRevision}.", normPath) });
-                }
-
-                if (op.NewRevision <= 0)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"New revision for '{normPath}' must be a positive integer, but got {op.NewRevision}.", normPath) });
-                }
-
-                // Existing root revision must parse as positive integer and equal ExpectedRevision
-                int actualRev;
-                try
-                {
-                    using var s = File.OpenRead(fullTarget);
-                    using var r = SecureXmlReaderFactory.CreateReader(s);
-                    var xDoc = XDocument.Load(r);
-                    var revStr = xDoc.Root?.Attribute("revision")?.Value;
-                    if (string.IsNullOrWhiteSpace(revStr) || !int.TryParse(revStr, CultureInfo.InvariantCulture, out actualRev) || actualRev <= 0)
-                    {
-                        return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Document '{normPath}' root revision attribute is missing, non-positive, or malformed.", normPath) });
-                    }
-                }
-                catch (XmlException xmlEx)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to parse XML document '{normPath}': {xmlEx.Message}", normPath) });
-                }
-                catch (Exception ex)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to read '{normPath}': {ex.Message}", normPath) });
-                }
-
-                if (actualRev != op.ExpectedRevision)
-                {
-                    var diag = new Diagnostic(
-                        DiagnosticCodes.RevisionConflict,
-                        "error",
-                        $"Expected revision {op.ExpectedRevision} does not match actual revision {actualRev} for document '{normPath}'.",
-                        Document: normPath,
-                        ExpectedRevision: op.ExpectedRevision,
-                        ActualRevision: actualRev);
-                    return (false, null, new[] { diag });
-                }
-
-                // NewRevision must equal ExpectedRevision + 1
-                if (op.NewRevision != op.ExpectedRevision + 1)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"New revision {op.NewRevision} must equal ExpectedRevision {op.ExpectedRevision} + 1 for document '{normPath}'.", normPath) });
-                }
-
-                // Replacement XML root revision must parse as positive integer and equal NewRevision
-                int replacementRev;
-                try
-                {
-                    using var strR = new StringReader(canonicalContent);
-                    using var r = SecureXmlReaderFactory.CreateReader(strR);
-                    var replXDoc = XDocument.Load(r);
-                    var revStr = replXDoc.Root?.Attribute("revision")?.Value;
-                    if (string.IsNullOrWhiteSpace(revStr) || !int.TryParse(revStr, CultureInfo.InvariantCulture, out replacementRev) || replacementRev <= 0)
-                    {
-                        return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Replacement XML for '{normPath}' root revision attribute is missing, non-positive, or malformed.", normPath) });
-                    }
-                }
-                catch (XmlException xmlEx)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Replacement XML for '{normPath}' is malformed: {xmlEx.Message}", normPath) });
-                }
-                catch (Exception ex)
-                {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to parse replacement XML for '{normPath}': {ex.Message}", normPath) });
-                }
-
-                if (replacementRev != op.NewRevision)
-                {
-                    var diag = new Diagnostic(
-                        DiagnosticCodes.RevisionConflict,
-                        "error",
-                        $"Replacement XML root revision {replacementRev} does not match NewRevision {op.NewRevision} for document '{normPath}'.",
-                        Document: normPath,
-                        ExpectedRevision: op.NewRevision,
-                        ActualRevision: replacementRev);
-                    return (false, null, new[] { diag });
-                }
-
-                normalizedOps.Add((normPath, fullTarget, op, canonicalContent));
+                return (false, null, preDiags);
             }
 
             // 5. Staging directory under _tmp (same filesystem volume)
@@ -377,6 +235,213 @@ public static class WorkspaceTransactionCommitter
                 return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.CommitFailed, $"Transaction commit failed: {ex.Message}") });
             }
         }
+    }
+
+    private static (bool Success, List<(string NormalizedPath, string FullTarget, TransactionDocumentOperation Op, string CanonicalContent)>? NormalizedOps, IReadOnlyList<Diagnostic> Diagnostics) ValidatePreconditions(
+        string workspaceRoot,
+        IReadOnlyList<TransactionDocumentOperation> operations,
+        IReadOnlyList<TransactionReadPrecondition>? readPreconditions)
+    {
+        // Read-only documents can influence a high-level command's
+        // decision. Recheck their revisions while holding the writer lock
+        // so a read-then-write command cannot commit against stale input.
+        var readPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var read in readPreconditions ?? Array.Empty<TransactionReadPrecondition>())
+        {
+            var (isRelValid, normPath, relErr) = PathSecurity.ValidateRelativeDocumentPath(read.RelativePath);
+            if (!isRelValid || relErr != null)
+            {
+                return (false, null, new[] { relErr ?? Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid read-precondition document path '{read.RelativePath}'.") });
+            }
+            if (!readPaths.Add(normPath) || read.ExpectedRevision <= 0)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Read precondition for '{normPath}' must be unique and use a positive expected revision.", normPath) });
+            }
+
+            var fullReadPath = Path.Combine(workspaceRoot, normPath.Replace('/', Path.DirectorySeparatorChar));
+            var (isContained, contErr) = PathSecurity.CheckContainmentAndReparsePoints(workspaceRoot, fullReadPath);
+            if (!isContained || contErr != null)
+            {
+                return (false, null, new[] { contErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, $"Read-precondition path escapes workspace: '{normPath}'.") });
+            }
+            if (!File.Exists(fullReadPath))
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DocumentNotFound, $"Read-precondition document '{normPath}' does not exist in workspace.", normPath) });
+            }
+
+            try
+            {
+                using var stream = File.OpenRead(fullReadPath);
+                using var reader = SecureXmlReaderFactory.CreateReader(stream);
+                var document = XDocument.Load(reader);
+                var revisionText = document.Root?.Attribute("revision")?.Value;
+                if (!int.TryParse(revisionText, CultureInfo.InvariantCulture, out var actualRevision) || actualRevision <= 0)
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Document '{normPath}' root revision attribute is missing, non-positive, or malformed.", normPath) });
+                }
+                if (actualRevision != read.ExpectedRevision)
+                {
+                    return (false, null, new[] { new Diagnostic(DiagnosticCodes.RevisionConflict, "error", $"Expected read revision {read.ExpectedRevision} does not match actual revision {actualRevision} for document '{normPath}'.", normPath, ExpectedRevision: read.ExpectedRevision, ActualRevision: actualRevision) });
+                }
+            }
+            catch (XmlException xmlEx)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to parse read-precondition document '{normPath}': {xmlEx.Message}", normPath) });
+            }
+            catch (Exception ex)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to read read-precondition document '{normPath}': {ex.Message}", normPath) });
+            }
+        }
+
+        // 4. Operation preconditions validation before any target read/stage/backup
+        var seenTargetPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var normalizedOps = new List<(string NormalizedPath, string FullTarget, TransactionDocumentOperation Op, string CanonicalContent)>();
+
+        foreach (var op in operations)
+        {
+            // Validate and normalize relative path as a managed document reference
+            var (isRelValid, normPath, relErr) = PathSecurity.ValidateRelativeDocumentPath(op.RelativePath);
+            if (!isRelValid || relErr != null)
+            {
+                return (false, null, new[] { relErr ?? Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid document path '{op.RelativePath}'.") });
+            }
+
+            // Reject duplicate target paths
+            if (!seenTargetPaths.Add(normPath))
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Duplicate operation target path '{normPath}' in transaction.") });
+            }
+
+            if (Encoding.UTF8.GetByteCount(op.ReplacementContent) > XPathQueryLimits.MaxDocumentBytes)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.LimitExceeded, $"Replacement XML for '{normPath}' exceeds maximum allowed size of {XPathQueryLimits.MaxDocumentBytes} bytes.", normPath) });
+            }
+
+            // Normalize replacement XML to canonical managed document format
+            string canonicalContent;
+            try
+            {
+                canonicalContent = ManagedDocumentSerializer.Normalize(op.ReplacementContent);
+            }
+            catch (XmlException xmlEx)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Replacement XML for '{normPath}' is malformed: {xmlEx.Message}", normPath) });
+            }
+            catch (Exception ex)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to parse replacement XML for '{normPath}': {ex.Message}", normPath) });
+            }
+
+            // Enforce byte limits on canonical output
+            if (Encoding.UTF8.GetByteCount(canonicalContent) > XPathQueryLimits.MaxDocumentBytes)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.LimitExceeded, $"Replacement XML for '{normPath}' exceeds maximum allowed size of {XPathQueryLimits.MaxDocumentBytes} bytes.", normPath) });
+            }
+
+            // Verify containment and reparse points before opening target
+            var fullTarget = Path.Combine(workspaceRoot, normPath.Replace('/', Path.DirectorySeparatorChar));
+            var (isContained, contErr) = PathSecurity.CheckContainmentAndReparsePoints(workspaceRoot, fullTarget);
+            if (!isContained || contErr != null)
+            {
+                return (false, null, new[] { contErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, $"Target path escapes workspace: '{normPath}'.") });
+            }
+
+            // Existing-file operation must fail if target missing
+            if (!File.Exists(fullTarget))
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DocumentNotFound, $"Target document '{normPath}' does not exist in workspace.", normPath) });
+            }
+
+            // Revision validation: ExpectedRevision and NewRevision must be positive integers
+            if (op.ExpectedRevision <= 0)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Expected revision for '{normPath}' must be a positive integer, but got {op.ExpectedRevision}.", normPath) });
+            }
+
+            if (op.NewRevision <= 0)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"New revision for '{normPath}' must be a positive integer, but got {op.NewRevision}.", normPath) });
+            }
+
+            // Existing root revision must parse as positive integer and equal ExpectedRevision
+            int actualRev;
+            try
+            {
+                using var s = File.OpenRead(fullTarget);
+                using var r = SecureXmlReaderFactory.CreateReader(s);
+                var xDoc = XDocument.Load(r);
+                var revStr = xDoc.Root?.Attribute("revision")?.Value;
+                if (string.IsNullOrWhiteSpace(revStr) || !int.TryParse(revStr, CultureInfo.InvariantCulture, out actualRev) || actualRev <= 0)
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Document '{normPath}' root revision attribute is missing, non-positive, or malformed.", normPath) });
+                }
+            }
+            catch (XmlException xmlEx)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to parse XML document '{normPath}': {xmlEx.Message}", normPath) });
+            }
+            catch (Exception ex)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to read '{normPath}': {ex.Message}", normPath) });
+            }
+
+            if (actualRev != op.ExpectedRevision)
+            {
+                var diag = new Diagnostic(
+                    DiagnosticCodes.RevisionConflict,
+                    "error",
+                    $"Expected revision {op.ExpectedRevision} does not match actual revision {actualRev} for document '{normPath}'.",
+                    Document: normPath,
+                    ExpectedRevision: op.ExpectedRevision,
+                    ActualRevision: actualRev);
+                return (false, null, new[] { diag });
+            }
+
+            // NewRevision must equal ExpectedRevision + 1
+            if (op.NewRevision != op.ExpectedRevision + 1)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"New revision {op.NewRevision} must equal ExpectedRevision {op.ExpectedRevision} + 1 for document '{normPath}'.", normPath) });
+            }
+
+            // Replacement XML root revision must parse as positive integer and equal NewRevision
+            int replacementRev;
+            try
+            {
+                using var strR = new StringReader(canonicalContent);
+                using var r = SecureXmlReaderFactory.CreateReader(strR);
+                var replXDoc = XDocument.Load(r);
+                var revStr = replXDoc.Root?.Attribute("revision")?.Value;
+                if (string.IsNullOrWhiteSpace(revStr) || !int.TryParse(revStr, CultureInfo.InvariantCulture, out replacementRev) || replacementRev <= 0)
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Replacement XML for '{normPath}' root revision attribute is missing, non-positive, or malformed.", normPath) });
+                }
+            }
+            catch (XmlException xmlEx)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Replacement XML for '{normPath}' is malformed: {xmlEx.Message}", normPath) });
+            }
+            catch (Exception ex)
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to parse replacement XML for '{normPath}': {ex.Message}", normPath) });
+            }
+
+            if (replacementRev != op.NewRevision)
+            {
+                var diag = new Diagnostic(
+                    DiagnosticCodes.RevisionConflict,
+                    "error",
+                    $"Replacement XML root revision {replacementRev} does not match NewRevision {op.NewRevision} for document '{normPath}'.",
+                    Document: normPath,
+                    ExpectedRevision: op.NewRevision,
+                    ActualRevision: replacementRev);
+                return (false, null, new[] { diag });
+            }
+
+            normalizedOps.Add((normPath, fullTarget, op, canonicalContent));
+        }
+
+        return (true, normalizedOps, Array.Empty<Diagnostic>());
     }
 
     private static void WriteMarkerXml(

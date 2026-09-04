@@ -81,6 +81,19 @@ public sealed class TaskReviewCoreTests
         Assert.IsTrue(canonicalReplay, Join(canonicalDiagnostics));
         Assert.IsTrue(canonicalEnvelope!.AlreadyApplied);
 
+        var reviewTasksPath = TasksPath();
+        var reviewTasksBefore = File.ReadAllBytes(reviewTasksPath);
+        var pendingRoot = Path.Combine(_workspace, "_tmp", "tx_pending_task_review_replay");
+        var pendingDirectory = Path.Combine(pendingRoot, "staged");
+        Directory.CreateDirectory(pendingDirectory);
+        var (blockedReplay, _, blockedDiagnostics) = TaskReviewer.Submit(
+            _workspace, IterationId, TaskId, revision, approval, dryRun: true);
+        Assert.IsFalse(blockedReplay);
+        Assert.IsTrue(blockedDiagnostics.Any(d => d.Code == DiagnosticCodes.RecoveryFailed), Join(blockedDiagnostics));
+        Assert.IsTrue(Directory.Exists(pendingDirectory), "Task-review dry-run must preserve pending recovery artifacts.");
+        CollectionAssert.AreEqual(reviewTasksBefore, File.ReadAllBytes(reviewTasksPath));
+        Directory.Delete(pendingRoot, recursive: true);
+
         var (completed, _, completeDiagnostics) = TaskUpdater.Update(
             _workspace, IterationId, TaskId, revision + 1, CompletionRequest("20260825T100300Z-complete-after-review"));
         Assert.IsTrue(completed, Join(completeDiagnostics));

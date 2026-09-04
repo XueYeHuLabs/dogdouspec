@@ -29,7 +29,8 @@ public static class RequirementProposer
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         if (string.IsNullOrWhiteSpace(workspaceRoot))
         {
@@ -65,6 +66,15 @@ public static class RequirementProposer
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         var normSpecDocPath = $"{normIterId}/spec.xml";
@@ -341,7 +351,8 @@ public static class RequirementProposer
             clock,
             faultInjector,
             version,
-            correlationId: proposeId);
+            correlationId: proposeId,
+            dryRun: dryRun);
     }
 
     private static XElement CreateReceipt(string operationId, string actor, string occurredAt, string fingerprint, string summary) =>

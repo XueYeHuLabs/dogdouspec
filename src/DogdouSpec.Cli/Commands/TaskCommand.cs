@@ -5,6 +5,7 @@ using System.Text;
 using System.Xml.Linq;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
+using DogdouSpec.Core.Revisions;
 using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Tasks;
 using DogdouSpec.Core.Validation;
@@ -163,8 +164,8 @@ public static class TaskCommand
         var dryRun = new Option<bool>("--dry-run") { Description = "Validate without writing; XML prints request and human prints summary" };
         var id = new Option<string?>("--id") { Description = "Replayable task ID; must be supplied with --operation-id" };
         var operationId = new Option<string?>("--operation-id") { Description = "Replayable ID with UTC timestamp prefix; must be supplied with --id" };
-        var agent = new Option<string?>("--agent") { Description = "Declared implementer attribution; provenance only" };
-        var reviewRequired = new Option<bool>("--review-required") { Description = "Require a structured independent approval before completion" };
+        var agent = new Option<string?>("--agent") { Description = "Declared implementer attribution; required when --review-required is specified" };
+        var reviewRequired = new Option<bool>("--review-required") { Description = "Require a structured independent approval before completion (requires --agent)" };
         var workspace = new Option<string?>("--workspace-root");
         var formatOption = new Option<string?>("--format"); formatOption.AcceptOnlyFromAmong("xml", "human");
         foreach (var option in new Option[] { title, scope, done, why, origin, depends, term, iteration, revision, start, dryRun, id, operationId, agent, reviewRequired, workspace, formatOption }) cmd.Add(option);
@@ -195,7 +196,7 @@ public static class TaskCommand
 
     private static Command BuildAddCommand()
     {
-        var addCmd = new Command("add", "Add a new pending task to tasks.xml (mutating)");
+        var addCmd = new Command("add", "Add a new pending task to tasks.xml (mutating unless --dry-run)");
 
         var iterationOption = new Option<string?>("--iteration")
         {
@@ -211,12 +212,17 @@ public static class TaskCommand
 
         var stdinOption = new Option<bool>("--stdin")
         {
-            Description = "Read task-add XML request from standard input"
+            Description = "Read task-add XML request from standard input (mutually exclusive with --file; exactly one required)"
         };
 
         var fileOption = new Option<string?>("--file")
         {
-            Description = "Path to file containing task-add XML request"
+            Description = "Path to file containing task-add XML request (mutually exclusive with --stdin; exactly one required)"
+        };
+
+        var dryRunOption = new Option<bool>("--dry-run")
+        {
+            Description = "Validate mutation preconditions and report prospective revision without writing"
         };
 
         var workspaceRootOption = new Option<string?>("--workspace-root")
@@ -234,6 +240,7 @@ public static class TaskCommand
         addCmd.Add(expectedRevisionOption);
         addCmd.Add(stdinOption);
         addCmd.Add(fileOption);
+        addCmd.Add(dryRunOption);
         addCmd.Add(workspaceRootOption);
         addCmd.Add(formatOption);
 
@@ -243,6 +250,7 @@ public static class TaskCommand
             var expectedRevision = parseResult.GetValue(expectedRevisionOption);
             var hasStdin = parseResult.GetValue(stdinOption);
             var filePath = parseResult.GetValue(fileOption);
+            var dryRun = parseResult.GetValue(dryRunOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
@@ -338,7 +346,8 @@ public static class TaskCommand
                 discoveredRoot,
                 iterationId,
                 expectedRevision.Value,
-                requestXml);
+                requestXml,
+                dryRun: dryRun);
 
             if (!success || diagnostics.Count > 0)
             {
@@ -360,7 +369,7 @@ public static class TaskCommand
 
     private static Command BuildReviseCommand()
     {
-        var reviseCmd = new Command("revise", "Elaborate task scope, constraints, dependencies, or acceptance criteria (mutating)");
+        var reviseCmd = new Command("revise", "Elaborate task scope, constraints, dependencies, or acceptance criteria (mutating unless --dry-run)");
 
         var taskOption = new Option<string>("--task")
         {
@@ -414,12 +423,17 @@ public static class TaskCommand
 
         var stdinOption = new Option<bool>("--stdin")
         {
-            Description = "Read task-revise XML request from standard input"
+            Description = "Read task-revise XML request from standard input (mutually exclusive with --file; exactly one required if XML input)"
         };
 
         var fileOption = new Option<string?>("--file")
         {
-            Description = "Path to file containing task-revise XML request"
+            Description = "Path to file containing task-revise XML request (mutually exclusive with --stdin; exactly one required if XML input)"
+        };
+
+        var dryRunOption = new Option<bool>("--dry-run")
+        {
+            Description = "Validate mutation preconditions and report prospective revision without writing"
         };
 
         var workspaceRootOption = new Option<string?>("--workspace-root")
@@ -444,6 +458,7 @@ public static class TaskCommand
         reviseCmd.Add(actorOption);
         reviseCmd.Add(stdinOption);
         reviseCmd.Add(fileOption);
+        reviseCmd.Add(dryRunOption);
         reviseCmd.Add(workspaceRootOption);
         reviseCmd.Add(formatOption);
 
@@ -454,6 +469,7 @@ public static class TaskCommand
             var expectedRevision = parseResult.GetValue(expectedRevisionOption);
             var hasStdin = parseResult.GetValue(stdinOption);
             var filePath = parseResult.GetValue(fileOption);
+            var dryRun = parseResult.GetValue(dryRunOption);
             var addConstraints = parseResult.GetValue(addConstraintOption);
             var addCriteria = parseResult.GetValue(addCriterionOption);
             var addScopes = parseResult.GetValue(addScopeOption);
@@ -608,40 +624,26 @@ public static class TaskCommand
 """;
             }
 
-            if (!expectedRevision.HasValue || expectedRevision.Value <= 0)
-            {
-                var tasksPath = Path.Combine(discoveredRoot, iterId, "tasks.xml");
-                if (File.Exists(tasksPath))
-                {
-                    try
-                    {
-                        var tasksDoc = XDocument.Load(tasksPath);
-                        if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev))
-                        {
-                            expectedRevision = rev;
-                        }
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
+            var (revOk, resolvedRev, revErr) = DocumentRevisionResolver.ResolveExpectedRevision(
+                discoveredRoot,
+                $"{iterId}/tasks.xml",
+                expectedRevision);
 
-            if (!expectedRevision.HasValue || expectedRevision.Value <= 0)
+            if (!revOk || revErr != null)
             {
-                var envelope = new DiagnosticsEnvelope("task revise", Diagnostic.Error(
-                    DiagnosticCodes.InvalidArgument,
-                    "--expected-revision must be specified or resolvable."));
+                var envelope = new DiagnosticsEnvelope("task revise", revErr!);
                 Console.Error.Write(envelope.Format(format));
                 return 2;
             }
+            expectedRevision = resolvedRev;
 
             var (success, mutationEnvelope, diagnostics) = TaskReviser.Revise(
                 discoveredRoot,
                 iterId,
                 taskId,
                 expectedRevision.Value,
-                requestXml);
+                requestXml,
+                dryRun: dryRun);
 
             if (!success || diagnostics.Count > 0)
             {
@@ -663,7 +665,7 @@ public static class TaskCommand
 
     private static Command BuildSplitCommand()
     {
-        var splitCmd = new Command("split", "Split a task into two or more replacement subtasks and set terminal disposition on parent (mutating)");
+        var splitCmd = new Command("split", "Split a task into two or more replacement subtasks and set terminal disposition on parent (mutating unless --dry-run)");
 
         var iterationOption = new Option<string?>("--iteration")
         {
@@ -685,12 +687,17 @@ public static class TaskCommand
 
         var stdinOption = new Option<bool>("--stdin")
         {
-            Description = "Read task-split XML request from standard input"
+            Description = "Read task-split XML request from standard input (mutually exclusive with --file; exactly one required)"
         };
 
         var fileOption = new Option<string?>("--file")
         {
-            Description = "Path to file containing task-split XML request"
+            Description = "Path to file containing task-split XML request (mutually exclusive with --stdin; exactly one required)"
+        };
+
+        var dryRunOption = new Option<bool>("--dry-run")
+        {
+            Description = "Validate mutation preconditions and report prospective revision without writing"
         };
 
         var workspaceRootOption = new Option<string?>("--workspace-root")
@@ -709,6 +716,7 @@ public static class TaskCommand
         splitCmd.Add(expectedRevisionOption);
         splitCmd.Add(stdinOption);
         splitCmd.Add(fileOption);
+        splitCmd.Add(dryRunOption);
         splitCmd.Add(workspaceRootOption);
         splitCmd.Add(formatOption);
 
@@ -719,6 +727,7 @@ public static class TaskCommand
             var expectedRevision = parseResult.GetValue(expectedRevisionOption);
             var hasStdin = parseResult.GetValue(stdinOption);
             var filePath = parseResult.GetValue(fileOption);
+            var dryRun = parseResult.GetValue(dryRunOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
@@ -833,7 +842,8 @@ public static class TaskCommand
                 iterationId,
                 taskId,
                 expectedRevision.Value,
-                requestXml);
+                requestXml,
+                dryRun: dryRun);
 
             if (!success || diagnostics.Count > 0)
             {
@@ -855,7 +865,7 @@ public static class TaskCommand
 
     private static Command BuildUpdateCommand()
     {
-        var updateCmd = new Command("update", "Atomically update a task state, criteria, context, and records (mutating)");
+        var updateCmd = new Command("update", "Atomically update a task state, criteria, context, and records (mutating unless --dry-run)");
 
         var iterationOption = new Option<string?>("--iteration")
         {
@@ -877,12 +887,17 @@ public static class TaskCommand
 
         var stdinOption = new Option<bool>("--stdin")
         {
-            Description = "Read task-update XML request from standard input"
+            Description = "Read task-update XML request from standard input (mutually exclusive with --file; exactly one required)"
         };
 
         var fileOption = new Option<string?>("--file")
         {
-            Description = "Path to file containing task-update XML request"
+            Description = "Path to file containing task-update XML request (mutually exclusive with --stdin; exactly one required)"
+        };
+
+        var dryRunOption = new Option<bool>("--dry-run")
+        {
+            Description = "Validate mutation preconditions and report prospective revision without writing"
         };
 
         var workspaceRootOption = new Option<string?>("--workspace-root")
@@ -901,6 +916,7 @@ public static class TaskCommand
         updateCmd.Add(expectedRevisionOption);
         updateCmd.Add(stdinOption);
         updateCmd.Add(fileOption);
+        updateCmd.Add(dryRunOption);
         updateCmd.Add(workspaceRootOption);
         updateCmd.Add(formatOption);
 
@@ -911,6 +927,7 @@ public static class TaskCommand
             var expectedRevision = parseResult.GetValue(expectedRevisionOption);
             var hasStdin = parseResult.GetValue(stdinOption);
             var filePath = parseResult.GetValue(fileOption);
+            var dryRun = parseResult.GetValue(dryRunOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
@@ -1026,7 +1043,8 @@ public static class TaskCommand
                 iterationId,
                 taskId,
                 expectedRevision.Value,
-                requestXml);
+                requestXml,
+                dryRun: dryRun);
 
             if (!success || diagnostics.Count > 0)
             {
@@ -1301,20 +1319,21 @@ public static class TaskCommand
 
     private static Command BuildReviewCommand()
     {
-        var command = new Command("review", "Submit a structured task review (mutating; actor separation is provenance, not authenticated identity)");
+        var command = new Command("review", "Submit a structured task review (mutating unless --dry-run; actor separation is provenance, not authenticated identity)");
 
         command.Add(BuildReviewApproveCommand());
         command.Add(BuildReviewRequestChangesCommand());
 
-        var iteration = new Option<string?>("--iteration") { Description = "Iteration ID" };
-        var task = new Option<string?>("--task") { Description = "Task ID" };
-        var expectedRevision = new Option<int?>("--expected-revision") { Description = "Exact tasks.xml revision" };
-        var stdin = new Option<bool>("--stdin") { Description = "Read task-review XML from standard input" };
-        var file = new Option<string?>("--file") { Description = "Path to task-review XML" };
+        var iteration = new Option<string?>("--iteration") { Description = "Iteration ID", Required = true };
+        var task = new Option<string?>("--task") { Description = "Task ID", Required = true };
+        var expectedRevision = new Option<int?>("--expected-revision") { Description = "Exact positive tasks.xml revision", Required = true };
+        var stdin = new Option<bool>("--stdin") { Description = "Read task-review XML from standard input (mutually exclusive with --file; exactly one required)" };
+        var file = new Option<string?>("--file") { Description = "Path to task-review XML (mutually exclusive with --stdin; exactly one required)" };
+        var dryRun = new Option<bool>("--dry-run") { Description = "Validate mutation preconditions and report prospective revision without writing" };
         var workspace = new Option<string?>("--workspace-root") { Description = "Workspace root or project directory" };
         var formatOption = new Option<string?>("--format") { Description = "Output format (xml or human)" };
         formatOption.AcceptOnlyFromAmong("xml", "human");
-        foreach (var option in new Option[] { iteration, task, expectedRevision, stdin, file, workspace, formatOption })
+        foreach (var option in new Option[] { iteration, task, expectedRevision, stdin, file, dryRun, workspace, formatOption })
         {
             command.Add(option);
         }
@@ -1325,6 +1344,7 @@ public static class TaskCommand
             var filePath = parse.GetValue(file);
             var iterVal = parse.GetValue(iteration);
             var taskVal = parse.GetValue(task);
+            var isDryRun = parse.GetValue(dryRun);
             if (string.IsNullOrWhiteSpace(iterVal) || string.IsNullOrWhiteSpace(taskVal))
             {
                 var diagnostic = Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Options --iteration and --task are required for raw task review.");
@@ -1366,7 +1386,7 @@ public static class TaskCommand
                 return 2;
             }
             var (success, envelope, diagnostics) = TaskReviewer.Submit(
-                root, iterVal, taskVal, revision.Value, xml);
+                root, iterVal, taskVal, revision.Value, xml, dryRun: isDryRun);
             if (!success || diagnostics.Count > 0 || envelope == null)
             {
                 var diagnosticEnvelope = new DiagnosticsEnvelope("task review", diagnostics);
@@ -1411,27 +1431,13 @@ public static class TaskCommand
             }
 
             var taskId = parse.GetValue(taskOption)!;
-            var tasksPath = Path.Combine(root, iterId, "tasks.xml");
-            if (!File.Exists(tasksPath))
+            var (revOk, resolvedRev, revErr) = DocumentRevisionResolver.ResolveExpectedRevision(root, $"{iterId}/tasks.xml", parse.GetValue(expectedRevOption));
+            if (!revOk || revErr != null)
             {
-                Console.Error.Write(new DiagnosticsEnvelope("task review approve", Diagnostic.Error(DiagnosticCodes.DocumentNotFound, $"tasks.xml not found for iteration '{iterId}'.")).Format(format));
+                Console.Error.Write(new DiagnosticsEnvelope("task review approve", revErr!).Format(format));
                 return 2;
             }
-
-            XDocument tasksDoc;
-            try { tasksDoc = XDocument.Load(tasksPath); }
-            catch (Exception ex)
-            {
-                Console.Error.Write(new DiagnosticsEnvelope("task review approve", Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to load tasks.xml: {ex.Message}")).Format(format));
-                return 2;
-            }
-
-            var expectedRev = parse.GetValue(expectedRevOption);
-            if (!expectedRev.HasValue)
-            {
-                if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev)) expectedRev = rev;
-                else expectedRev = 1;
-            }
+            var expectedRev = resolvedRev;
 
             var nowUtc = DateTimeOffset.UtcNow;
             var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
@@ -1449,7 +1455,7 @@ public static class TaskCommand
 </task-review>
 """;
 
-            var (success, envelope, diagnostics) = TaskReviewer.Submit(root, iterId, taskId, expectedRev.Value, xml);
+            var (success, envelope, diagnostics) = TaskReviewer.Submit(root, iterId, taskId, expectedRev, xml);
             if (!success || diagnostics.Count > 0 || envelope == null)
             {
                 var diagEnv = new DiagnosticsEnvelope("task review approve", diagnostics);
@@ -1498,27 +1504,13 @@ public static class TaskCommand
             }
 
             var taskId = parse.GetValue(taskOption)!;
-            var tasksPath = Path.Combine(root, iterId, "tasks.xml");
-            if (!File.Exists(tasksPath))
+            var (revOk, resolvedRev, revErr) = DocumentRevisionResolver.ResolveExpectedRevision(root, $"{iterId}/tasks.xml", parse.GetValue(expectedRevOption));
+            if (!revOk || revErr != null)
             {
-                Console.Error.Write(new DiagnosticsEnvelope("task review request-changes", Diagnostic.Error(DiagnosticCodes.DocumentNotFound, $"tasks.xml not found for iteration '{iterId}'.")).Format(format));
+                Console.Error.Write(new DiagnosticsEnvelope("task review request-changes", revErr!).Format(format));
                 return 2;
             }
-
-            XDocument tasksDoc;
-            try { tasksDoc = XDocument.Load(tasksPath); }
-            catch (Exception ex)
-            {
-                Console.Error.Write(new DiagnosticsEnvelope("task review request-changes", Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Failed to load tasks.xml: {ex.Message}")).Format(format));
-                return 2;
-            }
-
-            var expectedRev = parse.GetValue(expectedRevOption);
-            if (!expectedRev.HasValue)
-            {
-                if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev)) expectedRev = rev;
-                else expectedRev = 1;
-            }
+            var expectedRev = resolvedRev;
 
             var nowUtc = DateTimeOffset.UtcNow;
             var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
@@ -1539,7 +1531,7 @@ public static class TaskCommand
 </task-review>
 """;
 
-            var (success, envelope, diagnostics) = TaskReviewer.Submit(root, iterId, taskId, expectedRev.Value, xml);
+            var (success, envelope, diagnostics) = TaskReviewer.Submit(root, iterId, taskId, expectedRev, xml);
             if (!success || diagnostics.Count > 0 || envelope == null)
             {
                 var diagEnv = new DiagnosticsEnvelope("task review request-changes", diagnostics);
@@ -1608,14 +1600,13 @@ public static class TaskCommand
                 return 2;
             }
 
-            var expectedRev = parse.GetValue(expectedRevOption);
-            if (!expectedRev.HasValue)
+            var (revOk, resolvedRev, revErr) = DocumentRevisionResolver.ResolveExpectedRevision(root, $"{iterId}/tasks.xml", parse.GetValue(expectedRevOption));
+            if (!revOk || revErr != null)
             {
-                if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev))
-                    expectedRev = rev;
-                else
-                    expectedRev = 1;
+                Console.Error.Write(new DiagnosticsEnvelope("task start", revErr!).Format(format));
+                return 2;
             }
+            var expectedRev = resolvedRev;
 
             var nowUtc = DateTimeOffset.UtcNow;
             var taskElem = tasksDoc.Descendants("task").FirstOrDefault(t => string.Equals((string?)t.Attribute("id"), taskId, StringComparison.Ordinal));
@@ -1655,7 +1646,7 @@ public static class TaskCommand
                 root,
                 iterId,
                 taskId,
-                expectedRev.Value,
+                expectedRev,
                 requestXml);
 
             if (!success || diagnostics.Count > 0 || envelope == null)
@@ -1727,14 +1718,13 @@ public static class TaskCommand
                 return 2;
             }
 
-            var expectedRev = parse.GetValue(expectedRevOption);
-            if (!expectedRev.HasValue)
+            var (revOk, resolvedRev, revErr) = DocumentRevisionResolver.ResolveExpectedRevision(root, $"{iterId}/tasks.xml", parse.GetValue(expectedRevOption));
+            if (!revOk || revErr != null)
             {
-                if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev))
-                    expectedRev = rev;
-                else
-                    expectedRev = 1;
+                Console.Error.Write(new DiagnosticsEnvelope("task verify", revErr!).Format(format));
+                return 2;
             }
+            var expectedRev = resolvedRev;
 
             var taskElem = tasksDoc.Descendants("task").FirstOrDefault(t => string.Equals((string?)t.Attribute("id"), taskId, StringComparison.Ordinal));
             var taskCriteria = taskElem?.Descendants("criterion").Select(c => (string?)c.Attribute("id")).Where(id => !string.IsNullOrWhiteSpace(id)).ToList() ?? new List<string?>();
@@ -1793,7 +1783,7 @@ public static class TaskCommand
                 root,
                 iterId,
                 taskId,
-                expectedRev.Value,
+                expectedRev,
                 requestXml);
 
             if (!success || diagnostics.Count > 0 || envelope == null)
@@ -1865,14 +1855,13 @@ public static class TaskCommand
                 return 2;
             }
 
-            var expectedRev = parse.GetValue(expectedRevOption);
-            if (!expectedRev.HasValue)
+            var (revOk, resolvedRev, revErr) = DocumentRevisionResolver.ResolveExpectedRevision(root, $"{iterId}/tasks.xml", parse.GetValue(expectedRevOption));
+            if (!revOk || revErr != null)
             {
-                if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var rev))
-                    expectedRev = rev;
-                else
-                    expectedRev = 1;
+                Console.Error.Write(new DiagnosticsEnvelope("task finish", revErr!).Format(format));
+                return 2;
             }
+            var curRev = resolvedRev;
 
             var taskElem = tasksDoc.Descendants("task").FirstOrDefault(t => string.Equals((string?)t.Attribute("id"), taskId, StringComparison.Ordinal));
             if (taskElem == null)
@@ -1893,7 +1882,6 @@ public static class TaskCommand
                 coversList = taskCriteria!;
             }
 
-            var curRev = expectedRev.Value;
             var actor = parse.GetValue(actorOption) ?? "agent";
             var summary = parse.GetValue(summaryOption) ?? $"Completed task {taskId}.";
 

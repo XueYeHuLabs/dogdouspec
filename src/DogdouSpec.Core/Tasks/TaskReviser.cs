@@ -30,7 +30,8 @@ public static class TaskReviser
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         if (string.IsNullOrWhiteSpace(workspaceRoot))
         {
@@ -71,6 +72,15 @@ public static class TaskReviser
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         var normTasksDocPath = $"{normIterId}/tasks.xml";
@@ -514,7 +524,8 @@ public static class TaskReviser
             clock,
             faultInjector,
             version,
-            correlationId: reviseId);
+            correlationId: reviseId,
+            dryRun: dryRun);
     }
 
     private static bool HasDuplicateRepositoryPaths(XElement? scope) => scope != null &&

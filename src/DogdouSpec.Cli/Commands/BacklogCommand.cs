@@ -3,6 +3,7 @@ using System.Globalization;
 using DogdouSpec.Core.Backlog;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
+using DogdouSpec.Core.Revisions;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Workspace;
 
@@ -23,28 +24,29 @@ public static class BacklogCommand
 
     private static Command BuildAddCommand()
     {
-        var command = new Command("add", "Create an open backlog item (mutating)");
+        var command = new Command("add", "Create an open backlog item (mutating unless --dry-run)");
         var id = RequiredString("--id", "Time-first backlog item ID");
         var operationId = RequiredString("--operation-id", "Time-first replay operation ID");
         var actor = RequiredString("--actor", "Actor attribution (provenance, not authenticated identity)");
         var occurredAt = RequiredString("--occurred-at", "UTC or offset timestamp for deterministic replay");
-        var kind = RequiredString("--kind", "Backlog kind (use defect for defects)");
-        var severity = OptionalString("--severity", "Defect severity: p0, p1, p2, or p3");
+        var kind = RequiredString("--kind", "Backlog kind (use defect for defects; kind 'defect' requires --severity)");
+        var severity = OptionalString("--severity", "Defect severity: p0, p1, p2, or p3 (required when --kind is defect)");
         severity.AcceptOnlyFromAmong("p0", "p1", "p2", "p3");
         var summary = RequiredString("--summary", "Short indexed summary");
         var statement = RequiredString("--statement", "Deferred obligation statement");
         var rationale = RequiredString("--rationale", "Why the obligation is not current acceptance");
         var impact = RequiredString("--impact", "Risk and product acceptance impact");
-        var sourceIteration = Repeatable("--source-iteration", "Source iteration ID (repeatable)");
-        var sourceTask = Repeatable("--source-task", "Source task ID (repeatable)");
-        var targetIteration = OptionalString("--target-iteration", "Target iteration ID");
-        var reviewCondition = OptionalString("--review-condition", "Condition for later review or scheduling");
+        var sourceIteration = Repeatable("--source-iteration", "Source iteration ID (repeatable; at least one --source-iteration or --source-task required)");
+        var sourceTask = Repeatable("--source-task", "Source task ID (repeatable; at least one --source-iteration or --source-task required)");
+        var targetIteration = OptionalString("--target-iteration", "Target iteration ID (mutually exclusive with --review-condition; exactly one required)");
+        var reviewCondition = OptionalString("--review-condition", "Condition for later review or scheduling (mutually exclusive with --target-iteration; exactly one required)");
         var expectedRevision = RequiredRevision();
+        var dryRun = new Option<bool>("--dry-run") { Description = "Validate mutation preconditions and report prospective revision without writing" };
         var workspaceRoot = WorkspaceRoot();
         var format = FormatOption();
         foreach (var option in new Option[]
                  { id, operationId, actor, occurredAt, kind, severity, summary, statement, rationale, impact,
-                   sourceIteration, sourceTask, targetIteration, reviewCondition, expectedRevision, workspaceRoot, format })
+                   sourceIteration, sourceTask, targetIteration, reviewCondition, expectedRevision, dryRun, workspaceRoot, format })
         {
             command.Add(option);
         }
@@ -57,18 +59,19 @@ public static class BacklogCommand
                 return WriteError("backlog add", outputFormat,
                     Diagnostic.Error(DiagnosticCodes.InvalidArgument, "--occurred-at must be a valid ISO-8601 timestamp."));
             }
-            var revision = parseResult.GetValue(expectedRevision);
-            if (!revision.HasValue || revision.Value <= 0)
-            {
-                return WriteError("backlog add", outputFormat,
-                    Diagnostic.Error(DiagnosticCodes.InvalidArgument, "--expected-revision must be a positive integer."));
-            }
             var (found, root, discoveryError) = WorkspaceDiscovery.FindWorkspaceRoot(
                 parseResult.GetValue(workspaceRoot), Environment.CurrentDirectory);
             if (!found || discoveryError != null)
             {
                 return WriteError("backlog add", outputFormat, discoveryError!);
             }
+            var (revOk, resolvedRev, revErr) = DocumentRevisionResolver.ResolveExpectedRevision(
+                root, "backlog.xml", parseResult.GetValue(expectedRevision));
+            if (!revOk || revErr != null)
+            {
+                return WriteError("backlog add", outputFormat, revErr!);
+            }
+            var isDryRun = parseResult.GetValue(dryRun);
             var input = new BacklogCreateInput(
                 parseResult.GetValue(id)!, parseResult.GetValue(operationId)!, parseResult.GetValue(actor)!, timestamp,
                 parseResult.GetValue(kind)!, parseResult.GetValue(severity), parseResult.GetValue(summary)!,
@@ -76,7 +79,7 @@ public static class BacklogCommand
                 parseResult.GetValue(sourceIteration) ?? Array.Empty<string>(),
                 parseResult.GetValue(sourceTask) ?? Array.Empty<string>(),
                 parseResult.GetValue(targetIteration), parseResult.GetValue(reviewCondition));
-            var (success, envelope, diagnostics) = BacklogLifecycle.Add(root, revision.Value, input);
+            var (success, envelope, diagnostics) = BacklogLifecycle.Add(root, resolvedRev, input, dryRun: isDryRun);
             return WriteMutationResult("backlog add", outputFormat, success, envelope, diagnostics);
         });
         return command;
@@ -121,16 +124,20 @@ public static class BacklogCommand
     private static Command BuildTransitionCommand(
         string name,
         string description,
-        Func<string, int, BacklogTransitionInput,
+        Func<string, int, BacklogTransitionInput, bool,
             (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics)> transition)
     {
-        var command = new Command(name, description + " (mutating)");
+        var command = new Command(name, description + " (mutating unless --dry-run)");
         var id = RequiredString("--id", "Backlog item ID");
         var operationId = RequiredString("--operation-id", "Time-first replay operation ID");
         var actor = RequiredString("--actor", "Actor attribution (provenance, not authenticated identity)");
         var occurredAt = RequiredString("--occurred-at", "UTC or offset timestamp for deterministic replay");
         var resolvingTask = OptionalString("--resolving-task", "Task ID recorded as resolution evidence");
         var expectedRevision = RequiredRevision();
+        var dryRun = new Option<bool>("--dry-run")
+        {
+            Description = "Validate mutation preconditions and report prospective revision without writing"
+        };
         var workspaceRoot = WorkspaceRoot();
         var format = FormatOption();
         command.Add(id);
@@ -139,6 +146,7 @@ public static class BacklogCommand
         command.Add(occurredAt);
         command.Add(resolvingTask);
         command.Add(expectedRevision);
+        command.Add(dryRun);
         command.Add(workspaceRoot);
         command.Add(format);
         command.SetAction(parseResult =>
@@ -150,22 +158,23 @@ public static class BacklogCommand
                 return WriteError(commandName, outputFormat,
                     Diagnostic.Error(DiagnosticCodes.InvalidArgument, "--occurred-at must be a valid ISO-8601 timestamp."));
             }
-            var revision = parseResult.GetValue(expectedRevision);
-            if (!revision.HasValue || revision.Value <= 0)
-            {
-                return WriteError(commandName, outputFormat,
-                    Diagnostic.Error(DiagnosticCodes.InvalidArgument, "--expected-revision must be a positive integer."));
-            }
             var (found, root, discoveryError) = WorkspaceDiscovery.FindWorkspaceRoot(
                 parseResult.GetValue(workspaceRoot), Environment.CurrentDirectory);
             if (!found || discoveryError != null)
             {
                 return WriteError(commandName, outputFormat, discoveryError!);
             }
+            var (revOk, resolvedRev, revErr) = DocumentRevisionResolver.ResolveExpectedRevision(
+                root, "backlog.xml", parseResult.GetValue(expectedRevision));
+            if (!revOk || revErr != null)
+            {
+                return WriteError(commandName, outputFormat, revErr!);
+            }
+            var isDryRun = parseResult.GetValue(dryRun);
             var input = new BacklogTransitionInput(
                 parseResult.GetValue(id)!, parseResult.GetValue(operationId)!, parseResult.GetValue(actor)!,
                 timestamp, parseResult.GetValue(resolvingTask));
-            var (success, envelope, diagnostics) = transition(root, revision.Value, input);
+            var (success, envelope, diagnostics) = transition(root, resolvedRev, input, isDryRun);
             return WriteMutationResult(commandName, outputFormat, success, envelope, diagnostics);
         });
         return command;
@@ -190,8 +199,7 @@ public static class BacklogCommand
 
     private static Option<int?> RequiredRevision() => new("--expected-revision")
     {
-        Description = "Expected positive backlog.xml revision",
-        Required = true
+        Description = "Expected positive backlog.xml revision (optional; defaults to current backlog.xml revision)"
     };
 
     private static Option<string?> WorkspaceRoot() => new("--workspace-root")

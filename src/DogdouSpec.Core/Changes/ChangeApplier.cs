@@ -30,7 +30,8 @@ public static class ChangeApplier
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         if (string.IsNullOrWhiteSpace(workspaceRoot))
         {
@@ -71,6 +72,15 @@ public static class ChangeApplier
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         var normSpecDocPath = $"{normIterId}/spec.xml";
@@ -502,7 +512,8 @@ public static class ChangeApplier
             faultInjector,
             version,
             correlationId: applyId,
-            readPreconditions: new[] { new TransactionReadPrecondition(normSpecDocPath, actualSpecRevision) });
+            readPreconditions: new[] { new TransactionReadPrecondition(normSpecDocPath, actualSpecRevision) },
+            dryRun: dryRun);
     }
 
     private static bool IsValidUtcTimestamp(string? value, out DateTimeOffset dto)

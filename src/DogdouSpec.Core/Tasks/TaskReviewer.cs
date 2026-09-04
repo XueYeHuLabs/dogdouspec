@@ -20,7 +20,7 @@ public static class TaskReviewer
 {
     public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Submit(
         string workspaceRoot, string iterationId, string taskId, int expectedRevision, string requestXml,
-        string version = "1.0")
+        string version = "1.0", bool dryRun = false)
     {
         if (expectedRevision <= 0 || string.IsNullOrWhiteSpace(requestXml))
         {
@@ -30,6 +30,14 @@ public static class TaskReviewer
         if (!workspaceSafe || workspaceError != null)
         {
             return (false, null, new[] { workspaceError! });
+        }
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
         var (iterationValid, normalizedIteration, iterationError) = PathSecurity.ValidateIterationId(iterationId);
         if (!iterationValid || iterationError != null)
@@ -277,7 +285,8 @@ public static class TaskReviewer
         tasks.Root!.SetAttributeValue("revision", actualRevision + 1);
         var operation = new TransactionDocumentOperation(tasksRelative, Serialize(tasks), actualRevision, actualRevision + 1);
         return WorkspaceTransactionCommitter.Commit(workspaceRoot, "task review", new[] { operation },
-            readPreconditions: new[] { new TransactionReadPrecondition(specRelative, specRevision) });
+            readPreconditions: new[] { new TransactionReadPrecondition(specRelative, specRevision) },
+            dryRun: dryRun);
     }
 
     private static (bool Success, XDocument? Document, IReadOnlyList<Diagnostic> Diagnostics) ParseRequest(

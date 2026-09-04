@@ -1,6 +1,7 @@
 using System.Xml.Linq;
 using DogdouSpec.Core.Backlog;
 using DogdouSpec.Core.Diagnostics;
+using DogdouSpec.Core.Transactions;
 
 namespace DogdouSpec.Core.Tests;
 
@@ -67,6 +68,10 @@ public sealed class BacklogLifecycleCoreTests
         Assert.IsTrue(replayEnvelope!.AlreadyApplied);
         Assert.AreEqual(2, replayEnvelope.Documents.Single().Revision);
 
+        AssertDryRunReplayBlocked(
+            "backlog add",
+            () => BacklogLifecycle.Add(_tempDir, 1, create, dryRun: true));
+
         var changedReplay = create with { Summary = "Changed replay semantics" };
         var (changedSuccess, _, changedDiagnostics) = BacklogLifecycle.Add(_tempDir, 1, changedReplay);
         Assert.IsFalse(changedSuccess);
@@ -78,6 +83,10 @@ public sealed class BacklogLifecycleCoreTests
         var (scheduled, _, scheduleDiagnostics) = BacklogLifecycle.Schedule(_tempDir, 2, schedule);
         Assert.IsTrue(scheduled, Join(scheduleDiagnostics));
         CollectionAssert.AreEqual(tasksBefore, File.ReadAllBytes(tasksPath), "Backlog transitions must not mutate tasks.xml.");
+
+        AssertDryRunReplayBlocked(
+            "backlog transition",
+            () => BacklogLifecycle.Schedule(_tempDir, 2, schedule, dryRun: true));
 
         var complete = new BacklogTransitionInput(
             create.Id, "20260825T080200Z-backlog-complete", "tester",
@@ -157,6 +166,32 @@ public sealed class BacklogLifecycleCoreTests
         var (success, _, diagnostics) = BacklogLifecycle.Add(_tempDir, 2, input);
         Assert.IsFalse(success);
         Assert.IsTrue(diagnostics.Any(d => d.Code == DiagnosticCodes.IdempotencyConflict));
+    }
+
+    private void AssertDryRunReplayBlocked(
+        string family,
+        Func<(bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics)> replay)
+    {
+        var before = Directory.GetFiles(_tempDir, "*.xml", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(Path.DirectorySeparatorChar + "_tmp" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(
+                path => Path.GetRelativePath(_tempDir, path),
+                File.ReadAllBytes,
+                StringComparer.OrdinalIgnoreCase);
+        var pendingRoot = Path.Combine(_tempDir, "_tmp", "tx_pending_" + family.Replace(' ', '_'));
+        var pendingDirectory = Path.Combine(pendingRoot, "staged");
+        Directory.CreateDirectory(pendingDirectory);
+
+        var result = replay();
+
+        Assert.IsFalse(result.Success, $"{family} exact dry-run replay must fail closed while recovery is pending.");
+        Assert.IsTrue(result.Diagnostics.Any(d => d.Code == DiagnosticCodes.RecoveryFailed), Join(result.Diagnostics));
+        Assert.IsTrue(Directory.Exists(pendingDirectory), $"{family} dry-run must preserve pending recovery artifacts.");
+        foreach (var (relativePath, originalBytes) in before)
+        {
+            CollectionAssert.AreEqual(originalBytes, File.ReadAllBytes(Path.Combine(_tempDir, relativePath)));
+        }
+        Directory.Delete(pendingRoot, recursive: true);
     }
 
     private static BacklogCreateInput CreateInput() => new(

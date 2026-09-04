@@ -31,7 +31,8 @@ public static class TaskUpdater
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         clock ??= SystemClock.Instance;
 
@@ -72,6 +73,15 @@ public static class TaskUpdater
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         // 3. Validate relative document path for tasks.xml
@@ -854,7 +864,8 @@ public static class TaskUpdater
             clock,
             faultInjector,
             version,
-            readPreconditions: extraReadPreconditions);
+            readPreconditions: extraReadPreconditions,
+            dryRun: dryRun);
     }
 
     private static bool IsValidUtcTimestamp(string? value, out DateTimeOffset dto)

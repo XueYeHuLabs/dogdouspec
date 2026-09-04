@@ -13,9 +13,14 @@ public static class QueryCommand
     {
         var queryCmd = new Command("query", "Evaluate an XPath 1.0 expression against a single managed document");
 
+        var iterationOption = new Option<string?>("--iteration")
+        {
+            Description = "Iteration identifier (YYYYMMDD-name) when querying iteration documents"
+        };
+
         var documentOption = new Option<string?>("--document")
         {
-            Description = "Relative path to managed document (relative to .dogdouspec)",
+            Description = "Relative path to managed document (relative to .dogdouspec, or shorthand spec.xml/tasks.xml with --iteration)",
             Required = true
         };
 
@@ -42,6 +47,7 @@ public static class QueryCommand
         };
         formatOption.AcceptOnlyFromAmong("xml", "human");
 
+        queryCmd.Add(iterationOption);
         queryCmd.Add(documentOption);
         queryCmd.Add(xpathOption);
         queryCmd.Add(varOption);
@@ -50,6 +56,7 @@ public static class QueryCommand
 
         queryCmd.SetAction(parseResult =>
         {
+            var iterationId = parseResult.GetValue(iterationOption);
             var documentPath = parseResult.GetValue(documentOption);
             var xpath = parseResult.GetValue(xpathOption);
             var rawVars = parseResult.GetValue(varOption);
@@ -66,10 +73,16 @@ public static class QueryCommand
                 return 2;
             }
 
-            var (isValidDoc, normalizedDocPath, docPathError) = PathSecurity.ValidateRelativeDocumentPath(documentPath);
-            if (!isValidDoc || docPathError != null)
+            var (isAddrValid, normalizedDocPath, _, addrError) = DocumentAddressResolver.Resolve(
+                iterationId,
+                documentPath,
+                requireDocument: true);
+
+            if (!isAddrValid || addrError != null || string.IsNullOrWhiteSpace(normalizedDocPath))
             {
-                var envelope = new DiagnosticsEnvelope("query", docPathError!);
+                var envelope = new DiagnosticsEnvelope("query", addrError ?? Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "Invalid document address."));
                 Console.Error.Write(envelope.Format(format));
                 return 2;
             }

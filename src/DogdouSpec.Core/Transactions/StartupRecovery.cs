@@ -13,6 +13,60 @@ namespace DogdouSpec.Core.Transactions;
 /// </summary>
 public static class StartupRecovery
 {
+    /// <summary>
+    /// Detects CLI-owned recovery artifacts without modifying the workspace.
+    /// Dry-run callers use this to avoid previewing state that a real commit
+    /// would first change through startup recovery.
+    /// </summary>
+    public static (bool Success, bool Pending, Diagnostic? Error) InspectPending(string workspaceRoot)
+    {
+        var tmpDir = Path.Combine(workspaceRoot, "_tmp");
+        if (!Directory.Exists(tmpDir))
+        {
+            return (true, false, null);
+        }
+
+        try
+        {
+            foreach (var entry in Directory.EnumerateFileSystemEntries(tmpDir))
+            {
+                var name = Path.GetFileName(entry);
+                if (string.Equals(name, "writer.lock", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!PathSecurity.IsSafeCliTempChild(workspaceRoot, entry))
+                {
+                    continue;
+                }
+
+                if (Directory.Exists(entry) &&
+                    (name.StartsWith("create_", StringComparison.OrdinalIgnoreCase) ||
+                     name.StartsWith("tx_", StringComparison.OrdinalIgnoreCase) ||
+                     name.StartsWith("staging_", StringComparison.OrdinalIgnoreCase) ||
+                     name.StartsWith("temp_", StringComparison.OrdinalIgnoreCase) ||
+                     name.StartsWith("backup_", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return (true, true, null);
+                }
+
+                if (File.Exists(entry))
+                {
+                    return (true, true, null);
+                }
+            }
+
+            return (true, false, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, false, Diagnostic.Error(
+                DiagnosticCodes.RecoveryFailed,
+                $"Pending recovery inspection failed due to filesystem error: {ex.Message}"));
+        }
+    }
+
     public static (bool Success, Diagnostic? Error) Run(string workspaceRoot)
     {
         var tmpDir = Path.Combine(workspaceRoot, "_tmp");
