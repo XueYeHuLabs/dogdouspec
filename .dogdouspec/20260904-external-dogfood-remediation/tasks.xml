@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="28">
+<tasks id="20260904-tasks-external-dogfood-remediation" iteration="20260904-external-dogfood-remediation" schema_version="1.0" revision="29">
   <index>
     <summary>Tasks for iteration 20260904-external-dogfood-remediation.</summary>
     <term key="iteration" value="20260904-external-dogfood-remediation" />
@@ -214,6 +214,8 @@
       <covers>
         <ref scope="document" target="20260904-task-f1-f5-f8-preflight-done" relation="covers" />
       </covers>
+    </record><record id="20260904T173100Z-record-preflight-source-commit" kind="discussion" status="informational" created_at="2026-09-04T17:31:00Z" actor="kiro-supervisor" operation_id="20260904T173100Z-taskupdate-preflight-source-commit">
+      <summary>Source commit 5a9e0fb records the completed F1, F5, and F8 implementation, independent agy approval, regression coverage, and governance state.</summary>
     </record></records>
   </task><task id="20260904-task-f3-knowledge-porcelain" status="pending" created_at="2026-09-04T08:05:00Z" updated_at="2026-09-04T08:05:00Z" agent="agy-knowledge-implementer">
     <index>
