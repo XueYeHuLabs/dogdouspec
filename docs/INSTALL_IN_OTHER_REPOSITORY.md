@@ -564,270 +564,110 @@ After installation, iteration activation, material lifecycle changes, review, ha
 
 ## 8. Upgrade Procedure
 
-DogdouSpec v1 does **not** provide an automatic schema migration command. Upgrades are permitted as a binary and skill refresh only when the new CLI remains fully compatible with the workspace's existing XSD v1 schemas, as verified by workspace validation.
+The authoritative repository-upgrade workflow is shipped inside the candidate
+binary at **references/upgrade.md** and is always available through:
 
-> [!CAUTION]
-> **Do Not Modify `.dogdouspec/_schema/` Directly**: Never copy schema files directly into `.dogdouspec/_schema/`. All files inside `.dogdouspec/` are managed XML/schema state. If a future DogdouSpec version introduces incompatible schema revisions, stop and follow an explicit migration guide.
+~~~powershell
+dogdouspec skill guide --all
+~~~
 
-### 8.1. Upgrade Steps
+The binary is intentionally self-describing. Replacing it does not authorize
+repository mutations. The calling agent reads the current binary Guide, gathers
+repository facts through read-only commands, decides how to reconcile local
+content, and then invokes explicit mechanical synchronization commands.
 
-Before running this block, define and validate `$SOURCE_REPO`, `$TARGET_REPO`, `$PINNED_COMMIT`, `Test-IsSubpath`, `Assert-InsideTarget`, `Test-SkillDirectoryDivergence`, and `Remove-StagingDirectory` using Section 3.1. Re-run the source SDK, clean-tree, and exact-HEAD checks from Section 3.2. For upgrade, do not run the initial-install collision rejection; instead, require the existing wrapper, executable, workspace, and at least one Skill installation path (`.agents/skills/dogdouspec` or legacy `skills/dogdouspec`) to be present.
+### 8.1. Global Installation
 
-```powershell
-# snippet: upgrade-procedure
-$ErrorActionPreference = "Stop"
+A global executable upgrade changes the CLI used by every repository on the
+machine. Upgrade each repository separately:
 
-# 1. Verify approved source and existing target installation
-if ($PINNED_COMMIT -notmatch '^[0-9a-fA-F]{40}$') {
-    throw "[ERROR] PINNED_COMMIT must be an explicit, 40-character hexadecimal commit SHA."
-}
-$sourceDirty = (git -C "$SOURCE_REPO" status --porcelain)
-if ($sourceDirty) {
-    throw "[ERROR] Source repository must be clean before upgrade publish."
-}
-$sourceHead = (git -C "$SOURCE_REPO" rev-parse HEAD).Trim()
-if ($sourceHead -ne $PINNED_COMMIT) {
-    throw "[ERROR] Source HEAD ($sourceHead) does not match approved commit pin ($PINNED_COMMIT)."
-}
+~~~powershell
+winget upgrade Vixasol.DogdouSpec
+dogdouspec --version
+dogdouspec skill guide --all
 
-$requiredInstallPaths = @(
-    "$TARGET_REPO\dogdouspec.cmd",
-    "$TARGET_REPO\tools\dogdouspec\dogdouspec.exe",
-    "$TARGET_REPO\.dogdouspec"
-)
-foreach ($requiredPath in $requiredInstallPaths) {
-    if (-not (Test-Path "$requiredPath")) {
-        throw "[ERROR] Existing installation is incomplete; required path is missing: '$requiredPath'."
-    }
-}
+# Read-only repository assessment
+dogdouspec workspace discover --format xml
+dogdouspec validate --format xml
+dogdouspec skill status --format xml
+dogdouspec schema status --format xml
+git status --short -- .dogdouspec .agents/skills/dogdouspec AGENTS.md
+~~~
 
-# Detect installed skill path(s) (default .agents/skills/dogdouspec or legacy skills/dogdouspec)
-$targetDefaultSkill = Join-Path "$TARGET_REPO" ".agents\skills\dogdouspec"
-$targetLegacySkill = Join-Path "$TARGET_REPO" "skills\dogdouspec"
-$hasDefaultSkill = Test-Path "$targetDefaultSkill"
-$hasLegacySkill = Test-Path "$targetLegacySkill"
+Exit code 1 from either status command means differences were reported; it is
+not a command or validation failure. The agent must inspect those differences
+and repository history before allowing an overwrite.
 
-if (-not $hasDefaultSkill -and -not $hasLegacySkill) {
-    throw "[ERROR] Existing installation is incomplete; no skill found at '$targetDefaultSkill' or '$targetLegacySkill'."
-}
+In monorepos and nested repositories, first determine which instruction scope
+owns the DogdouSpec Skill. If several `.dogdouspec` workspaces intentionally
+share an ancestor Skill, run `skill status --output-dir <shared-skill-path>` and
+sync that Skill once. Run `schema status` and `validate` for every workspace.
+Do not create redundant per-repository Skill copies solely because the default
+relative path is missing in a nested workspace.
 
-# 2. Verify Target Working Tree Cleanliness
-$targetDirty = (git -C "$TARGET_REPO" status --porcelain)
-if ($targetDirty) { throw "[ERROR] Target repository contains uncommitted changes. Ensure working tree is clean before upgrading." }
+After the agent identifies intentional local changes:
 
-# 3. Build and Stage Updated Executable into a fresh GUID staging directory
-$STAGING_DIR = [System.IO.Path]::GetFullPath((Join-Path $env:TEMP "dogdouspec-stage-$([System.Guid]::NewGuid().ToString('N'))"))
-$EXPECTED_STAGING_PATH = $STAGING_DIR
-if ((Test-IsSubpath $STAGING_DIR $SOURCE_REPO) -or (Test-IsSubpath $STAGING_DIR $TARGET_REPO) -or (Test-Path "$STAGING_DIR")) {
-    throw "[ERROR] Upgrade staging path is not a new external directory: '$STAGING_DIR'."
-}
-New-Item -ItemType Directory -Path "$STAGING_DIR" | Out-Null
+~~~powershell
+# Mechanical, explicit CLI mutations
+dogdouspec schema sync --expected-version 1.0 --format xml
+dogdouspec skill sync --force --format xml
 
-if ($env:DOGDOUSPEC_PREBUILT_DIR -and (Test-Path "$env:DOGDOUSPEC_PREBUILT_DIR")) {
-    Copy-Item -Path "$env:DOGDOUSPEC_PREBUILT_DIR\*" -Destination "$STAGING_DIR" -Force
-} elseif ($env:DOGDOUSPEC_PREBUILT_EXE -and (Test-Path "$env:DOGDOUSPEC_PREBUILT_EXE")) {
-    Copy-Item -Path "$env:DOGDOUSPEC_PREBUILT_EXE" -Destination (Join-Path "$STAGING_DIR" "dogdouspec.exe")
-} else {
-    dotnet publish "$SOURCE_REPO\src\DogdouSpec.Cli\DogdouSpec.Cli.csproj" `
-        -c Release `
-        -r win-x64 `
-        --self-contained true `
-        -p:PublishSingleFile=true `
-        -o "$STAGING_DIR"
+# Agent-owned repository reconciliation and verification
+dogdouspec validate --format xml
+dogdouspec skill status --format xml
+dogdouspec schema status --format xml
+git diff --check
+git status --short -- .dogdouspec .agents/skills/dogdouspec AGENTS.md
+~~~
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "[ERROR] dotnet publish failed with exit code $LASTEXITCODE"
-    }
-}
+The agent updates **AGENTS.md**, local guidance, wrappers, CI, build scripts,
+documentation, and version pins when the current Guide or repository requires
+it. DogdouSpec never performs those judgment-based edits and never stages,
+commits, or pushes.
 
-$stagedExe = Join-Path "$STAGING_DIR" "dogdouspec.exe"
-$versionOutput = & "$stagedExe" --version
-Write-Host "[OK] Staged CLI Version: $versionOutput"
-if ($versionOutput -notlike "*$PINNED_COMMIT*") {
-    throw "[ERROR] Staged binary version ($versionOutput) does not contain commit pin ($PINNED_COMMIT)."
-}
+### 8.2. Vendored Installation
 
-# 4. Stage external backups of existing binary, skill(s), and AGENTS.md before modifying
-$stagingBackupDir = Join-Path "$STAGING_DIR" "backups"
-New-Item -ItemType Directory -Path "$stagingBackupDir" -Force | Out-Null
+Use the source, clean-tree, exact-commit, staging, build, and candidate
+verification steps from Sections 3 and 4. Back up the existing repo-local
+executable outside the repository, replace only
+**tools/dogdouspec/dogdouspec.exe**, and run the candidate's
+**skill guide --all** before changing repository content.
 
-$targetExe = Join-Path "$TARGET_REPO" "tools\dogdouspec\dogdouspec.exe"
-Copy-Item -Path "$targetExe" -Destination (Join-Path "$stagingBackupDir" "dogdouspec.exe.bak")
-$toolDir = Split-Path "$targetExe" -Parent
-if ($env:DOGDOUSPEC_PREBUILT_DIR -and (Test-Path "$toolDir")) {
-    Copy-Item -Path "$toolDir" -Destination (Join-Path "$stagingBackupDir" "tool_backup") -Recurse -Force
-}
+The same read-only status, explicit synchronization, repository reconciliation,
+and final verification sequence from Section 8.1 applies, using
+**.\dogdouspec.cmd** instead of the global command.
 
-$hadDefaultSkillPreUpgrade = $hasDefaultSkill
-$hadLegacySkillPreUpgrade = $hasLegacySkill
+Do not classify an existing Skill as customized merely because it differs from
+the new candidate. A standard Skill from the previous version naturally differs
+when shipped guidance changes. Determine customization against the repository's
+recorded previous-version baseline and Git history. **skill status** deliberately
+reports facts only; the calling agent owns that classification.
 
-if ($hadDefaultSkillPreUpgrade) {
-    Copy-Item -Path "$targetDefaultSkill" -Destination (Join-Path "$stagingBackupDir" "default_skills_backup") -Recurse
-}
-if ($hadLegacySkillPreUpgrade) {
-    Copy-Item -Path "$targetLegacySkill" -Destination (Join-Path "$stagingBackupDir" "legacy_skills_backup") -Recurse
-}
+If the candidate executable cannot read the workspace or its Guide requires a
+managed-document migration, restore the previous executable and stop. Do not
+run **schema sync** as a substitute for document migration: it refreshes only
+the optional readable XSD copies and rejects managed documents whose
+**schema_version** does not equal **--expected-version**.
 
-$targetAgentsFile = Join-Path "$TARGET_REPO" "AGENTS.md"
-$hadAgentsPreUpgrade = Test-Path "$targetAgentsFile"
-if ($hadAgentsPreUpgrade) {
-    Copy-Item -Path "$targetAgentsFile" -Destination (Join-Path "$stagingBackupDir" "AGENTS.md.bak")
-}
+### 8.3. Mechanical Command Guarantees
 
-# 5. Content-Aware Divergence Evaluation
-$sourceSkillDir = Join-Path "$SOURCE_REPO" ".agents\skills\dogdouspec"
-$defaultDivergence = Test-SkillDirectoryDivergence -dirPath $targetDefaultSkill -sourceDir $sourceSkillDir
-$legacyDivergence = Test-SkillDirectoryDivergence -dirPath $targetLegacySkill -sourceDir $sourceSkillDir
+- **skill status** is read-only and reports every embedded managed file as
+  **matching**, **modified**, or **missing**, plus repository-only **extra**
+  entries.
+- **skill sync --force** writes the embedded managed Skill files. It does not
+  merge custom text or modify **AGENTS.md**.
+- **schema status** is read-only and compares known copies under
+  **.dogdouspec/_schema** with embedded authoritative schemas.
+- **schema sync --expected-version** uses the workspace writer lock, startup
+  recovery, staged files, and a recovery marker. It updates only known XSD
+  copies and is idempotent when already synchronized.
+- Schema synchronization never changes the **schema_version** or content of
+  **spec.xml**, **tasks.xml**, **knowledge.xml**, or **backlog.xml**.
 
-# Enforce fail-closed safety for divergent existing default root
-if ($hasDefaultSkill -and $defaultDivergence.IsDivergent) {
-    Remove-StagingDirectory -staging $STAGING_DIR -source $SOURCE_REPO -target $TARGET_REPO -expectedGuidPath $EXPECTED_STAGING_PATH
-    throw "[ERROR] Existing default skill at '$targetDefaultSkill' contains modified, missing, or extra files ($($defaultDivergence.Differences -join '; ')). Aborting upgrade to prevent overwriting local customizations."
-}
-
-# Handle simultaneous roots and legacy migration
-$shouldPreserveLegacy = $false
-if ($hasLegacySkill) {
-    if ($legacyDivergence.IsDivergent) {
-        $shouldPreserveLegacy = $true
-        Write-Warning "[NOTICE] Legacy skill at 'skills/dogdouspec' contains custom or modified files ($($legacyDivergence.Differences -join '; ')). Preserved legacy directory to prevent loss of user customizations."
-    }
-}
-
-# Install or refresh default skill at .agents/skills/dogdouspec
-$targetDefaultRef = Join-Path "$targetDefaultSkill" "references"
-Assert-InsideTarget $targetDefaultSkill $TARGET_REPO
-Assert-InsideTarget $targetDefaultRef $TARGET_REPO
-if (-not (Test-Path "$targetDefaultRef")) {
-    New-Item -ItemType Directory -Path "$targetDefaultRef" -Force | Out-Null
-}
-Copy-Item -Path (Join-Path "$sourceSkillDir" "SKILL.md") -Destination (Join-Path "$targetDefaultSkill" "SKILL.md") -Force
-Copy-Item -Path (Join-Path "$sourceSkillDir" "references\*") -Destination (Join-Path "$targetDefaultSkill" "references\") -Force
-
-# Replace binary
-$toolDir = Split-Path "$targetExe" -Parent
-Assert-InsideTarget $toolDir $TARGET_REPO
-if (-not (Test-Path "$toolDir")) { New-Item -ItemType Directory -Path "$toolDir" -Force | Out-Null }
-Assert-InsideTarget $targetExe $TARGET_REPO
-if ($env:DOGDOUSPEC_PREBUILT_DIR) {
-    Copy-Item -Path (Join-Path "$STAGING_DIR" "*") -Destination "$toolDir\" -Force
-} else {
-    Copy-Item -Path "$stagedExe" -Destination "$targetExe" -Force
-}
-
-# Remove redundant legacy directory if not divergent
-if ($hasLegacySkill -and (-not $shouldPreserveLegacy)) {
-    Assert-InsideTarget $targetLegacySkill $TARGET_REPO
-    Remove-Item -Path "$targetLegacySkill" -Recurse -Force
-    $legacyParent = Split-Path "$targetLegacySkill" -Parent
-    Assert-InsideTarget $legacyParent $TARGET_REPO
-    if ((Test-Path "$legacyParent") -and ((Get-ChildItem "$legacyParent").Count -eq 0)) {
-        Remove-Item -Path "$legacyParent" -Force -ErrorAction SilentlyContinue
-    }
-    Write-Host "[OK] Cleanly migrated legacy skill to '.agents/skills/dogdouspec'."
-}
-
-# Update AGENTS.md references safely using negative lookbehind
-if (Test-Path "$targetAgentsFile") {
-    $agentsText = Get-Content "$targetAgentsFile" -Raw
-    $updatedAgentsText = [regex]::Replace($agentsText, '(?<!\.agents[/\\])\bskills[/\\]dogdouspec', '.agents/skills/dogdouspec')
-    if ($updatedAgentsText -ne $agentsText) {
-        Assert-InsideTarget $targetAgentsFile $TARGET_REPO
-        Set-Content -Path "$targetAgentsFile" -Value $updatedAgentsText -Encoding Utf8 -NoNewline
-        Write-Host "[OK] Updated AGENTS.md references to point to .agents/skills/dogdouspec"
-    }
-}
-Write-Host "[OK] Replaced binary and refreshed skill files"
-
-# 6. Validate Whole Workspace Compatibility & Rollback on Failure
-Push-Location "$TARGET_REPO"
-try {
-    .\dogdouspec.cmd validate --format xml
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "[ROLLBACK] Upgraded CLI failed schema/semantic validation. Restoring previous state from backup..."
-
-        # 1. Restore binary
-        $toolDir = Split-Path "$targetExe" -Parent
-        Assert-InsideTarget $toolDir $TARGET_REPO
-        if (-not (Test-Path "$toolDir")) { New-Item -ItemType Directory -Path "$toolDir" -Force | Out-Null }
-        Assert-InsideTarget $targetExe $TARGET_REPO
-        if (Test-Path (Join-Path "$stagingBackupDir" "tool_backup")) {
-            Copy-Item -Path (Join-Path "$stagingBackupDir" "tool_backup\*") -Destination "$toolDir\" -Force
-        } else {
-            Copy-Item -Path (Join-Path "$stagingBackupDir" "dogdouspec.exe.bak") -Destination "$targetExe" -Force
-        }
-
-        # 2. Restore default skill root
-        Assert-InsideTarget $targetDefaultSkill $TARGET_REPO
-        if ($hadDefaultSkillPreUpgrade) {
-            if (Test-Path "$targetDefaultSkill") {
-                Remove-Item -Path "$targetDefaultSkill" -Recurse -Force -ErrorAction SilentlyContinue
-            }
-            $defaultParent = Split-Path "$targetDefaultSkill" -Parent
-            Assert-InsideTarget $defaultParent $TARGET_REPO
-            if (-not (Test-Path "$defaultParent")) { New-Item -ItemType Directory -Path "$defaultParent" -Force | Out-Null }
-            Copy-Item -Path (Join-Path "$stagingBackupDir" "default_skills_backup") -Destination "$targetDefaultSkill" -Recurse -Force
-        } else {
-            if (Test-Path "$targetDefaultSkill") {
-                Remove-Item -Path "$targetDefaultSkill" -Recurse -Force -ErrorAction SilentlyContinue
-            }
-            $skillsParent = Join-Path "$TARGET_REPO" ".agents\skills"
-            $agentsParent = Join-Path "$TARGET_REPO" ".agents"
-            Assert-InsideTarget $skillsParent $TARGET_REPO
-            Assert-InsideTarget $agentsParent $TARGET_REPO
-            if ((Test-Path "$skillsParent") -and ((Get-ChildItem "$skillsParent").Count -eq 0)) {
-                Remove-Item -Path "$skillsParent" -Force -ErrorAction SilentlyContinue
-            }
-            if ((Test-Path "$agentsParent") -and ((Get-ChildItem "$agentsParent").Count -eq 0)) {
-                Remove-Item -Path "$agentsParent" -Force -ErrorAction SilentlyContinue
-            }
-        }
-
-        # 3. Restore legacy skill root
-        Assert-InsideTarget $targetLegacySkill $TARGET_REPO
-        if ($hadLegacySkillPreUpgrade) {
-            if (Test-Path "$targetLegacySkill") {
-                Remove-Item -Path "$targetLegacySkill" -Recurse -Force -ErrorAction SilentlyContinue
-            }
-            $legacyParent = Split-Path "$targetLegacySkill" -Parent
-            Assert-InsideTarget $legacyParent $TARGET_REPO
-            if (-not (Test-Path "$legacyParent")) { New-Item -ItemType Directory -Path "$legacyParent" -Force | Out-Null }
-            Copy-Item -Path (Join-Path "$stagingBackupDir" "legacy_skills_backup") -Destination "$targetLegacySkill" -Recurse -Force
-        } else {
-            if (Test-Path "$targetLegacySkill") {
-                Remove-Item -Path "$targetLegacySkill" -Recurse -Force -ErrorAction SilentlyContinue
-                $legacyParent = Split-Path "$targetLegacySkill" -Parent
-                Assert-InsideTarget $legacyParent $TARGET_REPO
-                if ((Test-Path "$legacyParent") -and ((Get-ChildItem "$legacyParent").Count -eq 0)) {
-                    Remove-Item -Path "$legacyParent" -Force -ErrorAction SilentlyContinue
-                }
-            }
-        }
-
-        # 4. Restore AGENTS.md
-        Assert-InsideTarget $targetAgentsFile $TARGET_REPO
-        if ($hadAgentsPreUpgrade) {
-            Copy-Item -Path (Join-Path "$stagingBackupDir" "AGENTS.md.bak") -Destination "$targetAgentsFile" -Force
-        } else {
-            if (Test-Path "$targetAgentsFile") {
-                Remove-Item -Path "$targetAgentsFile" -Force -ErrorAction SilentlyContinue
-            }
-        }
-
-        .\dogdouspec.cmd validate --format xml
-        throw "[ERROR] Upgraded CLI is incompatible with current workspace schemas. Previous installation restored."
-    }
-    Write-Host "[OK] Upgraded binary and skill validated against workspace successfully."
-} finally {
-    Pop-Location
-}
-
-# 7. Clean Up Staging Directory after successful compatibility validation
-Remove-StagingDirectory -staging $STAGING_DIR -source $SOURCE_REPO -target $TARGET_REPO -expectedGuidPath $EXPECTED_STAGING_PATH
-```
+The calling agent preserves intentional local changes, runs project-specific
+tests, reviews the complete diff, and creates any authorized Git checkpoint.
 
 ---
-
 ## 9. Rollback & Recovery
 
 > [!WARNING]
@@ -841,6 +681,7 @@ If initial installation must be rolled back prior to committing:
    - `<TARGET_REPO>/dogdouspec.cmd`
    - `<TARGET_REPO>/tools/dogdouspec/dogdouspec.exe`
    - `<TARGET_REPO>/.agents/skills/dogdouspec/SKILL.md`
+   - `<TARGET_REPO>/.agents/skills/dogdouspec/references/upgrade.md`
    - `<TARGET_REPO>/.agents/skills/dogdouspec/references/authority.md`
    - `<TARGET_REPO>/.agents/skills/dogdouspec/references/mutations.md`
    - `<TARGET_REPO>/.agents/skills/dogdouspec/references/xpath.md`
@@ -908,8 +749,8 @@ If initial installation must be rolled back prior to committing:
 
 ### 9.2. Transaction Crash Recovery Semantics
 
-- **Read commands** (`validate`, `query`, `search`, `workspace discover`, `iteration list`, `schema show`, `template show`) are non-mutating readers and do **not** acquire the workspace lock or invoke `StartupRecovery`.
-- `StartupRecovery` is invoked automatically upon startup by subsequent supported mutating commands that acquire the project writer lock (`iteration create`, `append`, `task update`, `transaction apply`, `iteration confirm`).
+- **Read commands** (`validate`, `query`, `search`, `workspace discover`, `iteration list`, `skill guide`, `skill status`, `schema show`, `schema status`, `template show`) are non-mutating readers and do **not** acquire the workspace lock or invoke `StartupRecovery`.
+- `StartupRecovery` is invoked automatically by supported mutating commands that acquire the project writer lock, including `schema sync`, `iteration create`, `append`, `task update`, `transaction apply`, and `iteration confirm`.
 - **Do not issue a dummy write** to force recovery. If an interrupted transaction left markers in `.dogdouspec/_tmp/`, execute the next intended mutating CLI command directly, or preserve the directory state and report findings to the human owner for technical diagnosis.
 
 ---

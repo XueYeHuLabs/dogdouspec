@@ -361,6 +361,7 @@ public static class PathSecurity
         "tx_",
         "temp_",
         "backup_",
+        "schema_sync_",
         "lock_",
         "recovery_"
     };
