@@ -57,6 +57,8 @@ dogdouspec search
 dogdouspec validate
 
 dogdouspec schema show
+dogdouspec schema status
+dogdouspec schema sync
 dogdouspec template show
 dogdouspec append --stdin|--file
 dogdouspec task update --stdin|--file
@@ -374,12 +376,30 @@ serialization where possible.
 
 ```powershell
 dogdouspec schema show --name tasks --version 1.0
+dogdouspec schema status --version 1.0 --format xml
 dogdouspec template show --name record.discussion --version 1.0
 ```
 
-Both commands write the exact XML/XSD to stdout and perform no mutation.
+`schema show`, `schema status`, and `template show` are read-only. `schema show`
+and `template show` write exact embedded resources to stdout. `schema status`
+reports whether each optional readable copy under `.dogdouspec/_schema` is
+matching, modified, or missing; exit code `1` means differences were found.
 Templates are valid examples, not hidden scripts. An Agent copies a template,
 replaces example identity and content, validates it, then submits it.
+
+After the calling Agent reads `dogdouspec skill guide --all`, assesses the
+repository, and determines that readable schema copies should be refreshed, it
+may invoke:
+
+```powershell
+dogdouspec schema sync --expected-version 1.0 --format xml
+```
+
+This command acquires the workspace writer lock, runs startup recovery, verifies
+that every managed document declares the expected supported schema version,
+stages every changed known XSD, writes a recovery marker, and either publishes
+the set or restores the previous copies. It is idempotent when all copies match.
+It never changes the schema version or content of managed XML documents.
 
 V1 templates include:
 

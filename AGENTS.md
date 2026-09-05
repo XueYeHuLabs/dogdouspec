@@ -41,9 +41,10 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
    - Verify `dogdouspec --version`.
    - If missing, fail closed and instruct the user: `winget install Vixasol.DogdouSpec`.
    - Execute commands directly via `dogdouspec <command>` (or `dotnet run --project src/DogdouSpec.Cli/DogdouSpec.Cli.csproj -- <command>` during source development).
+   - After installing or replacing the CLI, read `dogdouspec skill guide --all` before repository mutation. Inspect `skill status` and `schema status`, run explicit sync commands only after reviewing their output, then reconcile repository-specific guidance and automation as described in the embedded upgrade contract.
 2. **Never Directly Edit `.dogdouspec/*.xml`**:
    - Do not use file editors, `Set-Content`, or scripts to modify files inside `.dogdouspec/`.
-   - All managed mutations must be executed through the public CLI (`task update`, `task quick`, `task add`, `append`, `transaction apply`, `iteration confirm`).
+   - All managed mutations must be executed through the public CLI (`task update`, `task quick`, `task add`, `append`, `transaction apply`, `schema sync`, `iteration confirm`).
 3. **Discover & Select Actionable Work (Two-Phase Query)**:
    - Validate workspace: `dogdouspec validate --format xml`
    - Find active iteration: `dogdouspec iteration list --format xml`

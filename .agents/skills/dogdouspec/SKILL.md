@@ -45,17 +45,20 @@ DogdouSpec never stages, commits, or pushes. Create the Git checkpoint explicitl
 
 ### Upgrading DogdouSpec
 
-After running `winget upgrade Vixasol.DogdouSpec` (global) or re-deploying the binary (air-gapped):
+After installing a new global binary or staging a vendored candidate, read the
+new binary's complete Guide before changing the repository:
 
 ```powershell
-# Overwrite skill files with the version embedded in the new CLI binary (requires --force):
-dogdouspec skill sync --force
-
-# Review what changed in SKILL.md and update AGENTS.md if needed — agent + owner decision.
-dogdouspec skill guide
+dogdouspec --version
+dogdouspec skill guide --all
 ```
 
-`skill sync --force` overwrites `.agents/skills/dogdouspec/` with the CLI's embedded version. Without `--force`, `skill sync` refuses to overwrite existing files. It never touches `AGENTS.md`.
+Follow [the authoritative upgrade contract](references/upgrade.md). Inspect the
+workspace, Skill, schema copies, repository rules, and Git state before calling
+any synchronization command. The CLI performs explicit mechanical operations;
+the calling agent reconciles `AGENTS.md`, local guidance, scripts, CI, and other
+repository-specific content. `skill sync` and `schema sync` never perform those
+judgment-based edits.
 
 ---
 
@@ -221,3 +224,4 @@ The Git status check is advisory and does not change DogdouSpec transaction succ
 - **[XPath Query & Projection Reference](references/xpath.md)**: Query optimization and `ds:filter` projections.
 - **[Mutation Operations Reference](references/mutations.md)**: Detailed semantics for all CLI mutation operations.
 - **[Authority & Lifecycle Reference](references/authority.md)**: Iteration readiness, owner gates, and replanning.
+- **[Upgrade Contract](references/upgrade.md)**: Guide-first binary and repository upgrade responsibilities, commands, verification, and recovery.

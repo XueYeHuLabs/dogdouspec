@@ -106,8 +106,97 @@ public sealed class SkillCliTests
         Assert.IsTrue(File.Exists(Path.Combine(targetSkillDir, "SKILL.md")));
     }
 
+    [TestMethod]
+    public void SkillStatus_ExactManagedFiles_ReportsInSyncWithoutMutation()
+    {
+        var targetSkillDir = Path.Combine(_tempDir, ".agents", "skills", "dogdouspec");
+        Assert.AreEqual(0, Program.Main(new[] { "skill", "sync", "--output-dir", targetSkillDir, "--format", "human" }));
+        var before = Directory.GetFiles(targetSkillDir, "*", SearchOption.AllDirectories)
+            .ToDictionary(path => path, File.ReadAllBytes);
+
+        using var sw = new StringWriter();
+        var originalOut = Console.Out;
+        try
+        {
+            Console.SetOut(sw);
+            var exitCode = Program.Main(new[] { "skill", "status", "--output-dir", targetSkillDir, "--format", "xml" });
+            Assert.AreEqual(0, exitCode);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        var output = sw.ToString();
+        Assert.IsTrue(output.Contains("<skill-status", StringComparison.Ordinal));
+        Assert.IsTrue(output.Contains("in_sync=\"true\"", StringComparison.Ordinal));
+        Assert.IsTrue(output.Contains($"matching=\"{DogdouSpec.Core.Resources.EmbeddedResources.SkillFilePaths.Count}\"", StringComparison.Ordinal));
+        foreach (var pair in before)
+        {
+            CollectionAssert.AreEqual(pair.Value, File.ReadAllBytes(pair.Key), $"Status must not modify {pair.Key}");
+        }
+    }
+
+    [TestMethod]
+    public void SkillStatus_Differences_ReportsModifiedMissingAndExtraWithoutMutation()
+    {
+        var targetSkillDir = Path.Combine(_tempDir, ".agents", "skills", "dogdouspec");
+        Assert.AreEqual(0, Program.Main(new[] { "skill", "sync", "--output-dir", targetSkillDir, "--format", "human" }));
+
+        var modifiedPath = Path.Combine(targetSkillDir, "SKILL.md");
+        var missingPath = Path.Combine(targetSkillDir, "references", "authority.md");
+        var extraPath = Path.Combine(targetSkillDir, "repository-notes.md");
+        File.WriteAllText(modifiedPath, "repository customization");
+        File.Delete(missingPath);
+        File.WriteAllText(extraPath, "keep me");
+
+        using var sw = new StringWriter();
+        var originalOut = Console.Out;
+        try
+        {
+            Console.SetOut(sw);
+            var exitCode = Program.Main(new[] { "skill", "status", "--output-dir", targetSkillDir, "--format", "xml" });
+            Assert.AreEqual(1, exitCode);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        var output = sw.ToString();
+        Assert.IsTrue(output.Contains("in_sync=\"false\"", StringComparison.Ordinal));
+        Assert.IsTrue(output.Contains("path=\"SKILL.md\" state=\"modified\"", StringComparison.Ordinal));
+        Assert.IsTrue(output.Contains("path=\"references/authority.md\" state=\"missing\"", StringComparison.Ordinal));
+        Assert.IsTrue(output.Contains("path=\"repository-notes.md\" state=\"extra\" managed=\"false\"", StringComparison.Ordinal));
+        Assert.AreEqual("repository customization", File.ReadAllText(modifiedPath));
+        Assert.IsFalse(File.Exists(missingPath));
+        Assert.AreEqual("keep me", File.ReadAllText(extraPath));
+    }
+
+    [TestMethod]
+    public void SkillStatus_MissingDirectory_ReportsEveryManagedFileMissing()
+    {
+        var targetSkillDir = Path.Combine(_tempDir, "absent-skill");
+        using var sw = new StringWriter();
+        var originalOut = Console.Out;
+        try
+        {
+            Console.SetOut(sw);
+            var exitCode = Program.Main(new[] { "skill", "status", "--output-dir", targetSkillDir, "--format", "xml" });
+            Assert.AreEqual(1, exitCode);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        Assert.IsTrue(sw.ToString().Contains($"missing=\"{DogdouSpec.Core.Resources.EmbeddedResources.SkillFilePaths.Count}\"", StringComparison.Ordinal));
+        Assert.IsFalse(Directory.Exists(targetSkillDir));
+    }
+
     private static readonly string[] SkillGuideMarkdownArgs = new[] { "skill", "guide", "--format", "markdown" };
     private static readonly string[] SkillGuideXmlArgs = new[] { "skill", "guide", "--format", "xml" };
+    private static readonly string[] SkillGuideAllMarkdownArgs = new[] { "skill", "guide", "--all", "--format", "markdown" };
 
     [TestMethod]
     public void SkillGuide_MarkdownFormat_OutputsGuideContent()
@@ -132,6 +221,30 @@ public sealed class SkillCliTests
         {
             Console.SetOut(originalOut);
         }
+    }
+
+    [TestMethod]
+    public void SkillGuide_All_IncludesAuthoritativeUpgradeContract()
+    {
+        using var sw = new StringWriter();
+        var originalOut = Console.Out;
+        try
+        {
+            Console.SetOut(sw);
+            var exitCode = Program.Main(SkillGuideAllMarkdownArgs);
+            Assert.AreEqual(0, exitCode);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        var output = sw.ToString();
+        Assert.IsTrue(output.Contains("# Reference: references/upgrade.md", StringComparison.Ordinal));
+        Assert.IsTrue(output.Contains("# DogdouSpec Upgrade Contract", StringComparison.Ordinal));
+        Assert.IsTrue(output.Contains("Do not install duplicate Skill copies", StringComparison.Ordinal));
+        Assert.IsTrue(output.IndexOf("dogdouspec skill guide --all", StringComparison.Ordinal) <
+                      output.IndexOf("dogdouspec skill sync --force", StringComparison.Ordinal));
     }
 
     [TestMethod]

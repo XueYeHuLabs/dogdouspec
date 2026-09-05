@@ -37,14 +37,15 @@ After installing a newer version:
 ```powershell
 winget upgrade Vixasol.DogdouSpec
 
-# Overwrite the checked-in skill files with the new CLI's embedded version (requires --force):
-dogdouspec skill sync --force
-
-# Review what changed and update AGENTS.md if needed — agent + owner decision:
-dogdouspec skill guide
+# Read the new binary's authoritative workflow before changing the repository:
+dogdouspec skill guide --all
 ```
 
-`skill sync --force` overwrites `.agents/skills/dogdouspec/` with the version embedded in the current CLI binary. Without `--force`, `skill sync` refuses to overwrite existing skill files. It never touches `AGENTS.md`. How to update `AGENTS.md` is left to the agent and project owner based on the guidance output.
+The embedded [upgrade contract](.agents/skills/dogdouspec/references/upgrade.md)
+requires read-only workspace, Skill, schema, and Git assessment before explicit
+mechanical synchronization. The calling agent then reconciles `AGENTS.md`,
+local guidance, wrappers, CI, and other repository-specific content. DogdouSpec
+never makes those judgment-based edits, stages files, commits, or pushes.
 
 ---
 
@@ -94,11 +95,16 @@ All commands run directly through `dogdouspec <command> [options]`:
   dogdouspec workspace unlock [--force] [--workspace-root PATH] [--format xml|human]
   ```
 
-### 2. Skill Management
-- **Skill Guide** (AI agent setup guidance, workflow reference, and upgrade notes)
+### 2. Skill and Schema Upgrade Primitives
+- **Skill Guide** (authoritative guidance embedded in the current binary)
   ```powershell
   dogdouspec skill guide [--all] [--format markdown|human|xml]
   ```
+- **Skill Status** (read-only embedded-versus-repository comparison)
+  ```powershell
+  dogdouspec skill status [--output-dir PATH] [--format xml|human]
+  ```
+  Exit code `1` means differences were reported for caller review. It is not a command failure.
 - **Skill Sync** (synchronize skill files with this CLI's embedded version; pass `--force` to overwrite upon upgrade)
   ```powershell
   dogdouspec skill sync [--force] [--output-dir PATH] [--format xml|human]
@@ -108,6 +114,12 @@ All commands run directly through `dogdouspec <command> [options]`:
   ```powershell
   dogdouspec skill export --output-dir PATH [--format xml|human]
   ```
+- **Schema Status and Sync** (inspect or mechanically refresh optional readable XSD copies)
+  ```powershell
+  dogdouspec schema status [--version 1.0] [--workspace-root PATH] [--format xml|human]
+  dogdouspec schema sync --expected-version 1.0 [--workspace-root PATH] [--format xml|human]
+  ```
+  `schema sync` uses the workspace writer lock and crash recovery. It never migrates or edits managed XML documents.
 
 ### 3. Iteration Commands
 - **Iteration Listing**

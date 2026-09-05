@@ -1,4 +1,6 @@
 using DogdouSpec.Cli;
+using DogdouSpec.Core.Resources;
+using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Workspace;
 
 namespace DogdouSpec.Cli.Tests;
@@ -170,5 +172,118 @@ public sealed class SchemaDriftCliTests
         Assert.AreEqual(3, exitCode, $"Malformed local XSD must return exit code 3: {stderr}");
         Assert.IsTrue(stderr.Contains("code=\"SCHEMA_DRIFT_DETECTED\"", StringComparison.Ordinal), $"Expected SCHEMA_DRIFT_DETECTED in stderr: {stderr}");
         Assert.IsTrue(stderr.Contains("document=\"_schema/common.xsd\"", StringComparison.Ordinal), $"Expected document=_schema/common.xsd in stderr: {stderr}");
+    }
+
+    [TestMethod]
+    public void SchemaStatus_PristineWorkspace_ReportsAllCopiesMatching()
+    {
+        var (exitCode, stdout, stderr) = ExecuteCli(
+            "schema", "status", "--workspace-root", _workspaceRoot, "--format", "xml");
+
+        Assert.AreEqual(0, exitCode, stderr);
+        Assert.IsTrue(stdout.Contains("<schema-status", StringComparison.Ordinal));
+        Assert.IsTrue(stdout.Contains("in_sync=\"true\"", StringComparison.Ordinal));
+        Assert.IsTrue(stdout.Contains($"matching=\"{EmbeddedResources.SchemaNames.Count}\"", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void SchemaStatus_DriftAndMissingCopy_ReportsFactsWithoutMutation()
+    {
+        var modifiedPath = Path.Combine(_workspaceRoot, "_schema", "spec.xsd");
+        var missingPath = Path.Combine(_workspaceRoot, "_schema", "tasks.xsd");
+        File.WriteAllText(modifiedPath, "repository drift");
+        File.Delete(missingPath);
+
+        var (exitCode, stdout, stderr) = ExecuteCli(
+            "schema", "status", "--workspace-root", _workspaceRoot, "--format", "xml");
+
+        Assert.AreEqual(1, exitCode, stderr);
+        Assert.IsTrue(stdout.Contains("path=\"_schema/spec.xsd\" state=\"modified\"", StringComparison.Ordinal));
+        Assert.IsTrue(stdout.Contains("path=\"_schema/tasks.xsd\" state=\"missing\"", StringComparison.Ordinal));
+        Assert.AreEqual("repository drift", File.ReadAllText(modifiedPath));
+        Assert.IsFalse(File.Exists(missingPath));
+    }
+
+    [TestMethod]
+    public void SchemaSync_DriftAndMissingCopy_RepairsAtomicallyAndIsIdempotent()
+    {
+        var modifiedPath = Path.Combine(_workspaceRoot, "_schema", "spec.xsd");
+        var missingPath = Path.Combine(_workspaceRoot, "_schema", "tasks.xsd");
+        var repositoryCopyPath = Path.Combine(_workspaceRoot, "_schema", "repository-extension.xsd");
+        File.WriteAllText(modifiedPath, "repository drift");
+        File.Delete(missingPath);
+        File.WriteAllText(repositoryCopyPath, "repository-owned schema extension");
+
+        var (firstExit, firstOut, firstErr) = ExecuteCli(
+            "schema", "sync", "--expected-version", "1.0",
+            "--workspace-root", _workspaceRoot, "--format", "xml");
+
+        Assert.AreEqual(0, firstExit, firstErr);
+        Assert.IsTrue(firstOut.Contains("changed=\"2\"", StringComparison.Ordinal));
+        CollectionAssert.AreEqual(EmbeddedResources.GetSchemaBytes("spec", "1.0")!, File.ReadAllBytes(modifiedPath));
+        CollectionAssert.AreEqual(EmbeddedResources.GetSchemaBytes("tasks", "1.0")!, File.ReadAllBytes(missingPath));
+        Assert.AreEqual("repository-owned schema extension", File.ReadAllText(repositoryCopyPath));
+        var (validateExit, _, validateErr) = ExecuteCli("validate", "--workspace-root", _workspaceRoot, "--format", "xml");
+        Assert.AreEqual(0, validateExit, validateErr);
+
+        var (secondExit, secondOut, secondErr) = ExecuteCli(
+            "schema", "sync", "--expected-version", "1.0",
+            "--workspace-root", _workspaceRoot, "--format", "xml");
+        Assert.AreEqual(0, secondExit, secondErr);
+        Assert.IsTrue(secondOut.Contains("changed=\"0\"", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void SchemaSync_UnsupportedExpectedVersion_RefusesWithoutMutation()
+    {
+        var schemaPath = Path.Combine(_workspaceRoot, "_schema", "spec.xsd");
+        var before = File.ReadAllBytes(schemaPath);
+
+        var (exitCode, _, stderr) = ExecuteCli(
+            "schema", "sync", "--expected-version", "9.9",
+            "--workspace-root", _workspaceRoot, "--format", "xml");
+
+        Assert.AreEqual(2, exitCode);
+        Assert.IsTrue(stderr.Contains("UNSUPPORTED_VERSION", StringComparison.Ordinal));
+        CollectionAssert.AreEqual(before, File.ReadAllBytes(schemaPath));
+    }
+
+    [TestMethod]
+    public void SchemaSync_ManagedDocumentVersionMismatch_RefusesWithoutMutation()
+    {
+        var schemaPath = Path.Combine(_workspaceRoot, "_schema", "spec.xsd");
+        File.WriteAllText(schemaPath, "repository drift");
+        var backlogPath = Path.Combine(_workspaceRoot, "backlog.xml");
+        File.WriteAllText(backlogPath, File.ReadAllText(backlogPath).Replace("schema_version=\"1.0\"", "schema_version=\"0.9\"", StringComparison.Ordinal));
+
+        var (exitCode, _, stderr) = ExecuteCli(
+            "schema", "sync", "--expected-version", "1.0",
+            "--workspace-root", _workspaceRoot, "--format", "xml");
+
+        Assert.AreEqual(2, exitCode);
+        Assert.IsTrue(stderr.Contains("UNSUPPORTED_VERSION", StringComparison.Ordinal));
+        Assert.IsTrue(stderr.Contains("backlog.xml", StringComparison.Ordinal));
+        Assert.AreEqual("repository drift", File.ReadAllText(schemaPath));
+    }
+
+    [TestMethod]
+    public void SchemaSync_ConcurrentWriterLock_ReturnsConflictWithoutMutation()
+    {
+        var schemaPath = Path.Combine(_workspaceRoot, "_schema", "spec.xsd");
+        File.WriteAllText(schemaPath, "repository drift");
+        var (acquired, workspaceLock, error) = WorkspaceLock.Acquire(_workspaceRoot);
+        Assert.IsTrue(acquired, error?.Message);
+        Assert.IsNotNull(workspaceLock);
+
+        using (workspaceLock)
+        {
+            var (exitCode, _, stderr) = ExecuteCli(
+                "schema", "sync", "--expected-version", "1.0",
+                "--workspace-root", _workspaceRoot, "--format", "xml");
+            Assert.AreEqual(4, exitCode);
+            Assert.IsTrue(stderr.Contains("LOCK_CONFLICT", StringComparison.Ordinal));
+        }
+
+        Assert.AreEqual("repository drift", File.ReadAllText(schemaPath));
     }
 }

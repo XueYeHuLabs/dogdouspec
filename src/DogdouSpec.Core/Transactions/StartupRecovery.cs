@@ -45,6 +45,7 @@ public static class StartupRecovery
                     (name.StartsWith("create_", StringComparison.OrdinalIgnoreCase) ||
                      name.StartsWith("tx_", StringComparison.OrdinalIgnoreCase) ||
                      name.StartsWith("staging_", StringComparison.OrdinalIgnoreCase) ||
+                     name.StartsWith("schema_sync_", StringComparison.OrdinalIgnoreCase) ||
                      name.StartsWith("temp_", StringComparison.OrdinalIgnoreCase) ||
                      name.StartsWith("backup_", StringComparison.OrdinalIgnoreCase)))
                 {
@@ -96,6 +97,14 @@ public static class StartupRecovery
                     if (!createSuccess || createErr != null)
                     {
                         return (false, createErr);
+                    }
+                }
+                else if (dirName.StartsWith("schema_sync_", StringComparison.OrdinalIgnoreCase))
+                {
+                    var (schemaSuccess, schemaError) = WorkspaceSchemaCopies.RecoverPendingSync(workspaceRoot, subDir);
+                    if (!schemaSuccess || schemaError != null)
+                    {
+                        return (false, schemaError);
                     }
                 }
                 else if (dirName.StartsWith("tx_", StringComparison.OrdinalIgnoreCase) ||
