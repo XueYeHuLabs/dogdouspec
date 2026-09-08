@@ -12,6 +12,8 @@ DogdouSpec enforces single-source-of-truth document integrity through structured
 | **Task Quick** | `dogdouspec task quick` | Compact bounded work intended to execute now. Inputs expand to a normal Task; no second task type or file exists. | `--start` creates the final in-progress Task, start history, and receipt in exactly one `tasks.xml` revision. `--dry-run` writes nothing. |
 | **Task Revise** | `dogdouspec task revise` | Elaborating constraints, dependencies, acceptance criteria, or scope on active/pending tasks. A started task cannot replace rationale and may only expand scope. Rejects terminal tasks (`TASK_IMMUTABLE`). | Single-document atomic commit. Revision-checked. Durable `operation_id` stamping. |
 | **Task Split** | `dogdouspec task split` | Transitioning a parent task to a terminal disposition (`superseded`/`transferred`/`cancelled`) and atomically adding 2+ pending subtasks. | Single-document atomic commit. Revision-checked. Durable `operation_id` stamping. |
+| **Task Block** | `dogdouspec task block` | Transitioning an active task to `blocked` and recording a structured blocker finding with kind, owner, and target recheck timestamp. | Single-document atomic commit to `tasks.xml`. Revision-checked. Appends finding record with `blocker-*` index terms. |
+| **Task Resume** | `dogdouspec task resume` | Resolving active blocker findings and transitioning a blocked task back to `in-progress`. | Single-document atomic commit to `tasks.xml`. Revision-checked. Fails closed if other active blockers remain, upstream dependencies are unmet, origin requirements are not approved, or iteration is in `replanning`. |
 | **Requirement Propose** | `dogdouspec requirement propose` | Proposing a new requirement with `status="proposed"`. Rejects non-proposed statuses (`OWNER_DECISION_REQUIRED`). | Single-document atomic commit to `spec.xml`. Revision-checked. Durable `operation_id` stamping. |
 | **Change Propose** | `dogdouspec change propose` | Attaching one or more active finding receipts to tasks, freezing target tasks to `blocked`, and proposing requirements across documents. | 2-document atomic commit (`spec.xml` + `tasks.xml`). Requires `active` iteration status. Immediate identical replay is durable; later revision drift is rejected. |
 | **Change Apply** | `dogdouspec change apply` | Resolving active findings, setting terminal task dispositions, and adding successor tasks during `status="replanning"`. | Recovery-backed commit to `tasks.xml`; a deterministic informational receipt is appended to the first impacted task. No-op application is rejected; immediate identical replay is durable. |
@@ -25,6 +27,23 @@ Tasks in `done`, `transferred`, `superseded`, or `cancelled` statuses represent 
 - Attempts to transition terminal tasks or modify their acceptance criteria, constraints, or scope return `TASK_IMMUTABLE` (exit code `4`).
 - Attempts to append non-informational records (`completion`, `start`, or active `finding` records) return `TASK_IMMUTABLE`.
 - Appending informational discussion or handoff records to terminal tasks remains permitted.
+
+## Blocker Storage and Recovery Contracts
+
+Blockers are stored within the owning `<task>` under `<records>` as an active finding record (`<record kind="finding" status="active">`):
+- **Index Terms**: Store `blocker-kind` (e.g. `external`, `dependency`, `environment`, `owner`, `review`), `blocker-owner` (responsible entity, e.g. `owner`, `agent`), and `blocker-review-at` formatted as a compact UTC timestamp `yyyyMMddTHHmmssZ` conforming to `TokenValueType`.
+- **Context & Outcome**: Record the unblocking condition in `<context>` and the follow-up execution action in `<outcome>`.
+- **Resolution**: Resolving a blocker appends a resolution record (`<record kind="resolution">`) targeting the finding via `<covers><ref relation="resolves" target="<FINDING_ID>"/></covers>`, or sets the finding status to `resolved`.
+- **Unblocking Gate**: `task resume` transitions the task to `in-progress` only when all active blocker findings are resolved, dependencies are satisfied, origins are approved, and the iteration is not in `replanning`.
+- **Blocker Queue**: `task blockers` aggregates active blockers, unmet dependencies, and active findings, deterministically ordered by review due dates.
+
+## Bounded Task Recovery Context (`task context`)
+
+`task context` provides a structured, fail-closed view for newly spawned coding sessions to resume work without loading transient external reports:
+- **Essential Context (Unconditionally Preserved)**: Title, objective, rationale, scope, constraints, origin requirements, acceptance criteria, active blockers, latest status records, and progression facts (action category, reason code, recommended action, permitted actions, prohibited actions, and authority boundaries).
+- **Fail-Closed Size Enforcement**: If Essential Context alone exceeds `--max-bytes` (default: 32 KB), the query fails closed with `LIMIT_EXCEEDED` (exit code `7`).
+- **Greedy Supplemental Budgeting**: Historical records are budgeted into the remaining byte allocation; omitted records produce `truncated="true"`, `omitted_records="<N>"`, and a query locator.
+- **Traceability**: Output reports exact `tasks_revision`, `spec_revision`, and all source document paths.
 
 ## Replanning Execution Freeze
 

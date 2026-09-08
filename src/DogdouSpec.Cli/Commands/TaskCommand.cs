@@ -33,6 +33,10 @@ public static class TaskCommand
         taskCmd.Add(BuildStartCommand());
         taskCmd.Add(BuildVerifyCommand());
         taskCmd.Add(BuildFinishCommand());
+        taskCmd.Add(BuildBlockCommand());
+        taskCmd.Add(BuildResumeCommand());
+        taskCmd.Add(BuildBlockersCommand());
+        taskCmd.Add(BuildContextCommand());
 
         return taskCmd;
     }
@@ -1073,6 +1077,16 @@ public static class TaskCommand
             Description = "Iteration identifier; omitted auto-discovers exactly one active iteration"
         };
 
+        var agentOption = new Option<string?>("--agent")
+        {
+            Description = "Filter tasks by assigned agent (or unassigned tasks eligible for agent)"
+        };
+
+        var taskOption = new Option<string?>("--task")
+        {
+            Description = "Target specific task ID to assess (optional)"
+        };
+
         var workspaceRootOption = new Option<string?>("--workspace-root")
         {
             Description = "Explicit path to workspace root or project directory containing .dogdouspec"
@@ -1085,12 +1099,16 @@ public static class TaskCommand
         formatOption.AcceptOnlyFromAmong("xml", "human");
 
         nextCmd.Add(iterationOption);
+        nextCmd.Add(agentOption);
+        nextCmd.Add(taskOption);
         nextCmd.Add(workspaceRootOption);
         nextCmd.Add(formatOption);
 
         nextCmd.SetAction(parseResult =>
         {
             var iterationId = parseResult.GetValue(iterationOption);
+            var agent = parseResult.GetValue(agentOption);
+            var targetTaskId = parseResult.GetValue(taskOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
@@ -1108,7 +1126,9 @@ public static class TaskCommand
 
             var (success, result, diagnostics) = TaskNext.SelectNext(
                 discoveredRoot,
-                iterationId);
+                iterationId,
+                agent,
+                targetTaskId);
 
             if (!success || diagnostics.Count > 0)
             {
@@ -2050,6 +2070,204 @@ public static class TaskCommand
                 Console.Out.Write(envelope.Format(format));
                 return 0;
             }
+        });
+
+        return cmd;
+    }
+
+    private static Command BuildBlockCommand()
+    {
+        var cmd = new Command("block", "Record a structured blocker finding and transition task to blocked (mutating)");
+        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID to block" };
+        var iterOption = new Option<string?>("--iteration") { Description = "Iteration ID (optional)" };
+        var revOption = new Option<int?>("--expected-revision") { Description = "Expected revision of tasks.xml (optional)" };
+        var actorOption = new Option<string?>("--actor") { Description = "Actor recording the blocker (default: agent)" };
+        var summaryOption = new Option<string>("--summary") { Required = true, Description = "Summary rationale of why the task is blocked" };
+        var kindOption = new Option<string?>("--blocker-kind") { Description = "Blocker category/kind (default: external)" };
+        var ownerOption = new Option<string?>("--blocker-owner") { Description = "Entity responsible for resolving blocker (default: owner)" };
+        var reviewAtOption = new Option<string?>("--blocker-review-at") { Description = "Target recheck timestamp in compact UTC format (yyyyMMddTHHmmssZ)" };
+        var conditionOption = new Option<string?>("--condition") { Description = "Resolution condition required to unblock" };
+        var nextActionOption = new Option<string?>("--next-action") { Description = "Action to take when blocker is resolved" };
+        var workspaceOption = new Option<string?>("--workspace-root") { Description = "Workspace root directory (optional)" };
+        var formatOption = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { taskOption, iterOption, revOption, actorOption, summaryOption, kindOption, ownerOption, reviewAtOption, conditionOption, nextActionOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, err) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || err != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task block", err!).Format(format));
+                return 2;
+            }
+
+            var (success, envelope, diagnostics) = TaskBlock.Block(
+                root,
+                parse.GetValue(taskOption)!,
+                iterationId: parse.GetValue(iterOption),
+                expectedRevision: parse.GetValue(revOption),
+                actor: parse.GetValue(actorOption),
+                summary: parse.GetValue(summaryOption)!,
+                blockerKind: parse.GetValue(kindOption),
+                blockerOwner: parse.GetValue(ownerOption),
+                blockerReviewAt: parse.GetValue(reviewAtOption),
+                condition: parse.GetValue(conditionOption),
+                nextAction: parse.GetValue(nextActionOption));
+
+            if (!success || diagnostics.Count > 0 || envelope == null)
+            {
+                var d = new DiagnosticsEnvelope("task block", diagnostics);
+                Console.Error.Write(d.Format(format));
+                return d.GetExitCode();
+            }
+
+            Console.Out.Write(envelope.Format(format));
+            return 0;
+        });
+
+        return cmd;
+    }
+
+    private static Command BuildResumeCommand()
+    {
+        var cmd = new Command("resume", "Resolve blocker findings and resume a blocked task to in-progress (mutating)");
+        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID to resume" };
+        var iterOption = new Option<string?>("--iteration") { Description = "Iteration ID (optional)" };
+        var revOption = new Option<int?>("--expected-revision") { Description = "Expected revision of tasks.xml (optional)" };
+        var actorOption = new Option<string?>("--actor") { Description = "Actor resuming the task (default: agent)" };
+        var summaryOption = new Option<string?>("--summary") { Description = "Summary explanation of blocker resolution (required when resolving active findings)" };
+        var findingOption = new Option<string?>("--finding") { Description = "Specific blocker finding ID to resolve (mutually exclusive with --all)" };
+        var allOption = new Option<bool>("--all") { Description = "Resolve all active blocker findings and unblock task (mutually exclusive with --finding)" };
+        var workspaceOption = new Option<string?>("--workspace-root") { Description = "Workspace root directory (optional)" };
+        var formatOption = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { taskOption, iterOption, revOption, actorOption, summaryOption, findingOption, allOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, err) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || err != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task resume", err!).Format(format));
+                return 2;
+            }
+
+            var (success, envelope, diagnostics) = TaskResume.Resume(
+                root,
+                parse.GetValue(taskOption)!,
+                iterationId: parse.GetValue(iterOption),
+                expectedRevision: parse.GetValue(revOption),
+                actor: parse.GetValue(actorOption),
+                summary: parse.GetValue(summaryOption),
+                findingId: parse.GetValue(findingOption),
+                all: parse.GetValue(allOption));
+
+            if (!success || diagnostics.Count > 0 || envelope == null)
+            {
+                var d = new DiagnosticsEnvelope("task resume", diagnostics);
+                Console.Error.Write(d.Format(format));
+                return d.GetExitCode();
+            }
+
+            Console.Out.Write(envelope.Format(format));
+            return 0;
+        });
+
+        return cmd;
+    }
+
+    private static Command BuildBlockersCommand()
+    {
+        var cmd = new Command("blockers", "Query active blockers and recheck queue for an iteration (read-only)");
+        var iterOption = new Option<string?>("--iteration") { Description = "Iteration ID (optional, auto-detects active iteration)" };
+        var taskOption = new Option<string?>("--task") { Description = "Filter by task ID (optional)" };
+        var ownerOption = new Option<string?>("--owner") { Description = "Filter by blocker owner (optional)" };
+        var kindOption = new Option<string?>("--kind") { Description = "Filter by blocker kind (optional)" };
+        var dueOnlyOption = new Option<bool>("--due-only") { Description = "Only show blockers that are due or overdue" };
+        var workspaceOption = new Option<string?>("--workspace-root") { Description = "Workspace root directory (optional)" };
+        var formatOption = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { iterOption, taskOption, ownerOption, kindOption, dueOnlyOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, err) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || err != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task blockers", err!).Format(format));
+                return 2;
+            }
+
+            var (success, result, diagnostics) = TaskBlockers.Query(
+                root,
+                iterationId: parse.GetValue(iterOption),
+                taskId: parse.GetValue(taskOption),
+                owner: parse.GetValue(ownerOption),
+                kind: parse.GetValue(kindOption),
+                dueOnly: parse.GetValue(dueOnlyOption));
+
+            if (!success || diagnostics.Count > 0 || result == null)
+            {
+                var d = new DiagnosticsEnvelope("task blockers", diagnostics);
+                Console.Error.Write(d.Format(format));
+                return d.GetExitCode();
+            }
+
+            Console.Out.Write(result.Format(format));
+            return 0;
+        });
+
+        return cmd;
+    }
+
+    private static Command BuildContextCommand()
+    {
+        var cmd = new Command("context", "Query bounded task recovery context for resumption (read-only)");
+        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID to query recovery context for" };
+        var iterOption = new Option<string?>("--iteration") { Description = "Iteration ID (optional, auto-detects active iteration)" };
+        var maxBytesOption = new Option<int?>("--max-bytes") { Description = "Maximum output size bound in bytes (default: 32768)" };
+        var workspaceOption = new Option<string?>("--workspace-root") { Description = "Workspace root directory (optional)" };
+        var formatOption = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        formatOption.AcceptOnlyFromAmong("xml", "human");
+
+        foreach (var opt in new Option[] { taskOption, iterOption, maxBytesOption, workspaceOption, formatOption })
+            cmd.Add(opt);
+
+        cmd.SetAction(parse =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var (found, root, err) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || err != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task context", err!).Format(format));
+                return 2;
+            }
+
+            var (success, result, diagnostics) = TaskContextQuery.Query(
+                root,
+                parse.GetValue(taskOption)!,
+                iterationId: parse.GetValue(iterOption),
+                maxBytes: parse.GetValue(maxBytesOption) ?? 32768);
+
+            if (!success || diagnostics.Count > 0 || result == null)
+            {
+                var d = new DiagnosticsEnvelope("task context", diagnostics);
+                Console.Error.Write(d.Format(format));
+                return d.GetExitCode();
+            }
+
+            Console.Out.Write(result.Format(format));
+            return 0;
         });
 
         return cmd;

@@ -163,6 +163,7 @@ public static class IterationReadiness
         if (normPhase == "activation")
         {
             return AssessActivation(
+                workspaceRoot,
                 normIterId,
                 specRevision,
                 tasksRevision,
@@ -174,6 +175,7 @@ public static class IterationReadiness
         else
         {
             return AssessCompletion(
+                workspaceRoot,
                 normIterId,
                 specRevision,
                 tasksRevision,
@@ -185,6 +187,7 @@ public static class IterationReadiness
     }
 
     private static (bool Success, IterationReadinessResult? Result, IReadOnlyList<Diagnostic> Diagnostics) AssessActivation(
+        string workspaceRoot,
         string iterId,
         int specRevision,
         int tasksRevision,
@@ -313,7 +316,7 @@ public static class IterationReadiness
             new("verification_completeness", (elementsOk && criteriaDefined) ? "passed" : "failed", (elementsOk && criteriaDefined) ? "Specification baseline structural checks passed and criteria defined" : (!elementsOk ? "Structural elements missing" : "Acceptance criteria undefined or placeholder")),
             new("unresolved_findings", "passed", "No active findings blocking activation"),
             new("product_confirmation", productDecisions.Total > 0 ? "pending" : "passed", $"Owner confirmation required ({productDecisions.Total} pending items)"),
-            new("vcs_checkpoint", "passed", "Advisory: checkpoint before activation")
+            EvaluateVcsCheckpointDimension(workspaceRoot)
         };
 
         var result = new IterationReadinessResult(
@@ -332,6 +335,7 @@ public static class IterationReadiness
     }
 
     private static (bool Success, IterationReadinessResult? Result, IReadOnlyList<Diagnostic> Diagnostics) AssessCompletion(
+        string workspaceRoot,
         string iterId,
         int specRevision,
         int tasksRevision,
@@ -558,7 +562,7 @@ public static class IterationReadiness
             new("verification_completeness", verificationPassed ? "passed" : "failed", verificationMsg),
             new("unresolved_findings", activeFindingCheck != null ? "failed" : "passed", activeFindingCheck != null ? "Unresolved active findings exist" : "No unresolved blocking findings"),
             new("product_confirmation", productDecisions.Total > 0 ? "pending" : "passed", $"Owner confirmation required ({productDecisions.Total} pending items)"),
-            new("vcs_checkpoint", "passed", "Authoritative documents ready for governance checkpoint")
+            EvaluateVcsCheckpointDimension(workspaceRoot)
         };
 
         var result = new IterationReadinessResult(
@@ -574,5 +578,43 @@ public static class IterationReadiness
             dimensions);
 
         return (true, result, Array.Empty<Diagnostic>());
+    }
+
+    private static ReadinessDimension EvaluateVcsCheckpointDimension(string workspaceRoot)
+    {
+        var (vcsSuccess, vcsResult, vcsDiags) = WorkspaceVcsStatus.CheckStatus(workspaceRoot);
+        if (!vcsSuccess || vcsResult == null)
+        {
+            var err = vcsDiags.Count > 0 ? vcsDiags[0].Message : "Inspection failed";
+            return new ReadinessDimension(
+                "vcs_checkpoint",
+                "unknown",
+                $"VCS inspection failed: {err}. Unknown status cannot be treated as passed.");
+        }
+
+        if (!vcsResult.IsGitRepository)
+        {
+            return new ReadinessDimension(
+                "vcs_checkpoint",
+                "not-applicable",
+                "Non-Git workspace: VCS checkpoint dimension not applicable.");
+        }
+
+        if (vcsResult.UncheckpointedFiles.Count == 0)
+        {
+            return new ReadinessDimension(
+                "vcs_checkpoint",
+                "passed",
+                "Authoritative documents are clean and checkpointed");
+        }
+
+        var uncheckpointedWithStatus = vcsResult.ManagedFiles
+            .Where(f => f.IsAuthoritative && vcsResult.UncheckpointedFiles.Contains(f.RelativePath))
+            .Select(f => $"{f.RelativePath} ({f.Status})");
+
+        return new ReadinessDimension(
+            "vcs_checkpoint",
+            "failed",
+            $"Uncheckpointed authoritative documents exist: {string.Join(", ", uncheckpointedWithStatus)}");
     }
 }

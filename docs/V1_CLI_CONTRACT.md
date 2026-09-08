@@ -67,6 +67,13 @@ dogdouspec task add --stdin|--file
 dogdouspec task quick
 dogdouspec task revise --stdin|--file
 dogdouspec task split --stdin|--file
+dogdouspec task start
+dogdouspec task verify
+dogdouspec task finish
+dogdouspec task block
+dogdouspec task resume
+dogdouspec task blockers
+dogdouspec task context
 dogdouspec task next
 dogdouspec task scope
 dogdouspec requirement propose --stdin|--file
@@ -130,6 +137,31 @@ are ordinal-sorted.
 A valid scope report exits 0. A completed report containing one or more
 out-of-scope paths exits 1; argument, Git, XML, and workspace errors retain
 their normal diagnostic exit codes.
+
+### 2.1.1 Blocker management and recheck queues
+
+`task block` transitions an active Task to `status="blocked"` and records a structured finding record under `<records>`:
+- Encodes blocker category (`--blocker-kind`), responsible owner (`--blocker-owner`), and target recheck timestamp (`--blocker-review-at`) as index terms adhering to `TokenValueType` (compact UTC `yyyyMMddTHHmmssZ`).
+- Preserves resolution condition and next action in the record body.
+- Mutates `tasks.xml` atomically with revision protection.
+
+`task resume` resolves one or all active blocker findings and transitions the Task back to `status="in-progress"`:
+- Requires explicit resolution intent (`--finding <ID>` or `--all`) and a non-empty caller-supplied `--summary` when resolving active findings (fails closed with `INVALID_ARGUMENT` if omitted).
+- Creates a `<record kind="resolution">` covering the finding with `relation="resolves"`, or sets finding `status="resolved"`.
+- Resumes the task only when no other active blockers remain, upstream dependencies remain satisfied, origin requirements remain approved, and the iteration is not in `replanning`.
+
+`task blockers` is a read-only query helper:
+- Aggregates active task blockers, unmet upstream dependencies, and general active findings.
+- Sorts items deterministically: overdue items first, then upcoming due items, then undated items.
+- Supports filtering by `--owner`, `--task`, `--kind`, and `--due-only`.
+
+### 2.1.2 Bounded task recovery context
+
+`task context` produces a deterministic, bounded XML or human view enabling an agent session to resume work without loading transient external reports:
+- **Essential Context (Non-truncatable)**: Always contains task identity, objectives, rationale, scope, constraints, origin requirements with key points, acceptance criteria, dependency statuses, active blockers/findings, latest status records, and progression assessment (action category, reason code, recommended/permitted/prohibited actions, and authority boundaries).
+- **Fail-Closed Limit Enforcement**: If Essential Context alone exceeds `--max-bytes` (default: 32,768), the command refuses to truncate and fails closed with `LIMIT_EXCEEDED` (exit code 7).
+- **Greedy Supplemental Budgeting**: Historical execution records are budgeted greedily into the remaining byte limit; omitted records are reported with `truncated="true"`, `omitted_records="<N>"`, and a copy-pasteable follow-up XPath locator.
+- **Read-Drift Protection**: Verifies snapshot consistency between `tasks.xml` and `spec.xml`, retrying bounded transient drift and failing closed on persistent conflict.
 
 ### 2.2 Backlog lifecycle helpers
 

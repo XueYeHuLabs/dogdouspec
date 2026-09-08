@@ -6,6 +6,10 @@
 - **Target:** Immediate documentation and Skill convergence, followed by separately approved CLI and schema work
 - **Normative foundations:** [`V1_XML_SCHEMA_CONTRACT.md`](V1_XML_SCHEMA_CONTRACT.md), [`V1_CLI_CONTRACT.md`](V1_CLI_CONTRACT.md), [`V1_SKILL_WORKFLOW.md`](V1_SKILL_WORKFLOW.md), and [`V1_DESIGN.md`](V1_DESIGN.md)
 
+> [!NOTE]
+> **Implementation Status (2026-09-08)**:
+> Core porcelain commands (`task start`, `task verify`, `task finish`, `task review`), task visibility (`task list`, `task show`, `task summary`), VCS diagnostics (`workspace vcs-status`), blocker workflows (`task block`, `task resume`, `task blockers`), bounded recovery context (`task context`), and unified progression assessment (`task next`, `task summary`) proposed in Sections 7.1–7.4 and 7.6 are now **fully implemented** and normative in [`V1_CLI_CONTRACT.md`](V1_CLI_CONTRACT.md) and [`iterations/20260908-progression-recovery/CONTRACT.md`](iterations/20260908-progression-recovery/CONTRACT.md). Phase 3 (external evidence references) and Phase 4 (multi-workspace aggregation) remain non-normative proposals.
+
 ---
 
 ## 1. Executive Summary

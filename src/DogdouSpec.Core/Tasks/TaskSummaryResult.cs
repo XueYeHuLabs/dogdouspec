@@ -19,6 +19,10 @@ public sealed class TaskSummaryResult
     public int Superseded { get; }
     public int Cancelled { get; }
 
+    public int Inactive => Transferred + Superseded + Cancelled;
+    public int Eligible => Total - Inactive;
+    public double CompletionPercentage => Eligible > 0 ? (Done * 100.0 / Eligible) : 0.0;
+
     public TaskSummaryResult(
         string iterationId,
         int tasksRevision,
@@ -73,6 +77,8 @@ public sealed class TaskSummaryResult
             writer.WriteAttributeString("transferred", Transferred.ToString(CultureInfo.InvariantCulture));
             writer.WriteAttributeString("superseded", Superseded.ToString(CultureInfo.InvariantCulture));
             writer.WriteAttributeString("cancelled", Cancelled.ToString(CultureInfo.InvariantCulture));
+            writer.WriteAttributeString("eligible", Eligible.ToString(CultureInfo.InvariantCulture));
+            writer.WriteAttributeString("completion_percentage", CompletionPercentage.ToString("F1", CultureInfo.InvariantCulture));
             writer.WriteEndElement();
             writer.WriteEndDocument();
         }
@@ -90,12 +96,12 @@ public sealed class TaskSummaryResult
         sb.AppendLine(CultureInfo.InvariantCulture, $"  - Verification: {Verification}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"  - Pending:      {Pending}");
         if (Blocked > 0) sb.AppendLine(CultureInfo.InvariantCulture, $"  - Blocked:      {Blocked}");
-        if (Transferred > 0) sb.AppendLine(CultureInfo.InvariantCulture, $"  - Transferred:  {Transferred}");
-        if (Superseded > 0) sb.AppendLine(CultureInfo.InvariantCulture, $"  - Superseded:   {Superseded}");
-        if (Cancelled > 0) sb.AppendLine(CultureInfo.InvariantCulture, $"  - Cancelled:    {Cancelled}");
+        if (Transferred > 0) sb.AppendLine(CultureInfo.InvariantCulture, $"  - Transferred:  {Transferred} (terminal disposition)");
+        if (Superseded > 0) sb.AppendLine(CultureInfo.InvariantCulture, $"  - Superseded:   {Superseded} (terminal disposition)");
+        if (Cancelled > 0) sb.AppendLine(CultureInfo.InvariantCulture, $"  - Cancelled:    {Cancelled} (terminal disposition)");
 
-        var pct = Total > 0 ? (Done * 100.0 / Total) : 0.0;
-        sb.AppendLine(CultureInfo.InvariantCulture, $"  Completion:     {pct:F1}%");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  Eligible tasks: {Eligible}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  Completion:     {CompletionPercentage:F1}%");
 
         return sb.ToString();
     }

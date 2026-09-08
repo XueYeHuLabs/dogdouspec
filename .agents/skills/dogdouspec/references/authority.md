@@ -58,6 +58,7 @@ dogdouspec iteration readiness --iteration "<ITERATION_ID>" --phase completion -
 
 - Reports `technically_ready="true|false"`, current revisions, passed/failed technical checks, and pending product decisions.
 - `technically_ready="true"` indicates technical gating conditions are satisfied. It is a necessary prerequisite for owner review, **not** product acceptance.
+- In Git-backed workspaces, readiness verifies actual VCS working tree cleanliness: untracked or dirty managed documents (`.dogdouspec/*`) report `vcs_clean="false"` and fail technical readiness, ensuring governed state is transport-ready before activation or completion.
 
 ## Iteration Confirmation (`iteration confirm`)
 

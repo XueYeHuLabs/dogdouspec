@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
+using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Workspace;
 
@@ -45,6 +46,79 @@ public sealed class ProjectSemanticIndex
 
     public static bool IsValidTimeFirstId(string id) =>
         !string.IsNullOrEmpty(id) && PathSecurity.IterationIdRegex.IsMatch(id);
+
+    public static bool IsValidToken(string? value) =>
+        PathSecurity.IsValidTokenValue(value);
+
+    public static (bool Success, ProjectSemanticIndex? Index, IReadOnlyList<Diagnostic> Diagnostics) LoadConsistent(
+        string workspaceRoot,
+        int maxRetries = 3)
+    {
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            var (enumSuccess, allDocs, enumDiags) = WorkspaceDiscovery.EnumerateDocuments(workspaceRoot);
+            if (!enumSuccess || enumDiags.Count > 0)
+            {
+                return (false, null, enumDiags);
+            }
+
+            var parsedDocs = new List<(ManagedDocument Document, XDocument XDoc)>();
+            var docWriteTimes = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+
+            bool parseFailed = false;
+            var parseDiags = new List<Diagnostic>();
+            foreach (var doc in allDocs)
+            {
+                try
+                {
+                    docWriteTimes[doc.FullPath] = File.GetLastWriteTimeUtc(doc.FullPath);
+                    using var stream = File.OpenRead(doc.FullPath);
+                    using var reader = SecureXmlReaderFactory.CreateReader(stream);
+                    var xDoc = XDocument.Load(reader, LoadOptions.SetLineInfo);
+                    parsedDocs.Add((doc, xDoc));
+                }
+                catch (Exception ex)
+                {
+                    parseFailed = true;
+                    parseDiags.Add(Diagnostic.Error(
+                        DiagnosticCodes.XmlParseError,
+                        $"Failed to parse XML document '{doc.RelativePath}': {ex.Message}",
+                        doc.RelativePath));
+                    break;
+                }
+            }
+
+            if (parseFailed)
+            {
+                return (false, null, parseDiags);
+            }
+
+            // Verify read consistency: check if any document was modified during reading
+            bool driftDetected = false;
+            foreach (var (fullPath, initialTime) in docWriteTimes)
+            {
+                if (File.Exists(fullPath) && File.GetLastWriteTimeUtc(fullPath) != initialTime)
+                {
+                    driftDetected = true;
+                    break;
+                }
+            }
+
+            if (driftDetected)
+            {
+                if (attempt + 1 < maxRetries)
+                {
+                    continue; // Retry read
+                }
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.RevisionConflict, "Concurrent document modification detected during document load. Retry bound exceeded.") });
+            }
+
+            var index = Build(parsedDocs);
+            return (true, index, Array.Empty<Diagnostic>());
+        }
+
+        return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.RevisionConflict, "Failed to obtain consistent document snapshot after retries.") });
+    }
 
     public static ProjectSemanticIndex Build(IReadOnlyList<(ManagedDocument Document, XDocument XDoc)> documents)
     {

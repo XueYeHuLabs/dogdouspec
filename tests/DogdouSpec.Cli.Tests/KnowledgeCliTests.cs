@@ -437,11 +437,12 @@ public sealed class KnowledgeCliTests
         var specDoc2 = XDocument.Load(specPath2);
         var critId2 = (string)specDoc2.Descendants("criterion").First().Attribute("id")!;
         var specRev2 = (string)specDoc2.Root!.Attribute("revision")!;
+        var specUpdatedAt2 = (string)specDoc2.Root!.Attribute("updated_at")!;
 
         var tasksAfterFinish = XDocument.Load(tasksPath2);
         var tasksRev2 = (string)tasksAfterFinish.Root!.Attribute("revision")!;
 
-        var confirmId = "20260906T100000Z-confirm-raw-complete";
+        var confirmId = $"{DateTimeOffset.UtcNow:yyyyMMddTHHmmssZ}-confirm-raw-complete";
         var confirmXml = $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <iteration-confirmation
   id=""{confirmId}""
@@ -450,7 +451,7 @@ public sealed class KnowledgeCliTests
   expected_spec_revision=""{specRev2}""
   expected_tasks_revision=""{tasksRev2}""
   actor=""owner""
-  decided_at=""2026-09-06T10:00:00Z"">
+  decided_at=""{specUpdatedAt2}"">
   <summary>Raw confirmation completion.</summary>
   <acceptance>
     <criterion target=""{critId2}"" decision=""accepted""/>
@@ -460,13 +461,13 @@ public sealed class KnowledgeCliTests
         File.WriteAllText(confirmFilePath, confirmXml);
 
         // 4a. Dry-run raw complete: must NOT emit guidance
-        var (dryRawCode, dryRawOut, _) = RunCli(
+        var (dryRawCode, dryRawOut, dryRawErr) = RunCli(
             "iteration", "confirm",
             "--file", confirmFilePath,
             "--dry-run",
             "--workspace-root", _tempDir,
             "--format", "xml");
-        Assert.AreEqual(0, dryRawCode);
+        Assert.AreEqual(0, dryRawCode, dryRawErr);
         Assert.IsFalse(dryRawOut.Contains(IterationCommand.KnowledgeGuidanceMessage, StringComparison.Ordinal),
             "Dry-run confirm complete must not emit guidance.");
 

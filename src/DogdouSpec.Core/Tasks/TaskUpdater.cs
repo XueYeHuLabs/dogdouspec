@@ -689,6 +689,33 @@ public static class TaskUpdater
             }
         }
 
+        if (string.Equals(transition, "resume", StringComparison.Ordinal))
+        {
+            var resolvingRecordIds = reqResolve?.Elements("record")
+                .Select(r => r.Attribute("target")?.Value)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Select(id => id!)
+                .ToHashSet(StringComparer.Ordinal) ?? new HashSet<string>(StringComparer.Ordinal);
+
+            var existingActiveFindings = targetTask.Element("records")?.Elements("record")
+                .Where(r => string.Equals(r.Attribute("kind")?.Value, "finding", StringComparison.Ordinal) &&
+                            string.Equals(r.Attribute("status")?.Value, "active", StringComparison.Ordinal))
+                .ToList() ?? new List<XElement>();
+
+            var remainingActiveFindings = existingActiveFindings
+                .Where(r => !resolvingRecordIds.Contains(r.Attribute("id")?.Value ?? string.Empty))
+                .ToList();
+
+            if (remainingActiveFindings.Count > 0)
+            {
+                var firstRemainingId = remainingActiveFindings[0].Attribute("id")?.Value ?? "unknown";
+                return (false, null, new[] { Diagnostic.Error(
+                    DiagnosticCodes.TaskTransitionConflict,
+                    $"Cannot resume task '{taskId}': {remainingActiveFindings.Count} active finding(s) remain unresolved (e.g. '{firstRemainingId}').",
+                    normDocPath) });
+            }
+        }
+
         // 10. Pre-validate Acceptance targets
         if (reqAcceptance != null)
         {

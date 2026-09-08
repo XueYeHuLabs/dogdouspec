@@ -154,12 +154,18 @@ Use two explicit compact queries to derive the next actionable task:
    empty. A pending-task XPath is document-local and cannot prove readiness for
    `depends-on` references in another iteration or document.
 
-### 3. Load Full Selected Task
+### 3. Load Full Selected Task or Bounded Recovery Context
 
 Load the complete task document by ID:
 
 ```powershell
 dogdouspec query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id='<TASK_ID>']" --format xml
+```
+
+Or when recovering or resuming in a new session, query bounded recovery context directly:
+
+```powershell
+dogdouspec task context --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--max-bytes 32768] --format xml
 ```
 
 Identify objectives, scope includes/excludes, origin requirement, acceptance criteria, constraints, and previous records before modifying code.
@@ -176,15 +182,30 @@ Identify objectives, scope includes/excludes, origin requirement, acceptance cri
    - Make necessary code and test changes.
    - Run `.\build.cmd` (or project build command) to compile and execute all tests.
    - Treat worker responses as transient transport. Summarize material implementation, verification, review, risk, and handoff facts in the Task's records.
-3. **Verify Task** (transitions `in-progress` -> `verification`):
+3. **Block Task & Manage Recheck Queue** (when obstructed by external/review/dependency obstacles):
+   ```powershell
+   # Record structured blocker finding and transition to blocked:
+   dogdouspec task block --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] --summary "..." [--blocker-kind <KIND>] [--blocker-owner <OWNER>] [--blocker-review-at <TIMESTAMP>] [--condition "..."] [--next-action "..."] --format xml
+
+   # Query active blockers and recheck queue:
+   dogdouspec task blockers [--iteration "<ITERATION_ID>"] [--due-only] --format xml
+
+   # Resolve blockers and resume to in-progress:
+   dogdouspec task resume --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] (--finding <FINDING_ID> | --all) --summary "..." --format xml
+   ```
+4. **Verify Task** (transitions `in-progress` -> `verification`):
    ```powershell
    dogdouspec task verify --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--covers "<CRITERION_ID>"] [--summary "..."] --format xml
    ```
-4. **Review Gate, When Required**: If the selected Task contains `<review required="true">`, submit `task review` while it is in `verification`.
+5. **Review Gate, When Required**: If the selected Task contains `<review required="true">`, submit `task review` while it is in `verification`.
    ```powershell
+   # Porcelain review approval:
+   dogdouspec task review approve --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--actor reviewer] [--summary "..."] --format xml
+
+   # Or structured request payload:
    Get-Content task_review.xml -Raw | dogdouspec task review --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin --format xml
    ```
-5. **Complete Task** (transitions `verification` -> `done` or atomic finish):
+6. **Complete Task** (transitions `verification` -> `done` or atomic finish):
    ```powershell
    # Standard finish:
    dogdouspec task finish --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--summary "..."] --format xml

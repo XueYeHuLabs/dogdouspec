@@ -394,11 +394,23 @@ public static class SemanticValidator
                         r.LinePosition));
                 }
             }
-            // Record covers: must target a criterion
+            // Record covers: must target a criterion (or a record if relation is 'resolves')
             else if (string.Equals(r.Relation, "covers", StringComparison.Ordinal) ||
                      (r.Element.Parent?.Name.LocalName == "covers"))
             {
-                if (!string.Equals(targetObj.ElementName, "criterion", StringComparison.Ordinal))
+                if (string.Equals(r.Relation, "resolves", StringComparison.Ordinal))
+                {
+                    if (!string.Equals(targetObj.ElementName, "record", StringComparison.Ordinal))
+                    {
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.InvalidReferenceTargetType,
+                            $"Record resolves reference must target a record, but targets '{r.Target}' which is a <{targetObj.ElementName}>.",
+                            r.Document.RelativePath,
+                            r.LineNumber,
+                            r.LinePosition));
+                    }
+                }
+                else if (!string.Equals(targetObj.ElementName, "criterion", StringComparison.Ordinal))
                 {
                     diagnostics.Add(Diagnostic.Error(
                         DiagnosticCodes.InvalidReferenceTargetType,

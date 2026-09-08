@@ -189,6 +189,14 @@ public sealed class IterationSummaryResult
             writer.WriteEndObject();
 
             writer.WriteString("recommended_next_action", s.RecommendedNextAction);
+            if (!string.IsNullOrEmpty(s.ActionCategory))
+            {
+                writer.WriteString("action_category", s.ActionCategory);
+            }
+            if (!string.IsNullOrEmpty(s.ReasonCode))
+            {
+                writer.WriteString("reason_code", s.ReasonCode);
+            }
 
             writer.WriteStartArray("tasks");
             foreach (var t in s.Tasks)
@@ -349,7 +357,17 @@ public sealed class IterationSummaryResult
                 writer.WriteEndElement();
             }
 
-            writer.WriteElementString("next-action", s.RecommendedNextAction);
+            writer.WriteStartElement("next-action");
+            if (!string.IsNullOrEmpty(s.ActionCategory))
+            {
+                writer.WriteAttributeString("action_category", s.ActionCategory);
+            }
+            if (!string.IsNullOrEmpty(s.ReasonCode))
+            {
+                writer.WriteAttributeString("reason_code", s.ReasonCode);
+            }
+            writer.WriteString(s.RecommendedNextAction);
+            writer.WriteEndElement();
 
             writer.WriteEndElement(); // </iteration-summary>
             writer.WriteEndDocument();
