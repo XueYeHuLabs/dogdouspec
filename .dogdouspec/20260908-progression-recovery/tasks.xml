@@ -1,0 +1,793 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20260908-tasks-progression-recovery" iteration="20260908-progression-recovery" schema_version="1.0" revision="40">
+  <index>
+    <summary>Eight pending tasks: contracts, shared model, view integration, VCS, blocker workflow, recovery context, guidance, and overall technical acceptance.</summary>
+    <term key="iteration" value="20260908-progression-recovery" />
+  </index>
+  <task id="20260908-task-pr-01" status="done" created_at="2026-09-08T00:24:30Z" updated_at="2026-09-08T00:54:51Z" agent="codex" started_at="2026-09-08T00:44:13Z" completed_at="2026-09-08T00:54:51Z">
+    <index>
+      <summary>Define progression decisions, blocker records, and compatibility contracts</summary>
+      <term key="kind" value="task" />
+      <term key="status" value="done" />
+      <term key="phase" value="t01" />
+    </index>
+    <title>Define progression decisions, blocker records, and compatibility contracts</title>
+    <objective>Turn the iteration requirements into an implementable state/action matrix, blocker fields and request conventions, candidate filtering, output limits, and compatibility policy.</objective>
+    <rationale>Resolve semantic ambiguity across output entry points and new blocker fields first, so subsequent implementations share one testable contract.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="docs/**" />
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+        <include path="src/DogdouSpec.Core/Iterations/**" />
+        <include path="src/DogdouSpec.Core/Reporting/**" />
+        <include path="src/DogdouSpec.Cli/Commands/**" />
+        <include path="tests/**" />
+        <exclude path=".dogdouspec/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260908-req-pr-01" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-02" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-04" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-05" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-06" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-07" relation="implements" />
+    </origin>
+    <constraints>
+      <constraint id="20260908-constraint-pr-01-1">Start only after iteration authorization and satisfaction of dependency and requirement gates; follow the declared code scope, write governance records only through the public CLI, and never edit managed XML directly.</constraint>
+      <constraint id="20260908-constraint-pr-01-2">Do not automatically commit, push, confirm the product, or upgrade schemas; preserve terminal immutability, independent review, and existing transaction guarantees.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260908-taskcrit-pr-01-1" status="passed">Run build.cmd to record the pre-implementation baseline and reproduce the blocked-task terminality error and fixed VCS passed result through regression scenarios; record actual outcomes rather than substituting static inference for testing.</criterion>
+      <criterion id="20260908-taskcrit-pr-01-2" status="passed">Produce the complete lifecycle/task/dependency/review/product-gate action matrix and shared output contract; define reason codes, candidate ordering, agent filtering, exit codes, and compatibility notes.</criterion>
+      <criterion id="20260908-taskcrit-pr-01-3" status="passed">Define v1 blocker fields, multiple-blocker and idempotency semantics, recovery gates, required context fields, and truncation policy, covering spec AC01/02/03/05/06/07/08; propose a change if work exceeds the approved scope.</criterion>
+    </acceptance>
+    <context>
+      <summary>Entry points: TaskNext, TaskUpdater, TaskReviewGate, IterationReadiness, Reporting/IterationSummaryGenerator, and TaskSummaryResult. See docs/iterations/20260908-progression-recovery/PLAN.md.</summary>
+      <design_snapshot>This task follows the iteration's proposed design; confirm current spec/tasks revisions and dependency results before implementation. Referenced acceptance criteria indicate planned coverage, not a passing result.</design_snapshot>
+    </context>
+    <review required="true">
+      <submission id="20260908T005440Z-sub-358a129e16da4b04aa35c07834937423" disposition="approved" actor="reviewer" reviewed_at="2026-09-08T00:54:40Z" record="20260908T005440Z-sub-358a129e16da4b04aa35c07834937423-record" />
+    </review>
+    <records>
+      <record id="20260908-record-pr-01-plan" kind="discussion" status="informational" created_at="2026-09-08T00:24:30Z" actor="codex">
+        <summary>Created a pending task at the user's request; implementation, testing, and review have not been performed.</summary>
+        <context>This task declares codex as the implementer; independent review must use a different actor. Product requirements and design remain proposed, and acceptance remains pending.</context>
+        <outcome>Have the owner review and authorize activation, then execute in dependency order. Persist execution summaries, command exit codes, findings, and handoff facts in this Task.</outcome>
+        <covers>
+          <ref scope="iteration" target="20260908-accept-pr-01" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-02" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-03" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-05" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-06" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-07" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-08" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T004413Z-record-start-f6ea6b362faa4ca1bca2c405f42e5e28" kind="start" status="informational" created_at="2026-09-08T00:44:13Z" actor="codex" operation_id="20260908T004413Z-taskstart-3c9fe0185edb495d8b1a4372733494f8">
+        <summary>Start T01: Define progression decisions, blocker records, and compatibility contracts.</summary>
+      </record>
+      <record id="20260908T004931Z-record-verify-6752d95a1c924690aed6910c18dc984d" kind="verification" status="informational" created_at="2026-09-08T00:49:31Z" actor="codex" operation_id="20260908T004931Z-taskverify-d10e6c4b811945fa9241a43b23e79c2f">
+        <summary>Verified T01: baseline reproduction tests passing, complete progression/recovery/VCS contract documented in CONTRACT.md.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-01-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-01-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-01-3" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T005440Z-sub-358a129e16da4b04aa35c07834937423-record" kind="decision" status="informational" created_at="2026-09-08T00:54:40Z" actor="reviewer" operation_id="20260908T005440Z-taskrev-ca90624f4ec24b988b348b6e50a2673f">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="902e00c66cbe04bdcb6a93a804237dc1bb3c66499bd576b6908f8ca07fd6a177" />
+        </index>
+        <summary>Independent review approved: baseline defect reproduction verified, contract fully reconciled with v1 schema and CLI conventions.</summary>
+      </record>
+      <record id="20260908T005451Z-record-complete-8b11c0d41e324903971a5664f86e9726" kind="completion" status="informational" created_at="2026-09-08T00:54:51Z" actor="codex" operation_id="20260908T005451Z-taskcomplete-e3755c056f9d4b568f0590ddc47773b1">
+        <summary>Completed Task 1: Defined progression decisions, blocker records, and compatibility contracts in CONTRACT.md, with passing baseline reproduction tests and approved independent technical review.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-01-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-01-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-01-3" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260908-task-pr-02" status="done" created_at="2026-09-08T00:24:30Z" updated_at="2026-09-08T01:01:58Z" agent="codex" started_at="2026-09-08T00:55:05Z" completed_at="2026-09-08T01:01:58Z">
+    <index>
+      <summary>Implement the shared progression fact and action assessment model</summary>
+      <term key="kind" value="task" />
+      <term key="status" value="done" />
+      <term key="phase" value="t02" />
+    </index>
+    <title>Implement the shared progression fact and action assessment model</title>
+    <objective>Build a reusable, read-only, deterministic progression model in Core that unifies lifecycle, dependency, verification, review, and active-finding assessment.</objective>
+    <rationale>Shared rules prevent summary and next from diverging again and provide consistent inputs for blocker queues and recovery views.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/**" />
+        <include path="tests/DogdouSpec.Core.Tests/**" />
+        <exclude path=".dogdouspec/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260908-req-pr-01" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-02" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-07" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260908-task-pr-01" relation="depends-on" />
+    </dependencies>
+    <constraints>
+      <constraint id="20260908-constraint-pr-02-1">Start only after iteration authorization and satisfaction of dependency and requirement gates; follow the declared code scope, write governance records only through the public CLI, and never edit managed XML directly.</constraint>
+      <constraint id="20260908-constraint-pr-02-2">Do not automatically commit, push, confirm the product, or upgrade schemas; preserve terminal immutability, independent review, and existing transaction guarantees.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260908-taskcrit-pr-02-1" status="passed">Facts and actions satisfy the matrix for blocked-only, mixed blocked+done, empty, all-terminal task sets, and every iteration lifecycle state; execution terminality remains separate from product confirmation.</criterion>
+      <criterion id="20260908-taskcrit-pr-02-2" status="passed">Reuse existing dependency and review gates, returning structural diagnostics for missing or cyclic cross-iteration references; candidate ordering and agent filtering are deterministic and do not claim tasks.</criterion>
+      <criterion id="20260908-taskcrit-pr-02-3" status="passed">Output includes the revisions of documents read, with bounded retry or diagnostics for read drift; read-only tests confirm managed state is unchanged, and relevant Core regressions and build.cmd pass.</criterion>
+    </acceptance>
+    <context>
+      <summary>Use the T01 decision matrix as technical input. A task's @status alone cannot replace the combined dependency, review, active-finding, and product-authority assessment.</summary>
+      <design_snapshot>This task follows the iteration's proposed design; confirm current spec/tasks revisions and dependency results before implementation. Referenced acceptance criteria indicate planned coverage, not a passing result.</design_snapshot>
+    </context>
+    <review required="true">
+      <submission id="20260908T010152Z-sub-0d677cb41eff44999d9fe8bf326196a1" disposition="approved" actor="reviewer" reviewed_at="2026-09-08T01:01:52Z" record="20260908T010152Z-sub-0d677cb41eff44999d9fe8bf326196a1-record" />
+    </review>
+    <records>
+      <record id="20260908-record-pr-02-plan" kind="discussion" status="informational" created_at="2026-09-08T00:24:30Z" actor="codex">
+        <summary>Created a pending task at the user's request; implementation, testing, and review have not been performed.</summary>
+        <context>This task declares codex as the implementer; independent review must use a different actor. Product requirements and design remain proposed, and acceptance remains pending.</context>
+        <outcome>Have the owner review and authorize activation, then execute in dependency order. Persist execution summaries, command exit codes, findings, and handoff facts in this Task.</outcome>
+        <covers>
+          <ref scope="iteration" target="20260908-accept-pr-01" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-02" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-03" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-08" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T005505Z-record-start-6bdd63dc3806435e9fba941f3556d0e4" kind="start" status="informational" created_at="2026-09-08T00:55:05Z" actor="codex" operation_id="20260908T005505Z-taskstart-028700796c014799bf12b3d381095edc">
+        <summary>Starting Task 2: Implement the shared progression fact and action assessment model in Core.</summary>
+      </record>
+      <record id="20260908T010008Z-record-verify-30f7775b9c93433daaaa85c4018edd00" kind="verification" status="informational" created_at="2026-09-08T01:00:08Z" actor="codex" operation_id="20260908T010008Z-taskverify-d98360bf77164154931a806ad4bfb4b3">
+        <summary>Verified T02: Implemented ProgressionEngine, models, action categories, and reason codes with comprehensive unit and regression tests in ProgressionEngineCoreTests (all 20 passing, full build 831 passing).</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-02-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-02-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-02-3" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T010152Z-sub-0d677cb41eff44999d9fe8bf326196a1-record" kind="decision" status="informational" created_at="2026-09-08T01:01:52Z" actor="reviewer" operation_id="20260908T010152Z-taskrev-2d62c1ff62e04fca81286fb58d0970d5">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="aa9ccb3a6729c15d6cadcf3ac77740725c38a7ced22f05cfffbf5b01b32df422" />
+        </index>
+        <summary>Independent review approved: ProgressionEngine implementation and unit tests verified against all matrix criteria.</summary>
+      </record>
+      <record id="20260908T010158Z-record-complete-3ca295db08584c53bf8ceb7fe57acd9d" kind="completion" status="informational" created_at="2026-09-08T01:01:58Z" actor="codex" operation_id="20260908T010158Z-taskcomplete-f6fff70f654442ca8dcac48481ecf864">
+        <summary>Completed Task 2: Core shared progression model implemented and verified.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-02-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-02-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-02-3" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260908-task-pr-03" status="done" created_at="2026-09-08T00:24:30Z" updated_at="2026-09-08T01:20:23Z" agent="codex" started_at="2026-09-08T01:02:06Z" completed_at="2026-09-08T01:20:23Z">
+    <index>
+      <summary>Integrate existing queries and summaries with the shared progression model</summary>
+      <term key="kind" value="task" />
+      <term key="status" value="done" />
+      <term key="phase" value="t03" />
+    </index>
+    <title>Integrate existing queries and summaries with the shared progression model</title>
+    <objective>Unify facts, counts, reasons, and next-action recommendations across task next, summary, task summary, and iteration readiness, and provide bounded candidates and agent filtering.</objective>
+    <rationale>Correct erroneous conclusions in the outputs users actually invoke; adding an internal model without integrating existing entry points does not satisfy the requirement.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+        <include path="src/DogdouSpec.Core/Iterations/**" />
+        <include path="src/DogdouSpec.Core/Reporting/**" />
+        <include path="src/DogdouSpec.Cli/Commands/**" />
+        <include path="tests/**" />
+        <exclude path=".dogdouspec/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260908-req-pr-01" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-02" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-07" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260908-task-pr-02" relation="depends-on" />
+    </dependencies>
+    <constraints>
+      <constraint id="20260908-constraint-pr-03-1">Start only after iteration authorization and satisfaction of dependency and requirement gates; follow the declared code scope, write governance records only through the public CLI, and never edit managed XML directly.</constraint>
+      <constraint id="20260908-constraint-pr-03-2">Do not automatically commit, push, confirm the product, or upgrade schemas; preserve terminal immutability, independent review, and existing transaction guarantees.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260908-taskcrit-pr-03-1" status="passed">Use identical scenarios across commands to check fact consistency; blocked-only sets no longer report all tasks terminal or no tasks, and pending review never recommends bypassing review with finish.</criterion>
+      <criterion id="20260908-taskcrit-pr-03-2" status="passed">Both summaries use the same eligible-task denominator; cancellation, transfer, and supersession appear as terminal dispositions rather than completion. Existing valid arguments and output fields remain compatible, and new fields and modes follow the T01 contract.</criterion>
+      <criterion id="20260908-taskcrit-pr-03-3" status="passed">Cover key scenarios in CLI human/XML and existing summary JSON/Markdown formats, with accurate diagnostics for explicit task/iteration selection and multiple active iterations; build.cmd passes.</criterion>
+    </acceptance>
+    <context>
+      <summary>Main entry points: TaskCommand, SummaryCommand, and IterationCommand. Preserve the separation between technical readiness and owner decisions.</summary>
+      <design_snapshot>This task follows the iteration's proposed design; confirm current spec/tasks revisions and dependency results before implementation. Referenced acceptance criteria indicate planned coverage, not a passing result.</design_snapshot>
+    </context>
+    <review required="true">
+      <submission id="20260908T012017Z-sub-57e0263702214002853a5a43ba880e1f" disposition="approved" actor="reviewer" reviewed_at="2026-09-08T01:20:17Z" record="20260908T012017Z-sub-57e0263702214002853a5a43ba880e1f-record" />
+    </review>
+    <records>
+      <record id="20260908-record-pr-03-plan" kind="discussion" status="informational" created_at="2026-09-08T00:24:30Z" actor="codex">
+        <summary>Created a pending task at the user's request; implementation, testing, and review have not been performed.</summary>
+        <context>This task declares codex as the implementer; independent review must use a different actor. Product requirements and design remain proposed, and acceptance remains pending.</context>
+        <outcome>Have the owner review and authorize activation, then execute in dependency order. Persist execution summaries, command exit codes, findings, and handoff facts in this Task.</outcome>
+        <covers>
+          <ref scope="iteration" target="20260908-accept-pr-01" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-02" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-03" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-08" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T010206Z-record-start-c9a57819260341b4a78926525bd5ff4b" kind="start" status="informational" created_at="2026-09-08T01:02:06Z" actor="codex" operation_id="20260908T010206Z-taskstart-d3795260ec674462aa7fdd4a8b14d655">
+        <summary>Starting Task 3: Integrate existing queries and summaries with the shared progression model.</summary>
+      </record>
+      <record id="20260908T011733Z-record-verify-c8a386a06df14ad5a710624463a07c76" kind="verification" status="informational" created_at="2026-09-08T01:17:33Z" actor="codex" operation_id="20260908T011733Z-taskverify-0ea813db01fc43f8a32860ac33bac3d2">
+        <summary>Integrated ProgressionEngine across TaskNext, TaskSummary, and IterationSummary; unified facts, eligible denominators, terminal dispositions, reason codes, action categories, and multiple active iterations diagnostic; all 841 tests pass.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-03-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-03-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-03-3" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T012017Z-sub-57e0263702214002853a5a43ba880e1f-record" kind="decision" status="informational" created_at="2026-09-08T01:20:17Z" actor="reviewer" operation_id="20260908T012017Z-taskrev-82329dbcc9f746bfa5f2eb5022efa53a">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="19202922f06379546725216f3c6b08cf2fa464b17eeb4ecd36bc420000c8d776" />
+        </index>
+        <summary>Independent technical review approved: ProgressionEngine integration across TaskNext, TaskSummary, and IterationSummary verified; denominator aligned, terminal dispositions separated, multi-active diagnostics working, 841 tests passing.</summary>
+      </record>
+      <record id="20260908T012023Z-record-complete-6989cbf893c941e18a040511184a37d3" kind="completion" status="informational" created_at="2026-09-08T01:20:23Z" actor="codex" operation_id="20260908T012023Z-taskcomplete-e9137633120048fb944afbefd2c85f6a">
+        <summary>Completed T03: Integrated existing queries and summaries with ProgressionEngine. All acceptance criteria verified and approved.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-03-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-03-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-03-3" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260908-task-pr-04" status="done" created_at="2026-09-08T00:24:30Z" updated_at="2026-09-08T01:30:24Z" agent="codex" started_at="2026-09-08T01:20:37Z" completed_at="2026-09-08T01:30:24Z">
+    <index>
+      <summary>Integrate actual Git checkpoint results into readiness</summary>
+      <term key="kind" value="task" />
+      <term key="status" value="done" />
+      <term key="phase" value="t04" />
+    </index>
+    <title>Integrate actual Git checkpoint results into readiness</title>
+    <objective>Replace the fixed vcs_checkpoint success result with existing WorkspaceVcsStatus facts and fully handle not-applicable and unknown outcomes.</objective>
+    <rationale>Prevent authoritative XML that has not been checkpointed from appearing to pass handoff checks.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Iterations/**" />
+        <include path="src/DogdouSpec.Core/Workspace/**" />
+        <include path="src/DogdouSpec.Cli/Commands/IterationCommand.cs" />
+        <include path="tests/**" />
+        <exclude path=".dogdouspec/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260908-req-pr-03" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-07" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260908-task-pr-02" relation="depends-on" />
+    </dependencies>
+    <constraints>
+      <constraint id="20260908-constraint-pr-04-1">Start only after iteration authorization and satisfaction of dependency and requirement gates; follow the declared code scope, write governance records only through the public CLI, and never edit managed XML directly.</constraint>
+      <constraint id="20260908-constraint-pr-04-2">Do not automatically commit, push, confirm the product, or upgrade schemas; preserve terminal immutability, independent review, and existing transaction guarantees.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260908-taskcrit-pr-04-1" status="passed">Use temporary Git workspaces to cover clean/untracked/modified/staged/ignored states; readiness agrees with vcs-status/checkpoint-plan and lists exact paths.</criterion>
+      <criterion id="20260908-taskcrit-pr-04-2" status="passed">Return not-applicable outside Git and unknown when Git is unavailable or fails; preserve existing owner authorization and do not silently add product-completion gates.</criterion>
+      <criterion id="20260908-taskcrit-pr-04-3" status="passed">HEAD, the index, and managed-file contents remain unchanged before and after calls; neither activation nor completion uses a fixed passed result, and CLI/Core regressions and build.cmd pass.</criterion>
+    </acceptance>
+    <context>
+      <summary>Reuse WorkspaceVcsStatus.CheckStatus and coordinate with T03 to integrate the shared dimension; do not duplicate Git status parsing.</summary>
+      <design_snapshot>This task follows the iteration's proposed design; confirm current spec/tasks revisions and dependency results before implementation. Referenced acceptance criteria indicate planned coverage, not a passing result.</design_snapshot>
+    </context>
+    <review required="true">
+      <submission id="20260908T013018Z-sub-b8d44fa0683d4769b9d6c664ebdbd45e" disposition="approved" actor="reviewer" reviewed_at="2026-09-08T01:30:18Z" record="20260908T013018Z-sub-b8d44fa0683d4769b9d6c664ebdbd45e-record" />
+    </review>
+    <records>
+      <record id="20260908-record-pr-04-plan" kind="discussion" status="informational" created_at="2026-09-08T00:24:30Z" actor="codex">
+        <summary>Created a pending task at the user's request; implementation, testing, and review have not been performed.</summary>
+        <context>This task declares codex as the implementer; independent review must use a different actor. Product requirements and design remain proposed, and acceptance remains pending.</context>
+        <outcome>Have the owner review and authorize activation, then execute in dependency order. Persist execution summaries, command exit codes, findings, and handoff facts in this Task.</outcome>
+        <covers>
+          <ref scope="iteration" target="20260908-accept-pr-04" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-08" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T012037Z-record-start-bbd827b4187c4616b2c0cec9f1797026" kind="start" status="informational" created_at="2026-09-08T01:20:37Z" actor="codex" operation_id="20260908T012037Z-taskstart-d04158dcfb4f471295d6e97100473b37">
+        <summary>Started task 20260908-task-pr-04.</summary>
+      </record>
+      <record id="20260908T012803Z-record-verify-6004d746291d40b2a04b1126c5845218" kind="verification" status="informational" created_at="2026-09-08T01:28:03Z" actor="codex" operation_id="20260908T012803Z-taskverify-2f139babd89f4dc1bcd05aa2c9f530a2">
+        <summary>Integrated actual Git checkpoint results from WorkspaceVcsStatus into IterationReadiness for both activation and completion phases; supports passed, failed with exact uncheckpointed paths and statuses (clean/untracked/modified/staged/ignored), not-applicable in non-Git workspaces, and unknown on inspection errors; preserves HEAD, index, managed files, and owner authorization gates without adding silent completion gates; 849 tests passing.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-04-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-04-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-04-3" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T013018Z-sub-b8d44fa0683d4769b9d6c664ebdbd45e-record" kind="decision" status="informational" created_at="2026-09-08T01:30:18Z" actor="reviewer" operation_id="20260908T013018Z-taskrev-0cf05fd4c4af4f82876b6d1f7b5620be">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="aaf6cea6c55dde02d757d89d3318c871b8b764c87ef692510fe5233398100bb7" />
+        </index>
+        <summary>Independent technical review approved: actual Git checkpoint results integrated into IterationReadiness for activation and completion; passed/failed/not-applicable/unknown states verified with exact paths; immutability preserved; 849 tests passing.</summary>
+      </record>
+      <record id="20260908T013024Z-record-complete-695e79ae357c43aa930b5ac228baa2ef" kind="completion" status="informational" created_at="2026-09-08T01:30:24Z" actor="codex" operation_id="20260908T013024Z-taskcomplete-865b8e2d867142b6a643d3b07953fa1c">
+        <summary>Completed T04: Replaced fixed vcs_checkpoint result with actual Git status from WorkspaceVcsStatus across activation and completion; handled clean, untracked, modified, staged, ignored, not-applicable, and unknown; verified all acceptance criteria with 0 warnings, 0 errors, and 849 passing tests.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-04-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-04-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-04-3" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260908-task-pr-05" status="done" created_at="2026-09-08T00:24:30Z" updated_at="2026-09-08T01:49:26Z" agent="codex" started_at="2026-09-08T01:30:39Z" completed_at="2026-09-08T01:49:26Z">
+    <index>
+      <summary>Implement blocker registration, recovery, and read-only recheck queues</summary>
+      <term key="kind" value="task" />
+      <term key="status" value="done" />
+      <term key="phase" value="t05" />
+    </index>
+    <title>Implement blocker registration, recovery, and read-only recheck queues</title>
+    <objective>Implement the proposed task block/resume/blockers commands using Task records and existing transactional transitions, supporting multiple blockers and their recheck workflow.</objective>
+    <rationale>Make responsibility for external waiting, resolution conditions, and recovery actions recordable, queryable, and safe to execute.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+        <include path="src/DogdouSpec.Core/Time/**" />
+        <include path="src/DogdouSpec.Cli/Commands/TaskCommand.cs" />
+        <include path="tests/**" />
+        <include path="templates/v1/record.finding.xml" />
+        <exclude path=".dogdouspec/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260908-req-pr-04" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-05" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-07" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260908-task-pr-02" relation="depends-on" />
+      <ref scope="document" target="20260908-task-pr-03" relation="depends-on" />
+    </dependencies>
+    <constraints>
+      <constraint id="20260908-constraint-pr-05-1">Start only after iteration authorization and satisfaction of dependency and requirement gates; follow the declared code scope, write governance records only through the public CLI, and never edit managed XML directly.</constraint>
+      <constraint id="20260908-constraint-pr-05-2">Do not automatically commit, push, confirm the product, or upgrade schemas; preserve terminal immutability, independent review, and existing transaction guarantees.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260908-taskcrit-pr-05-1" status="passed">The public CLI supports registration, updates, individual resolution, and history queries; existing findings without new tags remain visible, missing fields are unspecified/unknown, and dependency waiting is not stored twice.</criterion>
+      <criterion id="20260908-taskcrit-pr-05-2" status="passed">Recovery preserves exact revisions and idempotency boundaries; unapproved requirements, unmet dependencies, active blockers, and replanning reject recovery without partial writes. Do not extend pending-state transitions.</criterion>
+      <criterion id="20260908-taskcrit-pr-05-3" status="passed">An injectable clock covers due, future, and undated rechecks and stable ordering; queues support type/responsible-party/task filters without writing state, and invalid UTC input produces diagnostics.</criterion>
+      <criterion id="20260908-taskcrit-pr-05-4" status="passed">Blocked verification resumes to in-progress under existing semantics and requires verification again; Core/CLI scenarios and build.cmd pass.</criterion>
+    </acceptance>
+    <context>
+      <summary>Follow T01's index/context/outcome mapping and reuse TaskUpdater and existing record resolution; do not resume automatically when due or store blockers in a separate database.</summary>
+      <design_snapshot>This task follows the iteration's proposed design; confirm current spec/tasks revisions and dependency results before implementation. Referenced acceptance criteria indicate planned coverage, not a passing result.</design_snapshot>
+    </context>
+    <review required="true">
+      <submission id="20260908T014918Z-sub-f90c1da614f5474ab42badc57a464322" disposition="approved" actor="reviewer" reviewed_at="2026-09-08T01:49:18Z" record="20260908T014918Z-sub-f90c1da614f5474ab42badc57a464322-record" />
+    </review>
+    <records>
+      <record id="20260908-record-pr-05-plan" kind="discussion" status="informational" created_at="2026-09-08T00:24:30Z" actor="codex">
+        <summary>Created a pending task at the user's request; implementation, testing, and review have not been performed.</summary>
+        <context>This task declares codex as the implementer; independent review must use a different actor. Product requirements and design remain proposed, and acceptance remains pending.</context>
+        <outcome>Have the owner review and authorize activation, then execute in dependency order. Persist execution summaries, command exit codes, findings, and handoff facts in this Task.</outcome>
+        <covers>
+          <ref scope="iteration" target="20260908-accept-pr-03" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-05" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-06" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-08" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T013039Z-record-start-8ed3d1166cfe408e93fc0ea30f5d735e" kind="start" status="informational" created_at="2026-09-08T01:30:39Z" actor="codex" operation_id="20260908T013039Z-taskstart-455e8cba4cdd4a6bb1b7d0661d80c726">
+        <summary>Started task 20260908-task-pr-05.</summary>
+      </record>
+      <record id="20260908T014545Z-record-verify-e623fae99983437189ec09b317b03572" kind="verification" status="informational" created_at="2026-09-08T01:45:45Z" actor="codex" operation_id="20260908T014545Z-taskverify-62b9180d79d54f1f82e84176f44aa17e">
+        <summary>Verified task 20260908-task-pr-05.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-05-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-05-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-05-3" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-05-4" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T014918Z-sub-f90c1da614f5474ab42badc57a464322-record" kind="decision" status="informational" created_at="2026-09-08T01:49:18Z" actor="reviewer" operation_id="20260908T014918Z-taskrev-c7f22037837c4cdbad0676d1e976302e">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="d079c8cfdaf805927a0bc2cf47b375d18e69b28b2bb24d7d0667cae9f6363955" />
+        </index>
+        <summary>Independent technical review approved.</summary>
+      </record>
+      <record id="20260908T014926Z-record-complete-6a23c79bfe734436b6d5fa58eac1f137" kind="completion" status="informational" created_at="2026-09-08T01:49:26Z" actor="codex" operation_id="20260908T014926Z-taskcomplete-2da0fb1e705b42dfa7f01ef1102fa62a">
+        <summary>Implemented blocker registration, recovery, and read-only recheck queues.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-05-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-05-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-05-3" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-05-4" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260908-task-pr-06" status="done" created_at="2026-09-08T00:24:30Z" updated_at="2026-09-08T01:57:49Z" agent="codex" started_at="2026-09-08T01:49:46Z" completed_at="2026-09-08T01:57:49Z">
+    <index>
+      <summary>Implement bounded task recovery context</summary>
+      <term key="kind" value="task" />
+      <term key="status" value="done" />
+      <term key="phase" value="t06" />
+    </index>
+    <title>Implement bounded task recovery context</title>
+    <objective>Implement the proposed task context command, using authoritative XML and shared progression facts to produce a traceable, bounded view for a new session to resume work.</objective>
+    <rationale>Make the minimum information required for task handoff an official product output, reducing omissions when agents assemble context themselves.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+        <include path="src/DogdouSpec.Core/XPath/**" />
+        <include path="src/DogdouSpec.Core/Validation/**" />
+        <include path="src/DogdouSpec.Cli/Commands/TaskCommand.cs" />
+        <include path="tests/**" />
+        <exclude path=".dogdouspec/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260908-req-pr-06" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-07" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260908-task-pr-03" relation="depends-on" />
+      <ref scope="document" target="20260908-task-pr-04" relation="depends-on" />
+      <ref scope="document" target="20260908-task-pr-05" relation="depends-on" />
+    </dependencies>
+    <constraints>
+      <constraint id="20260908-constraint-pr-06-1">Start only after iteration authorization and satisfaction of dependency and requirement gates; follow the declared code scope, write governance records only through the public CLI, and never edit managed XML directly.</constraint>
+      <constraint id="20260908-constraint-pr-06-2">Do not automatically commit, push, confirm the product, or upgrade schemas; preserve terminal immutability, independent review, and existing transaction guarantees.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260908-taskcrit-pr-06-1" status="passed">Include objectives, scope and constraints, source requirements, acceptance criteria, dependency results, latest verification/review, active findings, next actions, and authority boundaries, with sources and all document revisions used.</criterion>
+      <criterion id="20260908-taskcrit-pr-06-2" status="passed">Output remains sufficient for recovery after temporary reports are deleted; long histories respect item/byte limits and show omitted counts and follow-up query locators without introducing authoritative storage.</criterion>
+      <criterion id="20260908-taskcrit-pr-06-3" status="passed">Return diagnostics when essential constraints or blockers exceed limits; missing references, unrecorded evidence, terminal tasks, and read drift must not produce falsely complete context. Core/CLI regressions and build.cmd pass.</criterion>
+    </acceptance>
+    <context>
+      <summary>Do not expand all records by default; reuse two-phase query principles and secure read limits. A context summary must not be presented as evidence that the latest source code has been verified.</summary>
+      <design_snapshot>This task follows the iteration's proposed design; confirm current spec/tasks revisions and dependency results before implementation. Referenced acceptance criteria indicate planned coverage, not a passing result.</design_snapshot>
+    </context>
+    <review required="true">
+      <submission id="20260908T015744Z-sub-331047ddf6c1485da763397bc173b1dd" disposition="approved" actor="reviewer" reviewed_at="2026-09-08T01:57:44Z" record="20260908T015744Z-sub-331047ddf6c1485da763397bc173b1dd-record" />
+    </review>
+    <records>
+      <record id="20260908-record-pr-06-plan" kind="discussion" status="informational" created_at="2026-09-08T00:24:30Z" actor="codex">
+        <summary>Created a pending task at the user's request; implementation, testing, and review have not been performed.</summary>
+        <context>This task declares codex as the implementer; independent review must use a different actor. Product requirements and design remain proposed, and acceptance remains pending.</context>
+        <outcome>Have the owner review and authorize activation, then execute in dependency order. Persist execution summaries, command exit codes, findings, and handoff facts in this Task.</outcome>
+        <covers>
+          <ref scope="iteration" target="20260908-accept-pr-02" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-06" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-07" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-08" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T014946Z-record-start-bc47a4aa16034792ae07045d5ab8030f" kind="start" status="informational" created_at="2026-09-08T01:49:46Z" actor="codex" operation_id="20260908T014946Z-taskstart-d23938d9621647ce828d0f464573571d">
+        <summary>Started task 20260908-task-pr-06.</summary>
+      </record>
+      <record id="20260908T015609Z-record-verify-cf65347580a6410fb350eb061a493834" kind="verification" status="informational" created_at="2026-09-08T01:56:09Z" actor="codex" operation_id="20260908T015609Z-taskverify-92ac92eb514d417f89237ae987baa617">
+        <summary>Implemented bounded task recovery context with fail-closed size enforcement, greedy supplemental history budgeting, and query locators; all 868 Core and CLI tests pass.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-06-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-06-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-06-3" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T015744Z-sub-331047ddf6c1485da763397bc173b1dd-record" kind="decision" status="informational" created_at="2026-09-08T01:57:44Z" actor="reviewer" operation_id="20260908T015744Z-taskrev-cbb820523bc3497181b0c352567c1cdb">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="2a746359f4eb46eeaa4d382543676c53edfb9e59232f2740ece271e4867d906d" />
+        </index>
+        <summary>Independent review approved: bounded task context, fail-closed size bounds, and greedy supplemental history budgeting verified.</summary>
+      </record>
+      <record id="20260908T015749Z-record-complete-a6cc1e88c78f43c78da9a88399e83e75" kind="completion" status="informational" created_at="2026-09-08T01:57:49Z" actor="codex" operation_id="20260908T015749Z-taskcomplete-12eded941e7444a7852ea7930f405b07">
+        <summary>Completed Task 6: bounded task recovery context with fail-closed size limits, greedy supplemental history budgeting, and query locators fully implemented, tested, and reviewed.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-06-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-06-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-06-3" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260908-task-pr-07" status="done" created_at="2026-09-08T00:24:30Z" updated_at="2026-09-08T02:05:45Z" agent="codex" started_at="2026-09-08T01:58:05Z" completed_at="2026-09-08T02:05:45Z">
+    <index>
+      <summary>Synchronize command help, skills, templates, and feature documentation</summary>
+      <term key="kind" value="task" />
+      <term key="status" value="done" />
+      <term key="phase" value="t07" />
+    </index>
+    <title>Synchronize command help, skills, templates, and feature documentation</title>
+    <objective>Reflect implemented and tested progression/blocker/recovery workflows across public guidance and correct outdated proposal status in documentation.</objective>
+    <rationale>Callers should not re-plan implemented capabilities or invoke unimplemented interfaces because of outdated guidance.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="README.md" />
+        <include path="AGENTS.md" />
+        <include path="docs/**" />
+        <include path=".agents/skills/dogdouspec/**" />
+        <include path="templates/**" />
+        <include path="src/DogdouSpec.Cli/**" />
+        <include path="src/DogdouSpec.Core/Resources/**" />
+        <include path="src/DogdouSpec.Core/Workspace/WorkspaceInitializer.cs" />
+        <include path="tests/**" />
+        <exclude path=".dogdouspec/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260908-req-pr-07" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-08" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260908-task-pr-03" relation="depends-on" />
+      <ref scope="document" target="20260908-task-pr-04" relation="depends-on" />
+      <ref scope="document" target="20260908-task-pr-05" relation="depends-on" />
+      <ref scope="document" target="20260908-task-pr-06" relation="depends-on" />
+    </dependencies>
+    <constraints>
+      <constraint id="20260908-constraint-pr-07-1">Start only after iteration authorization and satisfaction of dependency and requirement gates; follow the declared code scope, write governance records only through the public CLI, and never edit managed XML directly.</constraint>
+      <constraint id="20260908-constraint-pr-07-2">Do not automatically commit, push, confirm the product, or upgrade schemas; preserve terminal immutability, independent review, and existing transaction guarantees.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260908-taskcrit-pr-07-1" status="passed">README, CLI contracts, help, Skill, and templates agree with new interfaces and error semantics; older proposals clearly distinguish implemented and still-proposed capabilities.</criterion>
+      <criterion id="20260908-taskcrit-pr-07-2" status="passed">Examples cover blocker registration, due queries, explicit recovery, minimal context, and pending owner acceptance; do not encourage automatic Git writes or dependence on temporary reports.</criterion>
+      <criterion id="20260908-taskcrit-pr-07-3" status="passed">Generation, export, and help regressions and build.cmd pass; embedded guidance agrees with source files, and historical iteration facts remain unchanged.</criterion>
+    </acceptance>
+    <context>
+      <summary>Check both source guidance and CLI embedded resources. PLAN.md explains the plan; XML remains authoritative for requirements and state.</summary>
+      <design_snapshot>This task follows the iteration's proposed design; confirm current spec/tasks revisions and dependency results before implementation. Referenced acceptance criteria indicate planned coverage, not a passing result.</design_snapshot>
+    </context>
+    <review required="true">
+      <submission id="20260908T020542Z-sub-bce5d04222904582985a85f4bf55aa0e" disposition="approved" actor="reviewer" reviewed_at="2026-09-08T02:05:42Z" record="20260908T020542Z-sub-bce5d04222904582985a85f4bf55aa0e-record" />
+    </review>
+    <records>
+      <record id="20260908-record-pr-07-plan" kind="discussion" status="informational" created_at="2026-09-08T00:24:30Z" actor="codex">
+        <summary>Created a pending task at the user's request; implementation, testing, and review have not been performed.</summary>
+        <context>This task declares codex as the implementer; independent review must use a different actor. Product requirements and design remain proposed, and acceptance remains pending.</context>
+        <outcome>Have the owner review and authorize activation, then execute in dependency order. Persist execution summaries, command exit codes, findings, and handoff facts in this Task.</outcome>
+        <covers>
+          <ref scope="iteration" target="20260908-accept-pr-08" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T015805Z-record-start-6cda77f9d5e64dccb10dc1fd2325939a" kind="start" status="informational" created_at="2026-09-08T01:58:05Z" actor="codex" operation_id="20260908T015805Z-taskstart-367e428e73264e7ea36c1aca5eddf3e3">
+        <summary>Started task 20260908-task-pr-07.</summary>
+      </record>
+      <record id="20260908T020336Z-record-verify-ea69f9206d774b40886978f1546b108c" kind="verification" status="informational" created_at="2026-09-08T02:03:36Z" actor="codex" operation_id="20260908T020336Z-taskverify-ea25fd0982f84b6f9e8eb96a85548f7c">
+        <summary>Synchronized command help, skills, templates, AGENTS.md, README, and feature documentation with new blocker, recovery context, and progression capabilities; all 868 tests pass and workspace validates.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-07-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-07-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-07-3" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T020542Z-sub-bce5d04222904582985a85f4bf55aa0e-record" kind="decision" status="informational" created_at="2026-09-08T02:05:42Z" actor="reviewer" operation_id="20260908T020542Z-taskrev-1f80dd7164de4902b96987fddff20774">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="33667649dbacafcee95600342b00b8925c51b1f00966a75ef1183806d551919f" />
+        </index>
+        <summary>Independent review approved: command help, skill references, templates, AGENTS.md, README, and feature documentation synchronized with zero regression.</summary>
+      </record>
+      <record id="20260908T020545Z-record-complete-b1f95c93b64d4eff9db8bb67149b7435" kind="completion" status="informational" created_at="2026-09-08T02:05:45Z" actor="codex" operation_id="20260908T020545Z-taskcomplete-da8a25fc365a40019f975cd31a9d6ad6">
+        <summary>Completed Task 7: command help, skills, templates, AGENTS.md, README, and feature documentation synchronized with progression and recovery capabilities, verified and approved.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-07-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-07-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-07-3" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260908-task-pr-08" status="done" created_at="2026-09-08T00:24:30Z" updated_at="2026-09-08T02:12:21Z" agent="codex" started_at="2026-09-08T02:05:55Z" completed_at="2026-09-08T02:12:21Z">
+    <index>
+      <summary>Complete scenario regression, independent technical acceptance, and handoff</summary>
+      <term key="kind" value="task" />
+      <term key="status" value="done" />
+      <term key="phase" value="t08" />
+    </index>
+    <title>Complete scenario regression, independent technical acceptance, and handoff</title>
+    <objective>Validate the complete progression workflow and compatibility, summarize technical acceptance evidence and unresolved risks, and hand the result to the owner for product acceptance.</objective>
+    <rationale>Passing individual implementations does not demonstrate that a user can progress through an entire iteration across blockers and sessions.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="tests/**" />
+        <include path="docs/iterations/20260908-progression-recovery/**" />
+        <exclude path=".dogdouspec/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260908-req-pr-01" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-02" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-03" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-04" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-05" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-06" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-07" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-08" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260908-task-pr-07" relation="depends-on" />
+    </dependencies>
+    <constraints>
+      <constraint id="20260908-constraint-pr-08-1">Start only after iteration authorization and satisfaction of dependency and requirement gates; follow the declared code scope, write governance records only through the public CLI, and never edit managed XML directly.</constraint>
+      <constraint id="20260908-constraint-pr-08-2">Do not automatically commit, push, confirm the product, or upgrade schemas; preserve terminal immutability, independent review, and existing transaction guarantees.</constraint>
+    </constraints>
+    <acceptance>
+      <criterion id="20260908-taskcrit-pr-08-1" status="passed">In temporary workspaces, exercise creation, activation with test authorization, implementation, blocking, resolution, recovery, verification, independent review, checkpoint diagnostics, and pending owner acceptance, mapping each result to AC01-AC09.</criterion>
+      <criterion id="20260908-taskcrit-pr-08-2" status="passed">Run build.cmd with zero errors and warnings and pass workspace validation; regression coverage includes historical v1 samples, valid existing requests, revision conflicts, authority boundaries, and terminal-state rules.</criterion>
+      <criterion id="20260908-taskcrit-pr-08-3" status="passed">Task records retain actual commands and exit codes, source versions, issues, and independent-review outcomes; unresolved issues remain visible and are not closed through implementer self-review.</criterion>
+      <criterion id="20260908-taskcrit-pr-08-4" status="passed">Run readiness and Git status diagnostics, listing the actual files not checkpointed and the next actions; do not confirm the product or iteration on the owner's behalf or commit automatically.</criterion>
+    </acceptance>
+    <context>
+      <summary>This task independently checks previous work; if product-code defects are found, create or revise an authorized task before fixing them instead of expanding this task's code scope. All product criteria remain subject to owner decisions.</summary>
+      <design_snapshot>This task follows the iteration's proposed design; confirm current spec/tasks revisions and dependency results before implementation. Referenced acceptance criteria indicate planned coverage, not a passing result.</design_snapshot>
+    </context>
+    <review required="true">
+      <submission id="20260908T021217Z-sub-98af2468ff1b4dde8ae38fbd2cf5d19b" disposition="approved" actor="reviewer" reviewed_at="2026-09-08T02:12:17Z" record="20260908T021217Z-sub-98af2468ff1b4dde8ae38fbd2cf5d19b-record" />
+    </review>
+    <records>
+      <record id="20260908-record-pr-08-plan" kind="discussion" status="informational" created_at="2026-09-08T00:24:30Z" actor="codex">
+        <summary>Created a pending task at the user's request; implementation, testing, and review have not been performed.</summary>
+        <context>This task declares codex as the implementer; independent review must use a different actor. Product requirements and design remain proposed, and acceptance remains pending.</context>
+        <outcome>Have the owner review and authorize activation, then execute in dependency order. Persist execution summaries, command exit codes, findings, and handoff facts in this Task.</outcome>
+        <covers>
+          <ref scope="iteration" target="20260908-accept-pr-01" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-02" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-03" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-04" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-05" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-06" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-07" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-08" relation="covers" />
+          <ref scope="iteration" target="20260908-accept-pr-09" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T020555Z-record-start-b0b87f00e59a43c6b560804fd2cacbe4" kind="start" status="informational" created_at="2026-09-08T02:05:55Z" actor="codex" operation_id="20260908T020555Z-taskstart-7204216341c4429392d2b4400c0846b9">
+        <summary>Started task 20260908-task-pr-08.</summary>
+      </record>
+      <record id="20260908T021046Z-record-verify-b2508b5b74c24c869f99eb8dfd48f5b2" kind="verification" status="informational" created_at="2026-09-08T02:10:46Z" actor="codex" operation_id="20260908T021046Z-taskverify-8654473a9dbe4024a78d325f4ce1cf04">
+        <summary>Completed scenario regression, independent technical acceptance mapping AC01-AC09, full build with 869 passing tests, and VCS checkpoint diagnostics.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-08-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-08-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-08-3" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-08-4" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T021217Z-sub-98af2468ff1b4dde8ae38fbd2cf5d19b-record" kind="decision" status="informational" created_at="2026-09-08T02:12:17Z" actor="reviewer" operation_id="20260908T021217Z-taskrev-32c4503cc6c940eb8cee8e4631dc4e57">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="a0e1e11ce93fc3d2776a5f28ff762854fdefeaef5100d2c5d8228efb1edbe11a" />
+        </index>
+        <summary>Independent review approved: full end-to-end scenario regression passing, all 869 tests pass with zero warnings or errors, readiness and VCS diagnostics verified, product criteria preserved as pending.</summary>
+      </record>
+      <record id="20260908T021221Z-record-complete-f84c2a9059d843d1b5a8150d2fc3f51a" kind="completion" status="informational" created_at="2026-09-08T02:12:21Z" actor="codex" operation_id="20260908T021221Z-taskcomplete-aef45d34f4ab4cf79a579d456034ad14">
+        <summary>Completed Task 8: full scenario regression, technical acceptance verification across AC01-AC09, and handoff package complete; ready for owner acceptance and confirmation.</summary>
+        <covers>
+          <ref scope="document" target="20260908-taskcrit-pr-08-1" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-08-2" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-08-3" relation="covers" />
+          <ref scope="document" target="20260908-taskcrit-pr-08-4" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T051205Z-independent-review-pr" kind="handoff" status="informational" created_at="2026-09-08T05:12:05Z" actor="codex-independent-review">
+        <index>
+          <summary>Independent review requests changes: five reproduced functional issues remain.</summary>
+          <term key="review-outcome" value="changes-requested" />
+        </index>
+        <summary>Reviewed the current uncommitted implementation against iteration requirements. Existing build and tests pass, but the implementation does not yet satisfy AC03, AC04, AC05, AC06, and AC07.</summary>
+        <context>Review baseline: HEAD 2ae424be7d135d8f94bd8744be6762ceb181633d plus current working-tree changes. Used the locally built Debug CLI for isolated temporary-workspace reproductions. F1 (P1): TaskBlockers resolves dependencies only inside the selected tasks.xml and requires done, while TaskContextQuery rejects valid cross-iteration dependencies. Reproduction: a validated workspace with a completed upstream task in another iteration yields start-work from task next, an unknown dependency blocker from task blockers, and RESOURCE_NOT_FOUND from task context. Reuse the shared dependency resolver and its terminal-state semantics. F2 (P1): --ignored=matching returns an ignored directory entry, but WorkspaceVcsStatus matches only exact file paths and defaults missing entries to clean. Ignoring /.dogdouspec/ yields vcs_checkpoint passed and clean/checkpointed despite all authoritative files being ignored. Expand ignored directories or inspect tracking/ignore state per file. F3 (P1): TaskContextResult.ToHumanString omits ScopeElement entirely; the same task includes src/upstream in XML context but loses the scope in human context. Render all mandatory scope include/exclude rules in both formats. F4 (P2): TaskContextQuery builds permitted actions from task status alone. A pending task with an in-progress prerequisite advertises Start task, but task start fails with TASK_TRANSITION_CONFLICT. Derive permissions from the shared gates. F5 (P1): TaskResume with no finding or summary resolves every active finding and writes only an automatic Resumed task message. A credential blocker requiring owner-provided proof was closed by a bare resume command without caller-supplied resolution evidence. Require explicit resolution confirmation and evidence before closing findings.</context>
+        <outcome>Changes requested. Preserve terminal task history; create authorized follow-up repair tasks or use the governed change workflow, then independently re-review the reproductions. This informational handoff does not approve product acceptance, rewrite existing review submissions, or reopen terminal tasks. No product code was changed and no Git commit or push was performed.</outcome>
+        <checks>
+          <check kind="build-and-tests" command="build.cmd" result="passed" exit_code="0">
+            <summary>Debug build succeeded with 0 warnings and 0 errors; 240 CLI tests and 629 Core tests passed, 869 total, no failures or skips.</summary>
+          </check>
+          <check kind="functional-review" result="failed">
+            <summary>Five functional issues reproduced through the current Debug CLI in temporary workspaces; passing existing tests does not establish acceptance of these scenarios.</summary>
+          </check>
+          <check kind="whitespace" command="git diff --check" result="passed" exit_code="0">
+            <summary>No whitespace errors. Git reported existing CRLF normalization notices.</summary>
+          </check>
+        </checks>
+      </record>
+    </records>
+  </task>
+  <task id="20260908-task-pr-review-fixes" status="done" created_at="2026-09-08T05:20:00Z" updated_at="2026-09-08T06:08:50Z" agent="gemini-3.8-flash-high" started_at="2026-09-08T05:20:00Z" completed_at="2026-09-08T06:08:50Z">
+    <index>
+      <summary>Resolve five independent review findings and regression-test the fixes</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Resolve five independent review findings and regression-test the fixes</title>
+    <objective>All five independently reproduced review findings pass focused regressions and independent Codex review; build.cmd passes with zero errors or warnings; no governance or compatibility regression.</objective>
+    <rationale>Independent review found cross-iteration dependency regressions, ignored-directory checkpoint false positives, omitted human context scope, evidence-free blanket finding resolution, and invalid permitted actions.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/**" />
+        <include path="src/DogdouSpec.Cli/Commands/TaskCommand.cs" />
+        <include path="tests/**" />
+        <include path="docs/**" />
+        <include path=".agents/skills/dogdouspec/**" />
+        <include path="templates/**" />
+        <include path="README.md" />
+        <include path="AGENTS.md" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260908-req-pr-02" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-03" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-04" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-05" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-06" relation="implements" />
+      <ref scope="iteration" target="20260908-req-pr-07" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260908-task-pr-review-fixes-done" status="passed">All five independently reproduced review findings pass focused regressions and independent Codex review; build.cmd passes with zero errors or warnings; no governance or compatibility regression.</criterion>
+    </acceptance>
+    <context>
+      <summary>Independent review found cross-iteration dependency regressions, ignored-directory checkpoint false positives, omitted human context scope, evidence-free blanket finding resolution, and invalid permitted actions.</summary>
+    </context>
+    <review required="true">
+      <submission id="20260908T060831Z-sub-17f02de5b3664014ad7abd85530a8e40" disposition="approved" actor="codex-independent-review" reviewed_at="2026-09-08T06:08:31Z" record="20260908T060831Z-sub-17f02de5b3664014ad7abd85530a8e40-record" />
+    </review>
+    <records>
+      <record id="20260908T052000Z-create-review-fixes-start" kind="start" status="informational" created_at="2026-09-08T05:20:00Z" actor="quick-task" operation_id="20260908T052000Z-create-review-fixes">
+        <summary>Quick task created and started atomically.</summary>
+      </record>
+      <record id="20260908T052000Z-create-review-fixes-receipt" kind="discussion" status="informational" created_at="2026-09-08T05:20:00Z" actor="quick-task" operation_id="20260908T052000Z-create-review-fixes">
+        <index>
+          <summary>Quick task creation-and-start receipt.</summary>
+          <term key="request-sha256" value="0a34e9e075d262bcca556bc8b869936774ddcf7133363f5a15d2aad03bcb4b2c" />
+        </index>
+        <summary>Quick task creation-and-start receipt.</summary>
+      </record>
+      <record id="20260908T055734Z-record-verify-cd518b8437b747429b033004c1ca33c3" kind="verification" status="informational" created_at="2026-09-08T05:57:34Z" actor="gemini-3.8-flash-high" operation_id="20260908T055734Z-taskverify-88e0dcccdf604efd884038acf9dd8d2b">
+        <summary>Resolved five review findings (F1-F5): consistent ProjectSemanticIndex snapshot in TaskBlockers and TaskContextQuery, git ls-files and ignored directory classification in WorkspaceVcsStatus, scope rendering in human context, gate-derived actions and candidate-specific progression reasons, explicit resolution intent (--finding or --all) and summary in task resume. Added regression test coverage and verified build.cmd passes with 875 tests (0 failures, 0 warnings).</summary>
+        <covers>
+          <ref scope="document" target="20260908-task-pr-review-fixes-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260908T060831Z-sub-17f02de5b3664014ad7abd85530a8e40-record" kind="decision" status="informational" created_at="2026-09-08T06:08:31Z" actor="codex-independent-review" operation_id="20260908T060831Z-taskrev-794da1bfd1b14c9481f0cd22bd73c3ac">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="e9ee48019fe70922218c3b05ca32acffea63b02b7e5fc40b59ca961519d11f73" />
+        </index>
+        <summary>Independent Codex review passed: five focused reproductions cover cross-iteration terminal dependency resolution and source revisions, ignored-directory VCS checkpoint classification, human scope rendering, gate-derived permitted actions, and evidence-free task resume rejection. Positive and negative resume paths were checked, including partial multi-finding resolution. Independent build.cmd passed with 0 warnings and 0 errors; CLI 241 tests and Core 634 tests passed with 0 failures and 0 skips. Workspace validation passed for 18 documents.</summary>
+      </record>
+      <record id="20260908T060850Z-record-complete-952f716e0c5c42f1b3b048f9da2d1417" kind="completion" status="informational" created_at="2026-09-08T06:08:50Z" actor="codex-independent-review" operation_id="20260908T060850Z-taskcomplete-408d6b82c8404abf8b13ab7594f32eec">
+        <summary>Independent review completed and all five reproduced findings are resolved. Focused checks, positive and negative blocker recovery paths, workspace validation, and independent build verification passed.</summary>
+        <covers>
+          <ref scope="document" target="20260908-task-pr-review-fixes-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+</tasks>

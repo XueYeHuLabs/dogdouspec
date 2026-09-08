@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A Finding records an observation and impact; it does not approve a product change. -->
+<!-- A Finding records an observation, impact, or blocker; it does not approve a product change. -->
 <record
   id="20000101T000000Z-record-replace-finding"
   kind="finding"
@@ -10,8 +10,14 @@
     <summary>Replace with a compact Finding index.</summary>
     <term key="topic" value="replace-topic"/>
     <term key="risk" value="replace-risk"/>
+    <!-- Blocker findings use blocker-* keys:
+    <term key="blocker-kind" value="external"/>
+    <term key="blocker-owner" value="owner"/>
+    <term key="blocker-review-at" value="20000102T000000Z"/>
+    -->
   </index>
-  <summary>Replace with the observed fact.</summary>
-  <context>Replace with the attempt or condition that exposed it.</context>
+  <summary>Replace with the observed fact or blocker condition.</summary>
+  <context>Replace with the attempt, condition, or unblocking requirement.</context>
   <impact>Replace with the Task and acceptance impact.</impact>
+  <outcome>Replace with the planned resolution or next action.</outcome>
 </record>

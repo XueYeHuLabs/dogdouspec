@@ -51,6 +51,10 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
      ```powershell
      dogdouspec query --document "<ITERATION_ID>/tasks.xml" --xpath "ds:filter(/tasks/task[@status='in-progress' or @status='verification'][1], '@id', '@status', '@agent', 'index')" --format xml
      ```
+     Or query bounded recovery context directly:
+     ```powershell
+     dogdouspec task context --task "<TASK_ID>" --format xml
+     ```
    - Phase 1b (If no task is in-progress, select first ready pending task):
      ```powershell
      dogdouspec task next --iteration "<ITERATION_ID>" --format xml
@@ -65,6 +69,9 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
    - Run `.\build.cmd` before and after changes. Ensure all test suites pass with 0 errors and 0 warnings.
 6. **Task Updates & State Transitions**:
    - Transition task: `pending` -> `start` (`in-progress`) -> `verify` (`verification`) -> `complete` (`done`).
+   - When obstructed by external dependencies, environment, or review gates: transition to `blocked` with `dogdouspec task block --task "<TASK_ID>" --summary "..." [--blocker-kind <KIND>] [--blocker-owner <OWNER>] [--blocker-review-at <TIMESTAMP>] [--condition "..."] [--next-action "..."]`.
+   - Inspect active blockers and recheck queues with `dogdouspec task blockers`.
+   - Resolve blockers and resume: `dogdouspec task resume --task "<TASK_ID>" (--finding <FINDING_ID> | --all) --summary "..."`.
    - Pass exact expected revisions (`--expected-revision <N>`).
    - After each write, run `dogdouspec validate --format xml` and re-query.
    - Persist semantic agent results—implementation summary, source commits, checks, findings, risks, review outcome, blockers, and handoff instructions—in the relevant `tasks.xml` Task records. Do not rely on `.agents/work-results/` or another report folder for recovery.

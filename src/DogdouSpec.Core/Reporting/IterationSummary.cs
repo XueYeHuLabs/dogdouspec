@@ -39,4 +39,6 @@ public sealed record IterationSummary(
     IReadOnlyList<TaskSummaryItem> Tasks,
     IReadOnlyList<BlockerSummaryItem> Blockers,
     IReadOnlyList<GatingSummaryItem> PendingGates,
-    string RecommendedNextAction);
+    string RecommendedNextAction,
+    string? ActionCategory = null,
+    string? ReasonCode = null);

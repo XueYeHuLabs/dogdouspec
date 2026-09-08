@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Xml.Linq;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Iterations;
+using DogdouSpec.Core.Progression;
 using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Tasks;
 using DogdouSpec.Core.Workspace;
@@ -47,10 +48,17 @@ public static class IterationSummaryGenerator
                 return (false, null, listDiags.Count > 0 ? listDiags : new[] { Diagnostic.Error(DiagnosticCodes.DocumentNotFound, "Failed to list iterations.") });
             }
 
-            var activeIter = listResult.Iterations.FirstOrDefault(i => string.Equals(i.Status, "active", StringComparison.OrdinalIgnoreCase));
-            if (activeIter != null)
+            var activeIters = listResult.Iterations.Where(i => string.Equals(i.Status, "active", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (activeIters.Count > 1)
             {
-                iterationId = activeIter.Id;
+                return (false, null, new[] { Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    $"Multiple active iterations found ({string.Join(", ", activeIters.Select(i => i.Id))}). Specify --iteration explicitly.") });
+            }
+
+            if (activeIters.Count == 1)
+            {
+                iterationId = activeIters[0].Id;
             }
             else
             {
@@ -95,6 +103,7 @@ public static class IterationSummaryGenerator
         {
             return (false, null, new[] { idErr! });
         }
+
 
         var iterDir = Path.Combine(workspaceRoot, normIterId);
         if (!Directory.Exists(iterDir))
@@ -266,59 +275,52 @@ public static class IterationSummaryGenerator
             pendingGates.Add(new GatingSummaryItem("acceptance", cId, cStatement, "pending"));
         }
 
-        var totalTasks = parsedTasks.Count;
-        var doneTasks = parsedTasks.Count(t => string.Equals(t.Status, "done", StringComparison.OrdinalIgnoreCase));
-        var inProgressTasks = parsedTasks.Count(t => string.Equals(t.Status, "in-progress", StringComparison.OrdinalIgnoreCase));
-        var verificationTasks = parsedTasks.Count(t => string.Equals(t.Status, "verification", StringComparison.OrdinalIgnoreCase));
-        var pendingTasksCount = parsedTasks.Count(t =>
+        var (progSuccess, progResult, _) = ProgressionEngine.Assess(workspaceRoot, normIterId);
+
+        var totalTasks = progResult?.Facts.TotalTasks ?? parsedTasks.Count;
+        var doneTasks = progResult?.Facts.DoneTasks ?? parsedTasks.Count(t => string.Equals(t.Status, "done", StringComparison.OrdinalIgnoreCase));
+        var inProgressTasks = progResult?.Facts.InProgressTasks ?? parsedTasks.Count(t => string.Equals(t.Status, "in-progress", StringComparison.OrdinalIgnoreCase));
+        var verificationTasks = progResult?.Facts.VerificationTasks ?? parsedTasks.Count(t => string.Equals(t.Status, "verification", StringComparison.OrdinalIgnoreCase));
+        var pendingTasksCount = progResult != null ? (progResult.Facts.PendingTasks + progResult.Facts.BlockedTasks) : parsedTasks.Count(t =>
             string.Equals(t.Status, "pending", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(t.Status, "blocked", StringComparison.OrdinalIgnoreCase) ||
             (!KnownActiveStatuses.Contains(t.Status) && !KnownInactiveStatuses.Contains(t.Status)));
-        var inactiveTasks = parsedTasks.Count(t => KnownInactiveStatuses.Contains(t.Status));
+        var inactiveTasks = progResult?.Facts.InactiveTasks ?? parsedTasks.Count(t => KnownInactiveStatuses.Contains(t.Status));
 
-        var activeTotal = totalTasks - inactiveTasks;
-        var progressPct = activeTotal > 0 ? ((double)doneTasks / activeTotal) * 100.0 : 0.0;
+        var activeTotal = progResult?.Facts.EligibleTasks ?? (totalTasks - inactiveTasks);
+        var progressPct = progResult?.Facts.CompletionPercentage ?? (activeTotal > 0 ? ((double)doneTasks / activeTotal) * 100.0 : 0.0);
 
         // Next Recommended Action
         string nextAction;
-        if (string.Equals(status, "replanning", StringComparison.OrdinalIgnoreCase))
+        string? actionCategory = progResult?.RecommendedAction.ActionCategory;
+        string? reasonCode = progResult?.RecommendedAction.ReasonCode;
+
+        if (progResult != null)
         {
-            nextAction = "Iteration is frozen in 'replanning' status. Resolve proposed changes or confirm with 'dogdouspec iteration confirm'.";
-        }
-        else if (string.Equals(status, "completed", StringComparison.OrdinalIgnoreCase))
-        {
-            nextAction = "Iteration is completed and archived.";
-        }
-        else if (string.Equals(status, "draft", StringComparison.OrdinalIgnoreCase))
-        {
-            nextAction = $"Activate draft iteration: 'dogdouspec iteration activate --iteration {normIterId}'";
-        }
-        else
-        {
-            var verTask = parsedTasks.FirstOrDefault(t => t.Status == "verification");
-            if (verTask != null)
+            var rec = progResult.RecommendedAction;
+            switch (rec.ActionCategory)
             {
-                nextAction = $"Verify & finish task {verTask.Id}: 'dogdouspec task finish --task {verTask.Id}'";
-            }
-            else
-            {
-                var inProgTask = parsedTasks.FirstOrDefault(t => t.Status == "in-progress");
-                if (inProgTask != null)
-                {
-                    nextAction = $"Complete task {inProgTask.Id} and run: 'dogdouspec task verify --task {inProgTask.Id}'";
-                }
-                else
-                {
-                    var readyPending = parsedTasks.FirstOrDefault(t => t.Status == "pending" && !t.IsBlocked);
-                    if (readyPending != null)
+                case ProgressionActionCategories.OwnerDecision:
+                    if (string.Equals(status, "replanning", StringComparison.OrdinalIgnoreCase))
                     {
-                        nextAction = $"Start next ready task {readyPending.Id}: 'dogdouspec task start --task {readyPending.Id}'";
+                        nextAction = "Iteration is frozen in 'replanning' status. Resolve proposed changes or confirm with 'dogdouspec iteration confirm'.";
                     }
-                    else if (pendingTasksCount > 0)
+                    else if (string.Equals(status, "draft", StringComparison.OrdinalIgnoreCase))
                     {
-                        nextAction = "All pending tasks are blocked by incomplete prerequisites. Resolve prerequisite blockers.";
+                        nextAction = $"Activate draft iteration: 'dogdouspec iteration activate --iteration {normIterId}'";
                     }
-                    else if (totalTasks > 0 && doneTasks == activeTotal)
+                    else
+                    {
+                        nextAction = $"{rec.Reason} Run: '{rec.FollowUpCommand}'.";
+                    }
+                    break;
+
+                case ProgressionActionCategories.ExecutionTerminal:
+                    if (string.Equals(status, "completed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        nextAction = "Iteration is completed and archived.";
+                    }
+                    else if (progResult.Facts.IsDeliverySuccessful)
                     {
                         if (pendingGates.Any(g => g.Kind == "acceptance"))
                         {
@@ -331,10 +333,52 @@ public static class IterationSummaryGenerator
                     }
                     else
                     {
-                        nextAction = $"No tasks defined. Add tasks with 'dogdouspec task quick' or 'dogdouspec task add'.";
+                        var nonDoneCount = progResult.Facts.CancelledTasks + progResult.Facts.TransferredTasks + progResult.Facts.SupersededTasks;
+                        nextAction = $"All tasks in iteration are terminal ({nonDoneCount} non-done disposition(s)). Check readiness: 'dogdouspec iteration readiness --phase completion'";
                     }
-                }
+                    break;
+
+                case ProgressionActionCategories.ReviewRequired:
+                    nextAction = $"Task {rec.TargetTaskId} requires independent review: '{rec.FollowUpCommand}'";
+                    break;
+
+                case ProgressionActionCategories.WaitExternal:
+                    nextAction = $"{rec.Reason} Inspect blockers with '{rec.FollowUpCommand}'.";
+                    break;
+
+                case ProgressionActionCategories.ResolveFindings:
+                    nextAction = $"{rec.Reason} Address findings before proceeding.";
+                    break;
+
+                case ProgressionActionCategories.ResumeTask:
+                    nextAction = $"Task {rec.TargetTaskId} blockers resolved: '{rec.FollowUpCommand}'";
+                    break;
+
+                case ProgressionActionCategories.StartWork:
+                    nextAction = $"Start next ready task {rec.TargetTaskId}: '{rec.FollowUpCommand}'";
+                    break;
+
+                case ProgressionActionCategories.ContinueWork:
+                    nextAction = $"Complete task {rec.TargetTaskId} and run: '{rec.FollowUpCommand}'";
+                    break;
+
+                case ProgressionActionCategories.VerifyWork:
+                    nextAction = $"Verify task {rec.TargetTaskId} and run: '{rec.FollowUpCommand}'";
+                    break;
+
+                case ProgressionActionCategories.WaitDependency:
+                    nextAction = "All pending tasks are blocked by incomplete prerequisites. Resolve prerequisite blockers.";
+                    break;
+
+                case ProgressionActionCategories.NoTasks:
+                default:
+                    nextAction = "No tasks defined. Add tasks with 'dogdouspec task quick' or 'dogdouspec task add'.";
+                    break;
             }
+        }
+        else
+        {
+            nextAction = "Unable to evaluate progression recommendations.";
         }
 
         var summary = new IterationSummary(
@@ -355,7 +399,9 @@ public static class IterationSummaryGenerator
             parsedTasks,
             blockers,
             pendingGates,
-            nextAction);
+            nextAction,
+            actionCategory,
+            reasonCode);
 
         return (true, new IterationSummaryResult(summary), diagnostics);
     }

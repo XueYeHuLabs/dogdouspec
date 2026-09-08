@@ -174,14 +174,20 @@ public sealed class TaskUpdateCoreTests
   transition="resume"
   actor="codex"
   occurred_at="2026-08-23T05:20:00Z">
+  <resolve-records>
+    <record target="20260823T051000Z-record-blocker"/>
+  </resolve-records>
   <records>
     <record
       id="20260823T052000Z-record-resume"
-      kind="handoff"
-      status="informational"
+      kind="resolution"
+      status="resolved"
       created_at="2026-08-23T05:20:00Z"
       actor="codex">
       <summary>Resuming task.</summary>
+      <covers>
+        <ref scope="document" target="20260823T051000Z-record-blocker" relation="resolves"/>
+      </covers>
     </record>
   </records>
 </task-update>

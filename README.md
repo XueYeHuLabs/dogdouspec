@@ -166,18 +166,26 @@ All commands run directly through `dogdouspec <command> [options]`:
   - `task start --task <TASK_ID> [--iteration <ID>] [--summary "..."]` (Transition to `in-progress`)
   - `task verify --task <TASK_ID> [--iteration <ID>] [--covers <CRITERION>] [--summary "..."]` (Transition to `verification`)
   - `task finish --task <TASK_ID> [--iteration <ID>] [--covers <CRITERION>] [--summary "..."]` (Atomic completion to `done`)
+  - `task block --task <TASK_ID> --summary "..." [--blocker-kind <KIND>] [--blocker-owner <OWNER>] [--blocker-review-at <TIMESTAMP>] [--condition "..."] [--next-action "..."]` (Transition to `blocked` with structured finding)
+  - `task resume --task <TASK_ID> (--finding <FINDING_ID> | --all) --summary "..."` (Resolve blocker findings and resume to `in-progress`)
   - `task quick --title ... --scope ... --done-when ... --why ... [--start]` (Quick-create task)
-  - `task next [--iteration <ID>]` (Discover next ready actionable task)
+  - `task next [--iteration <ID>]` (Discover next actionable task with progression assessment facts)
+  - `task blockers [--iteration <ID>] [--task <ID>] [--owner <OWNER>] [--due-only]` (Query active blockers and recheck queue)
+  - `task context --task <TASK_ID> [--iteration <ID>] [--max-bytes <N>]` (Query bounded, traceable task recovery context)
 - **Plumbing & Governance Operations**:
   - `task update` (Raw XML state machine update), `task review` (Review gate submission), `task add`, `task revise`, `task split`
   - `requirement propose`, `change propose`, `change apply`
   - `backlog add`, `backlog list`, `backlog schedule`, `backlog complete`, `backlog cancel`
   - `append`, `transaction apply`
 
-### 6. Reporting
-- **Iteration Summary** (instant progress card and task breakdown)
+### 6. Diagnostics & Reporting
+- **Iteration Summary** (instant progress card and task breakdown with progression assessment)
   ```powershell
   dogdouspec summary [--iteration ID] [--workspace-root PATH] [--format markdown|json|xml|human]
+  ```
+- **VCS Working Tree Status** (read-only inspection of managed document cleanliness and checkpoint readiness)
+  ```powershell
+  dogdouspec workspace vcs-status [--workspace-root PATH] [--format xml|human]
   ```
 
 ---

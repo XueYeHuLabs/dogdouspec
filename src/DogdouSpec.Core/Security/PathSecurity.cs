@@ -218,6 +218,10 @@ public static class PathSecurity
     }
 
     public static readonly Regex IterationIdRegex = new(@"^[0-9]{8}(T[0-9]{6}Z)?-[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    public static readonly Regex TokenValueRegex = new(@"^[a-zA-Z0-9][a-zA-Z0-9.-]*$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    public static bool IsValidTokenValue(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && TokenValueRegex.IsMatch(value);
 
     /// <summary>
     /// Validates an iteration identifier against the TimeFirstIdType grammar (YYYYMMDD-name or YYYYMMDDTHHmmssZ-name).
