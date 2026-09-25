@@ -180,6 +180,34 @@ public static class IterationLister
 
                 if (!dirHasErrors)
                 {
+                    var effectiveIndexEl = indexEl != null ? new XElement(indexEl) : null;
+                    if (effectiveIndexEl == null)
+                    {
+                        var tasks = tasksRoot?.Elements("task").ToList() ?? new List<XElement>();
+                        var totalTasks = tasks.Count;
+                        var doneTasks = tasks.Count(t => string.Equals((string?)t.Attribute("status"), "done", StringComparison.OrdinalIgnoreCase));
+                        var dynSummary = IterationConfirmer.ComputeLifecycleSummary(status, status, null, totalTasks, doneTasks, specRoot);
+                        effectiveIndexEl = new XElement("index",
+                            new XElement("summary", dynSummary),
+                            new XElement("term", new XAttribute("key", "status"), new XAttribute("value", status)),
+                            new XElement("term", new XAttribute("key", "iteration"), new XAttribute("value", dirName)));
+                    }
+                    else if (effectiveIndexEl.Element("summary") == null || string.IsNullOrWhiteSpace(effectiveIndexEl.Element("summary")?.Value))
+                    {
+                        var tasks = tasksRoot?.Elements("task").ToList() ?? new List<XElement>();
+                        var totalTasks = tasks.Count;
+                        var doneTasks = tasks.Count(t => string.Equals((string?)t.Attribute("status"), "done", StringComparison.OrdinalIgnoreCase));
+                        var dynSummary = IterationConfirmer.ComputeLifecycleSummary(status, status, null, totalTasks, doneTasks, specRoot);
+                        if (effectiveIndexEl.Element("summary") != null)
+                        {
+                            effectiveIndexEl.Element("summary")!.Value = dynSummary;
+                        }
+                        else
+                        {
+                            effectiveIndexEl.AddFirst(new XElement("summary", dynSummary));
+                        }
+                    }
+
                     iterations.Add(new IterationSummary(
                         Id: dirName,
                         RelativePath: dirName,
@@ -188,7 +216,7 @@ public static class IterationLister
                         CreatedAt: createdAt,
                         SpecRevision: specRevision,
                         TasksRevision: tasksRevision,
-                        IndexElement: indexEl != null ? new XElement(indexEl) : null));
+                        IndexElement: effectiveIndexEl));
                 }
             }
             catch (Exception ex)

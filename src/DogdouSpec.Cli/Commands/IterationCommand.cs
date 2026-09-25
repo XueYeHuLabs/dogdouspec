@@ -334,16 +334,16 @@ public static class IterationCommand
 
     private static Command BuildConfirmCommand()
     {
-        var confirmCmd = new Command("confirm", "Atomically confirm iteration product decisions and lifecycle (mutating); --dry-run validates without writing");
+        var confirmCmd = new Command("confirm", "Atomically confirm iteration product decisions and lifecycle (mutating); --dry-run validates without writing. Template: iteration.confirmation (inspect with 'dogdouspec template show --name iteration.confirmation')");
 
         var stdinOption = new Option<bool>("--stdin")
         {
-            Description = "Read iteration-confirmation XML request from standard input (mutually exclusive with --file; exactly one required)"
+            Description = "Read iteration-confirmation XML request from standard input (mutually exclusive with --file; exactly one required; template: iteration.confirmation)"
         };
 
         var fileOption = new Option<string?>("--file")
         {
-            Description = "Path to file containing iteration-confirmation XML request (mutually exclusive with --stdin; exactly one required)"
+            Description = "Path to file containing iteration-confirmation XML request (mutually exclusive with --stdin; exactly one required; template: iteration.confirmation)"
         };
 
         var iterationOption = new Option<string?>("--iteration")

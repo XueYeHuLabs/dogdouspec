@@ -73,11 +73,21 @@ public static class SemanticValidator
         {
             if (instances.Count > 1)
             {
+                var distinctTaskIds = instances
+                    .Select(i => i.ContainingTaskId)
+                    .Where(t => !string.IsNullOrEmpty(t))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+
+                string taskContextMsg = distinctTaskIds.Count > 1
+                    ? $" Conflicting tasks: '{string.Join("', '", distinctTaskIds)}'. Note that IDs are document-scoped; ensure each task and record has a unique ID."
+                    : string.Empty;
+
                 foreach (var inst in instances)
                 {
                     diagnostics.Add(Diagnostic.Error(
                         DiagnosticCodes.DuplicateId,
-                        $"Duplicate identifier '{id}' found. Identifier is declared {instances.Count} times across the project.",
+                        $"Duplicate identifier '{id}' found. Identifier is declared {instances.Count} times across the project.{taskContextMsg}",
                         inst.Document.RelativePath,
                         inst.LineNumber,
                         inst.LinePosition));
@@ -1063,9 +1073,10 @@ public static class SemanticValidator
 
                     if (!isCovered)
                     {
+                        var expectedCovers = TaskCoverageVerifier.BuildExpectedCoversFragment(new[] { crit.Id });
                         diagnostics.Add(Diagnostic.Error(
                             DiagnosticCodes.TaskCriterionNotCovered,
-                            $"Task '{task.Id}' has status 'done' but acceptance criterion '{crit.Id}' is not covered by any task-local verification or completion record.",
+                            $"Task '{task.Id}' has status 'done' but acceptance criterion '{crit.Id}' is not covered by any task-local verification or completion record. Expected covers fragment:\n{expectedCovers}",
                             task.Document.RelativePath,
                             crit.LineNumber ?? task.LineNumber,
                             crit.LinePosition ?? task.LinePosition));

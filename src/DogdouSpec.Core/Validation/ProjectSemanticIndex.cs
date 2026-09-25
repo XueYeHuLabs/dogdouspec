@@ -145,6 +145,12 @@ public sealed class ProjectSemanticIndex
                 if (idAttr != null && !string.IsNullOrEmpty(idAttr.Value))
                 {
                     var lineInfo = (IXmlLineInfo)element;
+                    var containingTaskId = element.Ancestors("task").FirstOrDefault()?.Attribute("id")?.Value;
+                    if (containingTaskId == null && element.Name.LocalName == "task")
+                    {
+                        containingTaskId = element.Attribute("id")?.Value;
+                    }
+
                     var indexed = new IndexedObject(
                         idAttr.Value,
                         element.Name.LocalName,
@@ -152,7 +158,8 @@ public sealed class ProjectSemanticIndex
                         doc,
                         lineInfo.HasLineInfo() ? lineInfo.LineNumber : null,
                         lineInfo.HasLineInfo() ? lineInfo.LinePosition : null,
-                        element);
+                        element,
+                        containingTaskId);
 
                     allObjects.Add(indexed);
                     if (!objectsById.TryGetValue(idAttr.Value, out var list))

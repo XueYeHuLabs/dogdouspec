@@ -725,9 +725,17 @@ public static class TaskAdder
                 using var fs = File.OpenRead(doc.FullPath);
                 using var r = SecureXmlReaderFactory.CreateReader(fs);
                 var xDoc = XDocument.Load(r);
-                if (xDoc.Descendants().Any(e => string.Equals((string?)e.Attribute("operation_id"), addId, StringComparison.Ordinal)))
+                var conflictingElem = xDoc.Descendants().FirstOrDefault(e => string.Equals((string?)e.Attribute("operation_id"), addId, StringComparison.Ordinal));
+                if (conflictingElem != null)
                 {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Operation ID '{addId}' already exists in document '{doc.RelativePath}'.", normTasksDocPath) });
+                    var conflictingTaskId = conflictingElem.Ancestors("task").FirstOrDefault()?.Attribute("id")?.Value
+                        ?? (string.Equals(conflictingElem.Name.LocalName, "task", StringComparison.Ordinal) ? (string?)conflictingElem.Attribute("id") : null);
+
+                    if (!string.IsNullOrEmpty(conflictingTaskId))
+                    {
+                        return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Operation ID '{addId}' already exists under conflicting task '{conflictingTaskId}' in '{doc.RelativePath}'. Target task is '{taskId}'. Request IDs are document-scoped; generate a unique operation ID for target task '{taskId}' or do not reuse an ID from another task.", normTasksDocPath) });
+                    }
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Operation ID '{addId}' already exists in document '{doc.RelativePath}'. Target task is '{taskId}'. Request IDs are document-scoped; generate a unique operation ID for target task '{taskId}'.", normTasksDocPath) });
                 }
             }
             catch { }

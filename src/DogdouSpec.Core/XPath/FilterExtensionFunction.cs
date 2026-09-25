@@ -44,6 +44,8 @@ public sealed class FilterExtensionFunction : IXsltContextFunction
         // Validate member arguments
         var targetAttributes = new HashSet<string>(StringComparer.Ordinal);
         var targetChildElements = new HashSet<string>(StringComparer.Ordinal);
+        var targetAttributePredicates = new Dictionary<string, List<XPathExpression>>(StringComparer.Ordinal);
+        var targetChildPredicates = new Dictionary<string, List<XPathExpression>>(StringComparer.Ordinal);
 
         for (var i = 1; i < args.Length; i++)
         {
@@ -65,16 +67,59 @@ public sealed class FilterExtensionFunction : IXsltContextFunction
                     $"Member argument at position {i + 1} to {funcName} must be an XPath string (literal or bound string variable), but received {typeName}.");
             }
 
-            if (string.IsNullOrWhiteSpace(memberRaw) || !MemberPattern.IsMatch(memberRaw) || memberRaw.Contains(':'))
+            if (string.IsNullOrWhiteSpace(memberRaw))
             {
                 throw new DogdouXPathException(
                     DiagnosticCodes.InvalidArgument,
                     $"Invalid member argument '{memberRaw}'. Members must be exactly '@attribute-name' or 'direct-child-name' without paths, predicates, axes, wildcards, or prefixes.");
             }
 
-            if (memberRaw.StartsWith('@'))
+            // Support common inspection idioms: name() and namespace-uri()
+            if (string.Equals(memberRaw, "name()", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(memberRaw, "name", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(memberRaw, "namespace-uri()", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(memberRaw, "namespace-uri", StringComparison.OrdinalIgnoreCase))
             {
-                var attrName = memberRaw.Substring(1);
+                continue;
+            }
+
+            string baseName;
+            string? predicateText = null;
+
+            var bracketIdx = memberRaw.IndexOf('[');
+            if (bracketIdx >= 0)
+            {
+                if (!memberRaw.EndsWith(']'))
+                {
+                    throw new DogdouXPathException(
+                        DiagnosticCodes.InvalidArgument,
+                        $"Invalid member argument '{memberRaw}'. Unmatched predicate brackets.");
+                }
+                baseName = memberRaw.Substring(0, bracketIdx);
+                predicateText = memberRaw.Substring(bracketIdx + 1, memberRaw.Length - bracketIdx - 2);
+
+                if (!predicateText.Contains('@'))
+                {
+                    throw new DogdouXPathException(
+                        DiagnosticCodes.InvalidArgument,
+                        $"Invalid member argument '{memberRaw}'. Positional and non-attribute predicates are not supported.");
+                }
+            }
+            else
+            {
+                baseName = memberRaw;
+            }
+
+            if (baseName.Contains(':'))
+            {
+                throw new DogdouXPathException(
+                    DiagnosticCodes.InvalidArgument,
+                    $"Invalid member argument '{memberRaw}'. Namespaces and prefixes are not allowed.");
+            }
+
+            if (baseName.StartsWith('@'))
+            {
+                var attrName = baseName.Substring(1);
                 try
                 {
                     XmlConvert.VerifyNCName(attrName);
@@ -86,12 +131,34 @@ public sealed class FilterExtensionFunction : IXsltContextFunction
                         $"Attribute member name '{memberRaw}' is not a valid XML NCName.");
                 }
                 targetAttributes.Add(attrName);
+
+                if (!string.IsNullOrWhiteSpace(predicateText))
+                {
+                    try
+                    {
+                        var expr = XPathExpression.Compile(predicateText);
+                        if (xsltContext != null) expr.SetContext(xsltContext);
+                        if (!targetAttributePredicates.TryGetValue(attrName, out var list))
+                        {
+                            list = new List<XPathExpression>();
+                            targetAttributePredicates[attrName] = list;
+                        }
+                        list.Add(expr);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new DogdouXPathException(
+                            DiagnosticCodes.InvalidArgument,
+                            $"Invalid XPath predicate '{predicateText}' in member '{memberRaw}': {ex.Message}",
+                            innerException: ex);
+                    }
+                }
             }
             else
             {
                 try
                 {
-                    XmlConvert.VerifyNCName(memberRaw);
+                    XmlConvert.VerifyNCName(baseName);
                 }
                 catch (XmlException)
                 {
@@ -99,7 +166,29 @@ public sealed class FilterExtensionFunction : IXsltContextFunction
                         DiagnosticCodes.InvalidArgument,
                         $"Child element member name '{memberRaw}' is not a valid XML NCName.");
                 }
-                targetChildElements.Add(memberRaw);
+                targetChildElements.Add(baseName);
+
+                if (!string.IsNullOrWhiteSpace(predicateText))
+                {
+                    try
+                    {
+                        var expr = XPathExpression.Compile(predicateText);
+                        if (xsltContext != null) expr.SetContext(xsltContext);
+                        if (!targetChildPredicates.TryGetValue(baseName, out var list))
+                        {
+                            list = new List<XPathExpression>();
+                            targetChildPredicates[baseName] = list;
+                        }
+                        list.Add(expr);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new DogdouXPathException(
+                            DiagnosticCodes.InvalidArgument,
+                            $"Invalid XPath predicate '{predicateText}' in member '{memberRaw}': {ex.Message}",
+                            innerException: ex);
+                    }
+                }
             }
         }
 
@@ -145,7 +234,7 @@ public sealed class FilterExtensionFunction : IXsltContextFunction
                 }
             }
 
-            var projectedElem = ProjectElement(sourceElem, targetAttributes, targetChildElements, _isFilterOut);
+            var projectedElem = ProjectElement(sourceElem, targetAttributes, targetAttributePredicates, targetChildElements, targetChildPredicates, _isFilterOut);
             var docUri = $"dogdou://projected/{_context.ProjectedDocSequence++}";
             using var textReader = new StringReader(projectedElem.ToString(SaveOptions.DisableFormatting));
             using var projReader = XmlReader.Create(textReader, (XmlReaderSettings?)null, docUri);
@@ -159,7 +248,9 @@ public sealed class FilterExtensionFunction : IXsltContextFunction
     private XElement ProjectElement(
         XElement sourceElem,
         HashSet<string> targetAttributes,
+        Dictionary<string, List<XPathExpression>> targetAttributePredicates,
         HashSet<string> targetChildElements,
+        Dictionary<string, List<XPathExpression>> targetChildPredicates,
         bool isFilterOut)
     {
         var proj = new XElement(sourceElem.Name);
@@ -173,6 +264,14 @@ public sealed class FilterExtensionFunction : IXsltContextFunction
             {
                 if (targetAttributes.Contains(attr.Name.LocalName))
                 {
+                    if (targetAttributePredicates.TryGetValue(attr.Name.LocalName, out var aPreds) && aPreds.Count > 0)
+                    {
+                        var sourceNav = sourceElem.CreateNavigator();
+                        if (!aPreds.All(p => EvaluatePredicate(sourceNav, p)))
+                        {
+                            continue;
+                        }
+                    }
                     proj.Add(new XAttribute(attr.Name, attr.Value));
                     nodeCount++;
                 }
@@ -193,6 +292,14 @@ public sealed class FilterExtensionFunction : IXsltContextFunction
                 {
                     if (targetChildElements.Contains(child.Name.LocalName))
                     {
+                        if (targetChildPredicates.TryGetValue(child.Name.LocalName, out var cPreds) && cPreds.Count > 0)
+                        {
+                            var childNav = child.CreateNavigator();
+                            if (!cPreds.All(p => EvaluatePredicate(childNav, p)))
+                            {
+                                continue;
+                            }
+                        }
                         var childClone = new XElement(child);
                         proj.Add(childClone);
                         nodeCount += CountSubtreeNodes(childClone);
@@ -206,7 +313,14 @@ public sealed class FilterExtensionFunction : IXsltContextFunction
             // Retain direct attributes not excluded
             foreach (var attr in sourceElem.Attributes())
             {
-                if (!targetAttributes.Contains(attr.Name.LocalName))
+                var isExcluded = targetAttributes.Contains(attr.Name.LocalName);
+                if (isExcluded && targetAttributePredicates.TryGetValue(attr.Name.LocalName, out var aPreds) && aPreds.Count > 0)
+                {
+                    var sourceNav = sourceElem.CreateNavigator();
+                    isExcluded = aPreds.All(p => EvaluatePredicate(sourceNav, p));
+                }
+
+                if (!isExcluded)
                 {
                     proj.Add(new XAttribute(attr.Name, attr.Value));
                     nodeCount++;
@@ -218,7 +332,14 @@ public sealed class FilterExtensionFunction : IXsltContextFunction
             {
                 if (node is XElement child)
                 {
-                    if (!targetChildElements.Contains(child.Name.LocalName))
+                    var isExcluded = targetChildElements.Contains(child.Name.LocalName);
+                    if (isExcluded && targetChildPredicates.TryGetValue(child.Name.LocalName, out var cPreds) && cPreds.Count > 0)
+                    {
+                        var childNav = child.CreateNavigator();
+                        isExcluded = cPreds.All(p => EvaluatePredicate(childNav, p));
+                    }
+
+                    if (!isExcluded)
                     {
                         var childClone = new XElement(child);
                         proj.Add(childClone);
@@ -266,5 +387,22 @@ public sealed class FilterExtensionFunction : IXsltContextFunction
             }
         }
         return count;
+    }
+
+    private static bool EvaluatePredicate(XPathNavigator nav, XPathExpression expr)
+    {
+        try
+        {
+            var res = nav.Evaluate(expr);
+            if (res is bool b) return b;
+            if (res is XPathNodeIterator it) return it.Count > 0;
+            if (res is double d) return d != 0 && !double.IsNaN(d);
+            if (res is string s) return !string.IsNullOrEmpty(s);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

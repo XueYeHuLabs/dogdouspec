@@ -231,7 +231,7 @@ public static class TaskReviewer
                 reviewTime < taskTime)
             {
                 return Failure(DiagnosticCodes.InvalidArgument,
-                    $"task-review @occurred_at '{occurredAt}' cannot be earlier than task {attributeName} '{taskTimeRaw}'.");
+                    $"task-review @occurred_at '{occurredAt}' cannot be earlier than task {attributeName} '{taskTimeRaw}'. Minimal acceptable timestamp is '{taskTimeRaw}'.");
             }
         }
         if (!string.Equals((string?)spec.Root?.Attribute("status"), "active", StringComparison.Ordinal))

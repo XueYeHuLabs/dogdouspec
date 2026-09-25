@@ -858,7 +858,7 @@ public static class IterationConfirmer
                 {
                     return (false, null, new[] { Diagnostic.Error(
                         DiagnosticCodes.OwnerDecisionRequired,
-                        $"Activation/continue cannot leave proposed requirements. Requirement '{reqId}' is still in 'proposed' status.") });
+                        $"Activation/continue cannot leave proposed requirements. Requirement '{reqId}' is still in 'proposed' status. Target this requirement under <requirements><requirement target=\"{reqId}\" decision=\"approved\"/></requirements> in your iteration-confirmation request (see template 'iteration.confirmation').") });
                 }
             }
 
@@ -871,7 +871,7 @@ public static class IterationConfirmer
                 {
                     return (false, null, new[] { Diagnostic.Error(
                         DiagnosticCodes.OwnerDecisionRequired,
-                        $"Activation/continue cannot leave proposed design decisions. Design decision '{decId}' is still in 'proposed' status.") });
+                        $"Activation/continue cannot leave proposed design decisions. Design decision '{decId}' is still in 'proposed' status. Target this decision under <design><decision target=\"{decId}\" decision=\"approved\"/></design> in your iteration-confirmation request (see template 'iteration.confirmation').") });
                 }
             }
 
@@ -1186,7 +1186,7 @@ public static class IterationConfirmer
                 {
                     return (false, null, new[] { Diagnostic.Error(
                         DiagnosticCodes.OwnerDecisionRequired,
-                        $"Iteration completion cannot leave proposed requirements. Requirement '{reqId}' is still in 'proposed' status.") });
+                        $"Iteration completion cannot leave proposed requirements. Requirement '{reqId}' is still in 'proposed' status. Target this requirement under <requirements><requirement target=\"{reqId}\" decision=\"approved\"/></requirements> in your iteration-confirmation request (see template 'iteration.confirmation').") });
                 }
             }
 
@@ -1199,7 +1199,7 @@ public static class IterationConfirmer
                 {
                     return (false, null, new[] { Diagnostic.Error(
                         DiagnosticCodes.OwnerDecisionRequired,
-                        $"Iteration completion cannot leave proposed design decisions. Design decision '{decId}' is still in 'proposed' status.") });
+                        $"Iteration completion cannot leave proposed design decisions. Design decision '{decId}' is still in 'proposed' status. Target this decision under <design><decision target=\"{decId}\" decision=\"approved\"/></design> in your iteration-confirmation request (see template 'iteration.confirmation').") });
                 }
             }
 
@@ -1226,6 +1226,9 @@ public static class IterationConfirmer
 
         // Update status term in <index> if present
         DogdouSpec.Core.Tasks.StatusTermHelper.SynchronizeStatusTerm(workingSpecRoot, targetStatus);
+
+        // Refresh iteration index summary for lifecycle transitions
+        RefreshIndexSummary(workingSpecRoot, action, targetStatus, summary, tasksRoot);
 
         if (string.Equals(action, "complete", StringComparison.Ordinal))
         {
@@ -1476,5 +1479,90 @@ public static class IterationConfirmer
         }
 
         return true;
+    }
+
+    public static void RefreshIndexSummary(
+        XElement workingSpecRoot,
+        string action,
+        string targetStatus,
+        string? confirmationSummary,
+        XElement? tasksRoot)
+    {
+        var indexEl = workingSpecRoot.Element("index");
+        if (indexEl == null)
+        {
+            indexEl = new XElement("index");
+            workingSpecRoot.AddFirst(indexEl);
+        }
+
+        var tasks = tasksRoot?.Elements("task").ToList() ?? new List<XElement>();
+        var totalTasks = tasks.Count;
+        var doneTasks = tasks.Count(t => string.Equals((string?)t.Attribute("status"), "done", StringComparison.OrdinalIgnoreCase));
+
+        string newSummary = ComputeLifecycleSummary(action, targetStatus, confirmationSummary, totalTasks, doneTasks, workingSpecRoot);
+
+        var summaryEl = indexEl.Element("summary");
+        if (summaryEl != null)
+        {
+            summaryEl.Value = newSummary;
+        }
+        else
+        {
+            indexEl.AddFirst(new XElement("summary", newSummary));
+        }
+    }
+
+    public static string ComputeLifecycleSummary(
+        string action,
+        string targetStatus,
+        string? confirmationSummary,
+        int totalTasks,
+        int doneTasks,
+        XElement? specRoot)
+    {
+        var trimmedSummary = confirmationSummary?.Trim();
+        var isGeneric = string.IsNullOrWhiteSpace(trimmedSummary) ||
+            string.Equals(trimmedSummary, "Iteration activation.", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedSummary, "Iteration activation", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedSummary, "Iteration completion.", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedSummary, "Iteration completion", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedSummary, "Iteration replanning.", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedSummary, "Iteration replanning", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedSummary, "Iteration continue.", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedSummary, "Iteration continue", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedSummary, "Iteration confirmed.", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(trimmedSummary, "Iteration confirmation.", StringComparison.OrdinalIgnoreCase);
+
+        var statusTag = string.Equals(targetStatus, "active", StringComparison.OrdinalIgnoreCase) ? "[Active]" :
+                        string.Equals(targetStatus, "completed", StringComparison.OrdinalIgnoreCase) ? "[Completed]" :
+                        string.Equals(targetStatus, "replanning", StringComparison.OrdinalIgnoreCase) ? "[Replanning]" :
+                        $"[{char.ToUpperInvariant(targetStatus[0])}{targetStatus.Substring(1)}]";
+
+        if (!isGeneric && !string.IsNullOrWhiteSpace(trimmedSummary))
+        {
+            if (trimmedSummary.StartsWith('['))
+            {
+                return trimmedSummary;
+            }
+            return $"{statusTag} {trimmedSummary}";
+        }
+
+        // Generic / default summary generation based on lifecycle targetStatus
+        if (string.Equals(targetStatus, "active", StringComparison.OrdinalIgnoreCase))
+        {
+            return totalTasks > 0 ? $"[Active] {doneTasks}/{totalTasks} tasks done" : "[Active] Ready for execution";
+        }
+
+        if (string.Equals(targetStatus, "completed", StringComparison.OrdinalIgnoreCase))
+        {
+            return "[Completed] all deliverables shipped";
+        }
+
+        if (string.Equals(targetStatus, "replanning", StringComparison.OrdinalIgnoreCase))
+        {
+            return "[Replanning] scope reassessment";
+        }
+
+        return $"{statusTag} {doneTasks}/{totalTasks} tasks done";
     }
 }

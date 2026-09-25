@@ -997,4 +997,84 @@ public sealed class TaskCliTests
         Assert.AreEqual(0, normalExit, $"Normal task add failed: {normalErr}");
         Assert.IsTrue(normalOut.Contains("command=\"task add\"", StringComparison.Ordinal));
     }
+
+    [TestMethod]
+    public void TaskUpdate_RevisionLatest_Succeeds()
+    {
+        var e2eDir = Path.Combine(_tempDir, "e2e_latest");
+        Directory.CreateDirectory(e2eDir);
+        var (initCode, _, initErr) = RunCli("workspace", "init", "--workspace-root", e2eDir);
+        Assert.AreEqual(0, initCode, $"Init failed: {initErr}");
+
+        // 1. Create an iteration
+        var (iterExit, _, iterErr) = RunCli(
+            "iteration", "create",
+            "--id", "20260824-e2e-latest",
+            "--kind", "feature",
+            "--criterion", "E2E feature acceptance criteria defined.",
+            "--workspace-root", e2eDir);
+        Assert.AreEqual(0, iterExit, $"Create iteration failed: {iterErr}");
+
+        // 2. Activate iteration
+        var activationTime = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture);
+        var activateReq = $"""
+<iteration-confirmation id="20260824T000100Z-confirm-e2e-activate" iteration="20260824-e2e-latest" action="activate" expected_spec_revision="1" expected_tasks_revision="1" actor="owner" decided_at="{activationTime}">
+  <summary>Owner approves the baseline requirement.</summary>
+  <requirements><requirement target="20260824-req-e2e-latest" decision="approved"/></requirements>
+  <acceptance><criterion target="20260824-crit-e2e-latest" decision="accepted"/></acceptance>
+</iteration-confirmation>
+""";
+        var (activateCode, _, activateErr) = RunCliWithStdin(activateReq, "iteration", "confirm", "--stdin", "--workspace-root", e2eDir);
+        Assert.AreEqual(0, activateCode, $"Activation failed: {activateErr}");
+
+        // 3. Add a task
+        var (addExit, addOut, addErr) = RunCli(
+            "task", "quick",
+            "--iteration", "20260824-e2e-latest",
+            "--title", "Test task",
+            "--scope", "src/**",
+            "--done-when", "Task passes",
+            "--why", "Testing",
+            "--workspace-root", e2eDir,
+            "--format", "xml");
+        Assert.AreEqual(0, addExit, $"Task quick failed: {addErr}");
+
+        // 4. Update task using --revision latest without --expected-revision
+        var updateTime = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture);
+        var startReq = $$"""
+<task-update
+  id="20260824T000500Z-update-start-latest"
+  transition="start"
+  actor="codex"
+  occurred_at="{{updateTime}}">
+  <records>
+    <record
+      id="20260824T000500Z-record-start-latest"
+      kind="start"
+      status="informational"
+      created_at="{{updateTime}}"
+      actor="codex">
+      <summary>Starting task.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+        var startFile = Path.Combine(e2eDir, "start.xml");
+        File.WriteAllText(startFile, startReq);
+
+        var tasksDoc = XDocument.Load(Path.Combine(e2eDir, ".dogdouspec", "20260824-e2e-latest", "tasks.xml"));
+        var taskId = tasksDoc.Root!.Element("task")!.Attribute("id")!.Value;
+
+        var (upCode, upOut, upErr) = RunCli(
+            "task", "update",
+            "--iteration", "20260824-e2e-latest",
+            "--task", taskId,
+            "--revision", "latest",
+            "--file", startFile,
+            "--workspace-root", e2eDir,
+            "--format", "xml");
+
+        Assert.AreEqual(0, upCode, $"task update with --revision latest failed: {upErr}");
+        Assert.IsTrue(upOut.Contains("command=\"task update\"", StringComparison.Ordinal));
+    }
 }

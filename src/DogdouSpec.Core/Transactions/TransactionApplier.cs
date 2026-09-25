@@ -9,6 +9,7 @@ using DogdouSpec.Core.Append;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Revisions;
 using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Validation;
@@ -38,7 +39,8 @@ public static class TransactionApplier
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
         string version = "1.0",
-        bool dryRun = false)
+        bool dryRun = false,
+        bool revisionLatest = false)
     {
         clock ??= SystemClock.Instance;
 
@@ -66,6 +68,50 @@ public static class TransactionApplier
             if (dryRunBlocker != null)
             {
                 return (false, null, new[] { dryRunBlocker });
+            }
+        }
+
+        // Pre-resolve latest revisions if requested
+        if (revisionLatest || requestXml.Contains("latest", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var srPre = new StringReader(requestXml);
+                using var readerPre = SecureXmlReaderFactory.CreateReader(srPre);
+                var preDoc = XDocument.Load(readerPre);
+                var changed = false;
+
+                foreach (var docElem in preDoc.Root?.Elements("document") ?? Enumerable.Empty<XElement>())
+                {
+                    var expRevStr = docElem.Attribute("expected_revision")?.Value;
+                    if (revisionLatest || string.Equals(expRevStr, "latest", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var rawPath = docElem.Attribute("path")?.Value;
+                        if (!string.IsNullOrWhiteSpace(rawPath))
+                        {
+                            var (isRelValid, normPath, relErr) = PathSecurity.ValidateRelativeDocumentPath(rawPath);
+                            if (isRelValid && relErr == null)
+                            {
+                                var (revOk, revVal, revErr) = DocumentRevisionResolver.ReadDocumentRevision(workspaceRoot, normPath);
+                                if (!revOk || revErr != null)
+                                {
+                                    return (false, null, new[] { revErr ?? Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Could not resolve latest revision for '{normPath}'.", normPath) });
+                                }
+                                docElem.SetAttributeValue("expected_revision", revVal.ToString(CultureInfo.InvariantCulture));
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+
+                if (changed)
+                {
+                    requestXml = preDoc.ToString(SaveOptions.DisableFormatting);
+                }
+            }
+            catch
+            {
+                // Let normal parsing diagnose malformed XML
             }
         }
 

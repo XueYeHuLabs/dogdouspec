@@ -860,4 +860,74 @@ public sealed class IterationCliTests
         Assert.AreEqual("20260827-crit-multi-token-2", criteria[1].Attribute("id")?.Value);
         Assert.AreEqual("Second criteria token.", criteria[1].Value);
     }
+
+    [TestMethod]
+    public void IterationConfirmCli_RefreshesIndexSummaryOnActivationAndCompletion()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260828-refresh-test";
+
+        // 1. Create a draft iteration
+        var (createExit, createOut, createErr) = RunCli(
+            "iteration", "create",
+            "--id", iterId,
+            "--kind", "feature",
+            "--criterion", "Initial criterion.",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, createExit, $"Create stderr: {createErr}");
+
+        var specPath = Path.Combine(workspace, iterId, "spec.xml");
+        var specDoc = XDocument.Load(specPath);
+        Assert.AreEqual("draft", specDoc.Root?.Attribute("status")?.Value);
+
+        // 2. Activate the iteration with default summary
+        var (actExit, actOut, actErr) = RunCli(
+            "iteration", "activate",
+            "--iteration", iterId,
+            "--auto-approve",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, actExit, $"Activate stderr: {actErr}");
+
+        // Verify spec.xml index summary was updated to [Active]
+        specDoc = XDocument.Load(specPath);
+        Assert.AreEqual("active", specDoc.Root?.Attribute("status")?.Value);
+        var actSummary = specDoc.Root?.Element("index")?.Element("summary")?.Value;
+        Assert.IsNotNull(actSummary);
+        StringAssert.StartsWith(actSummary, "[Active]");
+
+        // 3. Verify iteration list displays refreshed summary
+        var (listExit, listOut, listErr) = RunCli(
+            "iteration", "list",
+            "--workspace-root", workspace,
+            "--format", "human");
+        Assert.AreEqual(0, listExit, $"List stderr: {listErr}");
+        StringAssert.Contains(listOut, iterId);
+        StringAssert.Contains(listOut, actSummary);
+
+        // 4. Complete the iteration with custom summary
+        var (compExit, compOut, compErr) = RunCli(
+            "iteration", "complete",
+            "--iteration", iterId,
+            "--accept-all",
+            "--summary", "all deliverables shipped",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, compExit, $"Complete stderr: {compErr}");
+
+        // Verify spec.xml index summary was refreshed to [Completed]
+        specDoc = XDocument.Load(specPath);
+        Assert.AreEqual("completed", specDoc.Root?.Attribute("status")?.Value);
+        var compSummary = specDoc.Root?.Element("index")?.Element("summary")?.Value;
+        Assert.AreEqual("[Completed] all deliverables shipped", compSummary);
+
+        // 5. Verify iteration list displays [Completed] summary
+        var (listCompExit, listCompOut, _) = RunCli(
+            "iteration", "list",
+            "--workspace-root", workspace,
+            "--format", "human");
+        Assert.AreEqual(0, listCompExit);
+        StringAssert.Contains(listCompOut, "[Completed] all deliverables shipped");
+    }
 }

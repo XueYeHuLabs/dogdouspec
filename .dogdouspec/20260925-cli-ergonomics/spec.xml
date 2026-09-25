@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20260925-cli-ergonomics" schema_version="1.0" revision="12" kind="feature" status="completed" created_at="2026-09-25T02:37:41Z" updated_at="2026-09-25T07:25:00Z" completed_at="2026-09-25T07:25:00Z">
+  <index>
+    <summary>[Completed] Owner completed iteration 20260925-cli-ergonomics. All 10 tasks and acceptance criteria verified and passed with full test suite regression.</summary>
+    <term key="kind" value="feature" />
+    <term key="iteration" value="20260925-cli-ergonomics" />
+    <term key="status" value="completed" />
+  </index>
+  <product>
+    <objective>Fix ten confirmed ergonomics and correctness issues in DogdouSpec CLI v1.0.3, enabling high-level structured records, eliminating timestamp monotonicity traps, adding fail-fast verification coverage checks, template discovery, safe prose handling, record archival design, and refined workflow ergonomics.</objective>
+    <deliverables>
+      <deliverable id="20260925-deliv-cli-ergonomics">
+        <index>
+          <summary>DogdouSpec CLI v1.0.4 with ergonomics and structured records enhancements</summary>
+          <term key="kind" value="deliverable" />
+        </index>
+        <description>Shipped binary and regression test suite resolving issues 1 through 10 in CLI and Core.</description>
+      </deliverable>
+    </deliverables>
+    <scope>
+      <included />
+      <excluded />
+    </scope>
+    <requirements>
+      <requirement id="20260925-req-ergonomics-timestamp" status="approved">
+        <index>
+          <summary>REQ-ERGONOMICS-TIMESTAMP: Timestamp monotonicity override and actionable diagnostics for porcelain commands</summary>
+          <term key="kind" value="requirement" />
+          <term key="code" value="REQ-ERGONOMICS-TIMESTAMP" />
+          <term key="issue" value="1" />
+        </index>
+        <statement>Add --occurred-at option to all porcelain mutating commands (task start, verify, finish, block, resume, review approve) and improve timestamp monotonicity diagnostics to explicitly report the minimal acceptable timestamp, allowing equal timestamps for record-only appends.</statement>
+        <rationale>Prevents porcelain commands from permanently failing on tasks whose records ran ahead of the wall clock (Issue 1), keeping record timelines truthful.</rationale>
+        <records>
+          <record id="20260925T023801Z-reqprop-timestamp-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:38:01Z" actor="orchestrator">
+            <index>
+              <summary>Requirement proposal receipt.</summary>
+              <term key="request-sha256" value="19ee6201cbcd52363cc5cf7e7e105875dc1c8c9c03ec404824f9f5848dea2d86" />
+            </index>
+            <summary>Requirement proposal receipt. Operation 20260925T023801Z-reqprop-timestamp.</summary>
+          </record>
+        </records>
+      </requirement>
+      <requirement id="20260925-req-porcelain-record" status="approved">
+        <index>
+          <summary>REQ-PORCELAIN-RECORD: Porcelain task record command for structured records with auto-escaping</summary>
+          <term key="kind" value="requirement" />
+          <term key="code" value="REQ-PORCELAIN-RECORD" />
+          <term key="issue" value="2" />
+          <term key="issue" value="5" />
+          <term key="issue" value="7" />
+        </index>
+        <statement>Introduce a porcelain 'task record' command supporting structured records (verification, finding, resolution, completion, discussion) with flags --kind, --covers, --resolve, --status, and --summary. The command shall automatically handle XML escaping of prose text, auto-generate deterministic record and receipt IDs, auto-resolve expected revisions in single-writer mode, and eliminate hand-written XML files for standard task records.</statement>
+        <rationale>Reduces heavy XML authoring overhead (Issue 2), mitigates XML escaping hazards in prose records (Issue 5), and avoids document-scoped operation ID collision traps (Issue 7).</rationale>
+        <records>
+          <record id="20260925T023802Z-reqprop-porcelain-record-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:38:02Z" actor="orchestrator">
+            <index>
+              <summary>Requirement proposal receipt.</summary>
+              <term key="request-sha256" value="746b7075352551103fe1f59d07e98371c2d99eb922fa9f18ef04e6d08d82af64" />
+            </index>
+            <summary>Requirement proposal receipt. Operation 20260925T023802Z-reqprop-porcelain-record.</summary>
+          </record>
+        </records>
+      </requirement>
+      <requirement id="20260925-req-coverage-failfast" status="approved">
+        <index>
+          <summary>REQ-COVERAGE-FAILFAST: Fail-fast acceptance criteria coverage validation at task verify</summary>
+          <term key="kind" value="requirement" />
+          <term key="code" value="REQ-COVERAGE-FAILFAST" />
+          <term key="issue" value="3" />
+        </index>
+        <statement>Validate acceptance criteria coverage fail-fast at the task verify transition rather than delaying until task finish/complete. When coverage is missing, provide an actionable diagnostic embedding the expected covers XML fragment and clear instructions on how to link criteria coverage.</statement>
+        <rationale>Prevents tasks from completing code and passing review gates only to fail at completion due to missing covers linkages (Issue 3), avoiding post-review corrective mutations.</rationale>
+        <records>
+          <record id="20260925T023803Z-reqprop-coverage-failfast-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:38:03Z" actor="orchestrator">
+            <index>
+              <summary>Requirement proposal receipt.</summary>
+              <term key="request-sha256" value="14448e0f34cc41a91d3f079710abf7e0adbcdd0094ee1cc528a4eaba988453c7" />
+            </index>
+            <summary>Requirement proposal receipt. Operation 20260925T023803Z-reqprop-coverage-failfast.</summary>
+          </record>
+        </records>
+      </requirement>
+      <requirement id="20260925-req-template-discovery" status="approved">
+        <index>
+          <summary>REQ-TEMPLATE-DISCOVERY: Discoverable request templates via template list and embedded diagnostics</summary>
+          <term key="kind" value="requirement" />
+          <term key="code" value="REQ-TEMPLATE-DISCOVERY" />
+          <term key="issue" value="4" />
+        </index>
+        <statement>Provide a 'dogdouspec template list' command displaying all available templates with one-line descriptions. Enhance XML and schema structure violation diagnostics to embed expected fragment shapes and reference relevant template names in command help text.</statement>
+        <rationale>Resolves poor discoverability of request structures, eliminating trial-and-error onboarding, guesswork, and the need for agents to read raw XSD files to author valid requests (Issue 4).</rationale>
+        <records>
+          <record id="20260925T023804Z-reqprop-template-discovery-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:38:04Z" actor="orchestrator">
+            <index>
+              <summary>Requirement proposal receipt.</summary>
+              <term key="request-sha256" value="06bfbab006a2565ed4902823f40c7412a962f207e55be98404ac1e34fc3ac1e4" />
+            </index>
+            <summary>Requirement proposal receipt. Operation 20260925T023804Z-reqprop-template-discovery.</summary>
+          </record>
+        </records>
+      </requirement>
+      <requirement id="20260925-req-archival-strategy" status="approved">
+        <index>
+          <summary>REQ-ARCHIVAL: Archival and compaction strategy for long-running task records</summary>
+          <term key="kind" value="requirement" />
+          <term key="code" value="REQ-ARCHIVAL" />
+          <term key="issue" value="6" />
+        </index>
+        <statement>Establish an archival and compaction specification and CLI capability for long-running iterations to prevent unbounded growth of tasks.xml while preserving append-only audit guarantees, terminal task immutability, and transparent two-phase XPath queries.</statement>
+        <rationale>Addresses unbounded tasks.xml document growth (e.g. 513 records / 735 KB in a single iteration), which degrades validation performance and consumes excessive context budget (Issue 6).</rationale>
+        <records>
+          <record id="20260925T023805Z-reqprop-archival-strategy-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:38:05Z" actor="orchestrator">
+            <index>
+              <summary>Requirement proposal receipt.</summary>
+              <term key="request-sha256" value="6cca695a33ca88bd7d2778b4cfa560feb0f26b600d6bac95047867c3c04fb9a0" />
+            </index>
+            <summary>Requirement proposal receipt. Operation 20260925T023805Z-reqprop-archival-strategy.</summary>
+          </record>
+        </records>
+      </requirement>
+      <requirement id="20260925-req-blocking-recordonly" status="approved">
+        <index>
+          <summary>REQ-BLOCKING-RECORDONLY: Record-only blocking option preserving active task status</summary>
+          <term key="kind" value="requirement" />
+          <term key="code" value="REQ-BLOCKING-RECORDONLY" />
+          <term key="issue" value="9" />
+        </index>
+        <statement>Extend 'task block' with an optional --record-only flag that appends a structured blocker finding record (with kind, owner, review-at, condition, and next-action) without transitioning the task's status away from in-progress, and ensure 'task blockers' aggregates both standard and record-only blockers in the recheck queue.</statement>
+        <rationale>Resolves the binary blocking limitation where operators were forced to choose between accurate task status and structured blocker tracking during environment disruptions (Issue 9).</rationale>
+        <records>
+          <record id="20260925T023806Z-reqprop-blocking-recordonly-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:38:06Z" actor="orchestrator">
+            <index>
+              <summary>Requirement proposal receipt.</summary>
+              <term key="request-sha256" value="bb218de924a4f85157c50709a443848151c214d2c3c1bdd87c87838413b1aca3" />
+            </index>
+            <summary>Requirement proposal receipt. Operation 20260925T023806Z-reqprop-blocking-recordonly.</summary>
+          </record>
+        </records>
+      </requirement>
+      <requirement id="20260925-req-misc-ergonomics" status="approved">
+        <index>
+          <summary>REQ-MISC-ERGONOMICS: Enhanced query expressions, revision latest opt-in, and index summary refresh</summary>
+          <term key="kind" value="requirement" />
+          <term key="code" value="REQ-MISC-ERGONOMICS" />
+          <term key="issue" value="8" />
+          <term key="issue" value="10" />
+        </index>
+        <statement>Enhance CLI ergonomics by: (1) extending ds:filter and query syntax to support common inspection idioms like name() or multi-expression queries; (2) adding an opt-in --revision latest flag for low-level mutating commands in single-writer workflows; (3) automatically refreshing iteration index summary on lifecycle transitions (activation, replanning, completion).</statement>
+        <rationale>Reduces round-trips for simple inventories, simplifies automation in single-writer sessions without compromising safety, and eliminates stale summaries across CLI reporting surfaces (Issues 8, 10).</rationale>
+        <records>
+          <record id="20260925T023807Z-reqprop-misc-ergonomics-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:38:07Z" actor="orchestrator">
+            <index>
+              <summary>Requirement proposal receipt.</summary>
+              <term key="request-sha256" value="f447b4e6e1c200b0eaa245e44715c197de7cbfe486dcf7a9b19a4ab7ca31fb4e" />
+            </index>
+            <summary>Requirement proposal receipt. Operation 20260925T023807Z-reqprop-misc-ergonomics.</summary>
+          </record>
+        </records>
+      </requirement>
+    </requirements>
+    <acceptance>
+      <criterion id="20260925-crit-cli-ergonomics-1" decision="accepted">Porcelain commands (task start, verify, finish, block, review approve) accept an optional --occurred-at parameter and provide actionable diagnostics naming the minimal acceptable timestamp when monotonicity is violated.</criterion>
+      <criterion id="20260925-crit-cli-ergonomics-2" decision="accepted">New porcelain task record command creates structured verification, finding, resolution, and completion records with --covers, --resolve, and --summary without requiring hand-written XML.</criterion>
+      <criterion id="20260925-crit-cli-ergonomics-3" decision="accepted">Acceptance-criteria coverage is validated fail-fast during the task verify transition, returning an actionable diagnostic with the expected covers fragment shape.</criterion>
+      <criterion id="20260925-crit-cli-ergonomics-4" decision="accepted">Template discovery is enhanced via new template list command, and structure violation diagnostics embed expected XML fragments.</criterion>
+      <criterion id="20260925-crit-cli-ergonomics-5" decision="accepted">Task records accept prose through CLI-escaped parameters avoiding XML parse errors, and raw XML parse errors report precise error position.</criterion>
+      <criterion id="20260925-crit-cli-ergonomics-6" decision="accepted">An archival and compaction specification and design for tasks.xml record growth is established while preserving append-only audit guarantees and transparent two-phase queries.</criterion>
+      <criterion id="20260925-crit-cli-ergonomics-7" decision="accepted">Document-scoped ID conflict diagnostics name both the conflicting task and target task with remediation guidance, and iteration index summary is refreshed on lifecycle transitions.</criterion>
+      <criterion id="20260925-crit-cli-ergonomics-8" decision="accepted">Task block command supports a --record-only option that records structured blocker findings without changing in-progress task status, and task blockers lists both forms.</criterion>
+      <criterion id="20260925-crit-cli-ergonomics-9" decision="accepted">XPath ds:filter supports common query idioms and low-level task update supports an opt-in --revision latest flag for verified single-writer workflows.</criterion>
+      <criterion id="20260925-crit-cli-ergonomics-10" decision="accepted">All automated test suites, regression suites, and build.cmd pass with zero errors and zero warnings, and documentation and skill guides reflect all ergonomics enhancements.</criterion>
+    </acceptance>
+  </product>
+  <confirmations>
+    <confirmation id="20260925T024300Z-confirmation-activate-cli-ergonomics" action="activate" decision="accepted" actor="owner" decided_at="2026-09-25T02:43:00Z">
+      <summary>Owner review completed. All 7 proposed requirements and 10 acceptance criteria reviewed and approved. Iteration structure is correct and ready for active execution. Activating iteration to begin governed implementation of CLI ergonomics and structured record improvements.</summary>
+      <requirements>
+        <requirement target="20260925-req-ergonomics-timestamp" decision="approved" />
+        <requirement target="20260925-req-porcelain-record" decision="approved" />
+        <requirement target="20260925-req-coverage-failfast" decision="approved" />
+        <requirement target="20260925-req-template-discovery" decision="approved" />
+        <requirement target="20260925-req-archival-strategy" decision="approved" />
+        <requirement target="20260925-req-blocking-recordonly" decision="approved" />
+        <requirement target="20260925-req-misc-ergonomics" decision="approved" />
+      </requirements>
+      <acceptance>
+        <criterion target="20260925-crit-cli-ergonomics-1" decision="accepted" />
+        <criterion target="20260925-crit-cli-ergonomics-2" decision="accepted" />
+        <criterion target="20260925-crit-cli-ergonomics-3" decision="accepted" />
+        <criterion target="20260925-crit-cli-ergonomics-4" decision="accepted" />
+        <criterion target="20260925-crit-cli-ergonomics-5" decision="accepted" />
+        <criterion target="20260925-crit-cli-ergonomics-6" decision="accepted" />
+        <criterion target="20260925-crit-cli-ergonomics-7" decision="accepted" />
+        <criterion target="20260925-crit-cli-ergonomics-8" decision="accepted" />
+        <criterion target="20260925-crit-cli-ergonomics-9" decision="accepted" />
+        <criterion target="20260925-crit-cli-ergonomics-10" decision="accepted" />
+      </acceptance>
+    </confirmation>
+    <confirmation id="20260925T072500Z-confirmation-complete-cli-ergonomics" action="complete" decision="accepted" actor="owner" decided_at="2026-09-25T07:25:00Z">
+      <summary>Owner completed iteration 20260925-cli-ergonomics. All 10 tasks and acceptance criteria verified and passed with full test suite regression.</summary>
+    </confirmation>
+  </confirmations>
+</iteration>

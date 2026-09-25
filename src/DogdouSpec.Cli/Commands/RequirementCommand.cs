@@ -21,7 +21,7 @@ public static class RequirementCommand
 
     private static Command BuildProposeCommand()
     {
-        var proposeCmd = new Command("propose", "Propose a new requirement in spec.xml with status='proposed' (mutating)");
+        var proposeCmd = new Command("propose", "Propose a new requirement in spec.xml with status='proposed' (mutating). Template: requirement.propose (inspect with 'dogdouspec template show --name requirement.propose')");
 
         var iterationOption = new Option<string?>("--iteration")
         {
@@ -37,12 +37,12 @@ public static class RequirementCommand
 
         var stdinOption = new Option<bool>("--stdin")
         {
-            Description = "Read requirement-propose XML request from standard input"
+            Description = "Read requirement-propose XML request from standard input (template: requirement.propose)"
         };
 
         var fileOption = new Option<string?>("--file")
         {
-            Description = "Path to file containing requirement-propose XML request"
+            Description = "Path to file containing requirement-propose XML request (template: requirement.propose)"
         };
 
         var workspaceRootOption = new Option<string?>("--workspace-root")

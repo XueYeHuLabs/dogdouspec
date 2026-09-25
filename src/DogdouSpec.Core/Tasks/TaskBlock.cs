@@ -27,6 +27,8 @@ public static class TaskBlock
         string? blockerReviewAt = null,
         string? condition = null,
         string? nextAction = null,
+        string? occurredAt = null,
+        bool recordOnly = false,
         IClock? clock = null)
     {
         clock ??= SystemClock.Instance;
@@ -115,14 +117,41 @@ public static class TaskBlock
             return (false, null, new[] { revErr ?? Diagnostic.Error(DiagnosticCodes.RevisionConflict, "Failed to resolve expected revision.") });
         }
 
-        var nowUtc = clock.UtcNow;
-        var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
-        var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-taskblock-{Guid.NewGuid():N}";
-        var recId = $"{nowUtc:yyyyMMddTHHmmssZ}-record-finding-{Guid.NewGuid():N}";
+        DateTimeOffset blockTime;
+        if (!string.IsNullOrWhiteSpace(occurredAt))
+        {
+            if (!DateTimeOffset.TryParse(occurredAt, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out blockTime))
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid occurred-at timestamp '{occurredAt}'. Expected ISO 8601 UTC format (e.g. 2026-09-25T12:00:00Z).") });
+            }
+        }
+        else
+        {
+            blockTime = clock.UtcNow;
+            var taskCreatedAtStr = (string?)taskElem.Attribute("created_at");
+            if (!string.IsNullOrWhiteSpace(taskCreatedAtStr) && DateTimeOffset.TryParse(taskCreatedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var parsedCreated) && blockTime < parsedCreated)
+            {
+                blockTime = parsedCreated;
+            }
 
-        string transitionAttr = string.Equals(currentStatus, "blocked", StringComparison.OrdinalIgnoreCase)
+            var taskUpdatedAtStr = (string?)taskElem.Attribute("updated_at");
+            if (!string.IsNullOrWhiteSpace(taskUpdatedAtStr) && DateTimeOffset.TryParse(taskUpdatedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var parsedUpdated) && blockTime < parsedUpdated)
+            {
+                blockTime = parsedUpdated;
+            }
+        }
+
+        var isoTime = blockTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+        var opId = $"{blockTime:yyyyMMddTHHmmssZ}-taskblock-{Guid.NewGuid():N}";
+        var recId = $"{blockTime:yyyyMMddTHHmmssZ}-record-finding-{Guid.NewGuid():N}";
+
+        string transitionAttr = recordOnly || string.Equals(currentStatus, "blocked", StringComparison.OrdinalIgnoreCase)
             ? string.Empty
             : "transition=\"block\"";
+
+        var recordOnlyTerm = recordOnly
+            ? "<term key=\"blocker-mode\" value=\"record-only\"/>"
+            : string.Empty;
 
         var reviewTerm = !string.IsNullOrWhiteSpace(blockerReviewAt)
             ? $"<term key=\"blocker-review-at\" value=\"{SecurityElement.Escape(blockerReviewAt.Trim())}\"/>"
@@ -150,6 +179,7 @@ public static class TaskBlock
         <summary>{SecurityElement.Escape(summary.Trim())}</summary>
         <term key="blocker-kind" value="{SecurityElement.Escape(blockerKind)}"/>
         <term key="blocker-owner" value="{SecurityElement.Escape(blockerOwner)}"/>
+        {recordOnlyTerm}
         {reviewTerm}
       </index>
       <summary>{SecurityElement.Escape(summary.Trim())}</summary>

@@ -119,6 +119,12 @@ public sealed class TaskReviewCoreTests
   <records>
     <record id="20260825T101100Z-record-correct-review" kind="verification" status="informational" created_at="2026-08-25T10:11:00Z" actor="implementation-agent" operation_id="20260825T101100Z-correct-review">
       <summary>Requested review correction was applied.</summary>
+      <covers>
+        <ref scope="document" target="20260823-taskaccept-filter-members" relation="covers"/>
+        <ref scope="document" target="20260823-taskaccept-filterout-members" relation="covers"/>
+        <ref scope="document" target="20260823-taskaccept-filter-composition" relation="covers"/>
+        <ref scope="document" target="20260823-taskaccept-result-limit" relation="covers"/>
+      </covers>
     </record>
   </records>
 </task-update>
