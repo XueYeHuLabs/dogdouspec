@@ -1411,5 +1411,36 @@ public sealed class IterationReadinessAndConfirmCoreTests
         Assert.AreEqual(tasksHashTerminal, ComputeFileSha256(tasksPath));
     }
 
+    [TestMethod]
+    public void ComputeLifecycleSummary_CorrectlyFormatsAcrossTransitions()
+    {
+        // 1. Activation with generic summary and task counts
+        var active1 = IterationConfirmer.ComputeLifecycleSummary("activate", "active", "Iteration activation.", totalTasks: 5, doneTasks: 3, specRoot: null);
+        Assert.AreEqual("[Active] 3/5 tasks done", active1);
+
+        var activeZero = IterationConfirmer.ComputeLifecycleSummary("activate", "active", null, totalTasks: 0, doneTasks: 0, specRoot: null);
+        Assert.AreEqual("[Active] Ready for execution", activeZero);
+
+        // 2. Activation with custom summary
+        var activeCustom = IterationConfirmer.ComputeLifecycleSummary("activate", "active", "Phase 1 startup", totalTasks: 5, doneTasks: 0, specRoot: null);
+        Assert.AreEqual("[Active] Phase 1 startup", activeCustom);
+
+        // 3. Completion with generic summary
+        var comp1 = IterationConfirmer.ComputeLifecycleSummary("complete", "completed", "Iteration completion.", totalTasks: 5, doneTasks: 5, specRoot: null);
+        Assert.AreEqual("[Completed] all deliverables shipped", comp1);
+
+        // 4. Completion with custom summary
+        var compCustom = IterationConfirmer.ComputeLifecycleSummary("complete", "completed", "all deliverables shipped", totalTasks: 5, doneTasks: 5, specRoot: null);
+        Assert.AreEqual("[Completed] all deliverables shipped", compCustom);
+
+        // 5. Replanning with generic summary
+        var replan1 = IterationConfirmer.ComputeLifecycleSummary("replan", "replanning", "Iteration replanning.", totalTasks: 5, doneTasks: 2, specRoot: null);
+        Assert.AreEqual("[Replanning] scope reassessment", replan1);
+
+        // 6. Already-tagged summary
+        var alreadyTagged = IterationConfirmer.ComputeLifecycleSummary("replan", "replanning", "[Replanning] scope reassessment", totalTasks: 5, doneTasks: 2, specRoot: null);
+        Assert.AreEqual("[Replanning] scope reassessment", alreadyTagged);
+    }
+
     #endregion
 }

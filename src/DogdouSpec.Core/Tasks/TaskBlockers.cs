@@ -17,6 +17,7 @@ public static class TaskBlockers
         string? owner = null,
         string? kind = null,
         bool dueOnly = false,
+        string? mode = null,
         IClock? clock = null,
         ProjectSemanticIndex? index = null)
     {
@@ -116,6 +117,7 @@ public static class TaskBlockers
                         string blockerKind = "unknown";
                         string blockerOwner = "unspecified";
                         string blockerReviewAt = "none";
+                        bool isRecordOnly = false;
 
                         if (indexElem != null)
                         {
@@ -137,7 +139,17 @@ public static class TaskBlockers
                                 {
                                     blockerReviewAt = val;
                                 }
+                                else if (string.Equals(key, "blocker-mode", StringComparison.OrdinalIgnoreCase) &&
+                                         string.Equals(val, "record-only", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    isRecordOnly = true;
+                                }
                             }
+                        }
+
+                        if (!isRecordOnly && !string.Equals(currentStatus, "blocked", StringComparison.OrdinalIgnoreCase))
+                        {
+                            isRecordOnly = true;
                         }
 
                         DateTime? reviewAtUtc = null;
@@ -176,7 +188,8 @@ public static class TaskBlockers
                             NextAction: nextAction,
                             CreatedAt: createdAt,
                             IsDerived: false,
-                            OriginalIndex: originalIndex++));
+                            OriginalIndex: originalIndex++,
+                            IsRecordOnly: isRecordOnly));
                     }
                 }
             }
@@ -259,6 +272,18 @@ public static class TaskBlockers
         if (dueOnly)
         {
             filtered = filtered.Where(i => i.IsDue);
+        }
+
+        if (!string.IsNullOrWhiteSpace(mode) && !string.Equals(mode, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.Equals(mode, "record-only", StringComparison.OrdinalIgnoreCase))
+            {
+                filtered = filtered.Where(i => i.IsRecordOnly);
+            }
+            else if (string.Equals(mode, "blocking", StringComparison.OrdinalIgnoreCase))
+            {
+                filtered = filtered.Where(i => !i.IsRecordOnly);
+            }
         }
 
         // Deterministic sort: overdue first, then upcoming due items, then undated, in stable order

@@ -347,7 +347,7 @@ public static class ChangeApplier
             }
             if (DateTimeOffset.TryParse(targetTask.Attribute("updated_at")?.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var taskUpdatedAt) && reqOccurredAt < taskUpdatedAt)
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-apply @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-apply @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'. Minimal acceptable timestamp is '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
             }
 
             var targetRecord = targetTask.Element("records")?.Elements("record").FirstOrDefault(r => string.Equals((string?)r.Attribute("id"), targetRecordId, StringComparison.Ordinal));
@@ -379,7 +379,7 @@ public static class ChangeApplier
             }
             if (DateTimeOffset.TryParse(targetTask.Attribute("updated_at")?.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var taskUpdatedAt) && reqOccurredAt < taskUpdatedAt)
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-apply @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-apply @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'. Minimal acceptable timestamp is '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
             }
 
             var currentStatus = targetTask.Attribute("status")?.Value ?? "pending";

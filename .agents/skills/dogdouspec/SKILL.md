@@ -176,26 +176,29 @@ Identify objectives, scope includes/excludes, origin requirement, acceptance cri
 
 1. **Start Task** (transitions `pending` -> `in-progress`):
    ```powershell
-   dogdouspec task start --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--summary "..."] --format xml
+   dogdouspec task start --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--summary "..."] [--occurred-at <TIMESTAMP>] --format xml
    ```
 2. **Implement & Build**:
    - Make necessary code and test changes.
    - Run `.\build.cmd` (or project build command) to compile and execute all tests.
-   - Treat worker responses as transient transport. Summarize material implementation, verification, review, risk, and handoff facts in the Task's records.
+   - Treat worker responses as transient transport. Summarize material implementation, verification, review, risk, and handoff facts in the Task's records using `task record`:
+     ```powershell
+     dogdouspec task record --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--kind discussion|finding|verification|completion|decision] [--status informational|active|resolved] [--summary "..."] [--occurred-at <TIMESTAMP>] [--covers "<CRITERION_ID>"] --format xml
+     ```
 3. **Block Task & Manage Recheck Queue** (when obstructed by external/review/dependency obstacles):
    ```powershell
-   # Record structured blocker finding and transition to blocked:
-   dogdouspec task block --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] --summary "..." [--blocker-kind <KIND>] [--blocker-owner <OWNER>] [--blocker-review-at <TIMESTAMP>] [--condition "..."] [--next-action "..."] --format xml
+   # Record structured blocker finding and transition to blocked (or pass --record-only to record finding without status change):
+   dogdouspec task block --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] --summary "..." [--blocker-kind <KIND>] [--blocker-owner <OWNER>] [--blocker-review-at <TIMESTAMP>] [--condition "..."] [--next-action "..."] [--record-only] [--occurred-at <TIMESTAMP>] --format xml
 
-   # Query active blockers and recheck queue:
-   dogdouspec task blockers [--iteration "<ITERATION_ID>"] [--due-only] --format xml
+   # Query active blockers and recheck queue (filter by mode: all, status-blocked, or record-only):
+   dogdouspec task blockers [--iteration "<ITERATION_ID>"] [--mode all|status-blocked|record-only] [--due-only] --format xml
 
    # Resolve blockers and resume to in-progress:
-   dogdouspec task resume --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] (--finding <FINDING_ID> | --all) --summary "..." --format xml
+   dogdouspec task resume --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] (--finding <FINDING_ID> | --all) --summary "..." [--occurred-at <TIMESTAMP>] --format xml
    ```
 4. **Verify Task** (transitions `in-progress` -> `verification`):
    ```powershell
-   dogdouspec task verify --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--covers "<CRITERION_ID>"] [--summary "..."] --format xml
+   dogdouspec task verify --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--covers "<CRITERION_ID>"] [--summary "..."] [--occurred-at <TIMESTAMP>] --format xml
    ```
 5. **Review Gate, When Required**: If the selected Task contains `<review required="true">`, submit `task review` while it is in `verification`.
    ```powershell
@@ -208,12 +211,15 @@ Identify objectives, scope includes/excludes, origin requirement, acceptance cri
 6. **Complete Task** (transitions `verification` -> `done` or atomic finish):
    ```powershell
    # Standard finish:
-   dogdouspec task finish --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--summary "..."] --format xml
+   dogdouspec task finish --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--summary "..."] [--occurred-at <TIMESTAMP>] --format xml
    ```
 
-#### 🛡️ Low-Level Plumbing Fallback (Raw XML Payload)
-If detailed manual record payloads are required:
-- `dogdouspec task update --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin/--file <PATH> --format xml`
+#### 🛡️ Low-Level Plumbing Fallback (Raw XML Payload & Revision Opt-In)
+If detailed manual XML payloads are required, inspect templates with `dogdouspec template list` and `dogdouspec template show --name <NAME>`:
+- `dogdouspec task update --iteration "<ITERATION_ID>" --task "<TASK_ID>" (--expected-revision <REV> | --revision latest) --stdin/--file <PATH> --format xml`
+- `dogdouspec task add --iteration "<ITERATION_ID>" (--expected-revision <REV> | --revision latest) --stdin/--file <PATH> --format xml`
+- `dogdouspec task split --iteration "<ITERATION_ID>" --task "<TASK_ID>" (--expected-revision <REV> | --revision latest) --stdin/--file <PATH> --format xml`
+- `dogdouspec transaction apply [--revision latest] --stdin/--file <PATH> --format xml`
 
 ### 5. Task & Requirement Change Decision Tree
 

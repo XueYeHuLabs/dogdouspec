@@ -13,7 +13,8 @@ public sealed record IndexedObject(
     ManagedDocument Document,
     int? LineNumber,
     int? LinePosition,
-    XElement Element);
+    XElement Element,
+    string? ContainingTaskId = null);
 
 /// <summary>
 /// Represents a &lt;ref&gt; element in a managed document.

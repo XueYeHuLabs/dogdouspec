@@ -217,7 +217,7 @@ public static class RequirementProposer
         }
         if (DateTimeOffset.TryParse(specRoot.Attribute("updated_at")?.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var specUpdatedAt) && reqOccurredAt < specUpdatedAt)
         {
-            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"requirement-propose @occurred_at '{occurredAt}' cannot be earlier than spec updated_at '{specRoot.Attribute("updated_at")?.Value}'.", normSpecDocPath) });
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"requirement-propose @occurred_at '{occurredAt}' cannot be earlier than spec updated_at '{specRoot.Attribute("updated_at")?.Value}'. Minimal acceptable timestamp is '{specRoot.Attribute("updated_at")?.Value}'.", normSpecDocPath) });
         }
 
         var kind = specRoot.Attribute("kind")?.Value;

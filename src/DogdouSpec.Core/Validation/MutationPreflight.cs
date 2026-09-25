@@ -139,9 +139,11 @@ public static class MutationPreflight
                 var col = args.Exception?.LinePosition;
                 var code = DiagnosticCodes.SchemaValidationError;
 
+                var enrichedMessage = TemplateCatalog.EnrichDiagnosticWithExpectedShape(args.Message, rootName);
+
                 var diag = args.Severity == XmlSeverityType.Error
-                    ? Diagnostic.Error(code, args.Message, null, line, col)
-                    : Diagnostic.Warning(code, args.Message, null, line, col);
+                    ? Diagnostic.Error(code, enrichedMessage, null, line, col)
+                    : Diagnostic.Warning(code, enrichedMessage, null, line, col);
 
                 schemaDiagnostics.Add(diag);
             });
@@ -154,7 +156,7 @@ public static class MutationPreflight
         }
         catch (XmlException xmlEx)
         {
-            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.SchemaValidationError, $"Schema validation failed: {xmlEx.Message}") });
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.SchemaValidationError, TemplateCatalog.EnrichDiagnosticWithExpectedShape($"Schema validation failed: {xmlEx.Message}", rootName)) });
         }
 
         if (schemaDiagnostics.Any(d => d.Severity == "error"))

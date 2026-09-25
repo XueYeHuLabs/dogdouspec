@@ -23,6 +23,7 @@ public static class TaskResume
         string? summary = null,
         string? findingId = null,
         bool all = false,
+        string? occurredAt = null,
         IClock? clock = null)
     {
         clock ??= SystemClock.Instance;
@@ -68,12 +69,20 @@ public static class TaskResume
             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.ResourceNotFound, $"Task '{taskId}' not found in iteration '{resolvedIterId}'.", $"{resolvedIterId}/tasks.xml") });
         }
 
+        // Collect active findings on task
+        var recordsElem = taskElem.Element("records");
+        var activeFindings = recordsElem?.Elements("record")
+            .Where(r => string.Equals(r.Attribute("kind")?.Value, "finding", StringComparison.Ordinal) &&
+                        string.Equals(r.Attribute("status")?.Value, "active", StringComparison.Ordinal))
+            .ToList() ?? new List<XElement>();
+
         var currentStatus = (string?)taskElem.Attribute("status") ?? "pending";
-        if (!string.Equals(currentStatus, "blocked", StringComparison.OrdinalIgnoreCase))
+        var isAlreadyInProgress = string.Equals(currentStatus, "in-progress", StringComparison.OrdinalIgnoreCase);
+        if (!string.Equals(currentStatus, "blocked", StringComparison.OrdinalIgnoreCase) && !(isAlreadyInProgress && activeFindings.Count > 0))
         {
             return (false, null, new[] { Diagnostic.Error(
                 DiagnosticCodes.TaskTransitionConflict,
-                $"Cannot resume task '{taskId}': task is in status '{currentStatus}', but only 'blocked' tasks can be resumed.",
+                $"Cannot resume task '{taskId}': task is in status '{currentStatus}', but only 'blocked' tasks (or 'in-progress' tasks with active findings) can be resumed.",
                 $"{resolvedIterId}/tasks.xml") });
         }
 
@@ -95,13 +104,6 @@ public static class TaskResume
             }
             catch { }
         }
-
-        // Collect active findings on task
-        var recordsElem = taskElem.Element("records");
-        var activeFindings = recordsElem?.Elements("record")
-            .Where(r => string.Equals(r.Attribute("kind")?.Value, "finding", StringComparison.Ordinal) &&
-                        string.Equals(r.Attribute("status")?.Value, "active", StringComparison.Ordinal))
-            .ToList() ?? new List<XElement>();
 
         if (activeFindings.Count > 0)
         {
@@ -136,10 +138,33 @@ public static class TaskResume
             return (false, null, new[] { revErr ?? Diagnostic.Error(DiagnosticCodes.RevisionConflict, "Failed to resolve expected revision.") });
         }
 
-        var nowUtc = clock.UtcNow;
-        var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
-        var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-taskresume-{Guid.NewGuid():N}";
-        var recId = $"{nowUtc:yyyyMMddTHHmmssZ}-record-resolution-{Guid.NewGuid():N}";
+        DateTimeOffset resumeTime;
+        if (!string.IsNullOrWhiteSpace(occurredAt))
+        {
+            if (!DateTimeOffset.TryParse(occurredAt, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out resumeTime))
+            {
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Invalid occurred-at timestamp '{occurredAt}'. Expected ISO 8601 UTC format (e.g. 2026-09-25T12:00:00Z).") });
+            }
+        }
+        else
+        {
+            resumeTime = clock.UtcNow;
+            var taskCreatedAtStr = (string?)taskElem.Attribute("created_at");
+            if (!string.IsNullOrWhiteSpace(taskCreatedAtStr) && DateTimeOffset.TryParse(taskCreatedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var parsedCreated) && resumeTime < parsedCreated)
+            {
+                resumeTime = parsedCreated;
+            }
+
+            var taskUpdatedAtStr = (string?)taskElem.Attribute("updated_at");
+            if (!string.IsNullOrWhiteSpace(taskUpdatedAtStr) && DateTimeOffset.TryParse(taskUpdatedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var parsedUpdated) && resumeTime < parsedUpdated)
+            {
+                resumeTime = parsedUpdated;
+            }
+        }
+
+        var isoTime = resumeTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+        var opId = $"{resumeTime:yyyyMMddTHHmmssZ}-taskresume-{Guid.NewGuid():N}";
+        var recId = $"{resumeTime:yyyyMMddTHHmmssZ}-record-resolution-{Guid.NewGuid():N}";
 
         string resolveRecordsXml;
         string coversXml;
@@ -210,10 +235,10 @@ public static class TaskResume
                 coversXml = string.Empty;
             }
 
-            transitionAttr = "transition=\"resume\"";
+            transitionAttr = isAlreadyInProgress ? string.Empty : "transition=\"resume\"";
         }
 
-        var resumeSummary = SecurityElement.Escape(string.IsNullOrWhiteSpace(summary) ? $"Resumed task {taskId}." : summary.Trim());
+        var resumeSummary = SecurityElement.Escape(string.IsNullOrWhiteSpace(summary) ? (isAlreadyInProgress ? $"Resolved active findings for task {taskId}." : $"Resumed task {taskId}.") : summary.Trim());
 
         var requestXml = $"""
 <?xml version="1.0" encoding="utf-8"?>

@@ -318,7 +318,7 @@ public static class ChangeProposer
 
             if (DateTimeOffset.TryParse(targetTask.Attribute("updated_at")?.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var taskUpdatedAt) && reqOccurredAt < taskUpdatedAt)
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-propose @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-propose @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'. Minimal acceptable timestamp is '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
             }
 
             var recId = rec.Attribute("id")?.Value;
@@ -422,7 +422,7 @@ public static class ChangeProposer
             }
             if (DateTimeOffset.TryParse(targetTask.Attribute("updated_at")?.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var frozenTaskUpdatedAt) && reqOccurredAt < frozenTaskUpdatedAt)
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-propose @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-propose @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'. Minimal acceptable timestamp is '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
             }
         }
         if (!findingTaskIds.SetEquals(freezeTaskIds))

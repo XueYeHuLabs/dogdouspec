@@ -30,10 +30,11 @@ DogdouSpec introduces two custom XPath extension functions in the `ds:` namespac
 - `ds:filter-out(nodeset, member1, member2, ...)`: Returns a projected clone excluding the specified member attributes and child elements.
 
 ### Key Semantics:
-1. **Direct Members Only**: Member names refer to immediate attributes (prefixed with `@`, e.g. `'@id'`, `'@status'`) or direct child elements (e.g. `'index'`, `'acceptance'`). Nested deep paths (like `'index/summary'`) are not member selectors.
-2. **Missing Members Ignored**: If a requested member does not exist on a selected element, it is ignored without throwing an error.
-3. **Preserves XPath Document Order**: Filtered elements preserve the original document sequence.
-4. **No Silent Truncation & Authoritative Limits**: Query results are never silently truncated. If output exceeds system limits, the engine returns an explicit `LIMIT_EXCEEDED` error diagnostic.
+1. **Direct Members and Inspection Idioms**: Member names refer to immediate attributes (prefixed with `@`, e.g. `'@id'`, `'@status'`), direct child elements (e.g. `'index'`, `'acceptance'`), or inspection idioms (`'name()'`, `'namespace-uri()'`).
+2. **Attribute Predicates on Members**: Member selectors may include attribute predicates to filter child elements or attributes (e.g. `'record[@kind="completion"]'`, `'item[@status="open"]'`). Positional predicates (e.g. `'index[1]'`) are rejected.
+3. **Missing Members Ignored**: If a requested member does not exist on a selected element, it is ignored without throwing an error.
+4. **Preserves XPath Document Order**: Filtered elements preserve the original document sequence.
+5. **No Silent Truncation & Authoritative Limits**: Query results are never silently truncated. If output exceeds system limits, the engine returns an explicit `LIMIT_EXCEEDED` error diagnostic.
    - `MaxDocumentBytes`: 16,777,216 bytes (16 MiB)
    - `MaxOutputBytes`: 4,194,304 bytes (4 MiB)
    - `MaxResultNodes`: 10,000 nodes
@@ -43,6 +44,10 @@ DogdouSpec introduces two custom XPath extension functions in the `ds:` namespac
 
 ```xpath
 ds:filter(/tasks/task[@status='in-progress'], '@id', '@status', 'index')
+```
+
+```xpath
+ds:filter(/tasks/task, '@id', 'record[@kind="completion"]')
 ```
 
 ```xpath

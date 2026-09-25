@@ -21,7 +21,8 @@ public sealed record TaskBlockerItem(
     string? NextAction,
     string? CreatedAt,
     bool IsDerived,
-    int OriginalIndex);
+    int OriginalIndex,
+    bool IsRecordOnly = false);
 
 public sealed class TaskBlockersResult
 {
@@ -79,6 +80,7 @@ public sealed class TaskBlockersResult
                 writer.WriteAttributeString("due_status", b.DueStatus);
                 writer.WriteAttributeString("is_due", b.IsDue ? "true" : "false");
                 writer.WriteAttributeString("derived", b.IsDerived ? "true" : "false");
+                writer.WriteAttributeString("record_only", b.IsRecordOnly ? "true" : "false");
 
                 if (!string.IsNullOrWhiteSpace(b.CreatedAt))
                 {
@@ -121,7 +123,8 @@ public sealed class TaskBlockersResult
         foreach (var b in Blockers)
         {
             var badge = b.IsDue ? "[OVERDUE]" : (b.ReviewAt != "none" ? "[UPCOMING]" : "[UNDATED]");
-            var sourceStr = b.IsDerived ? "Derived Dependency" : $"Finding: {b.FindingId}";
+            var modeStr = b.IsRecordOnly ? " [record-only]" : string.Empty;
+            var sourceStr = b.IsDerived ? "Derived Dependency" : $"Finding: {b.FindingId}{modeStr}";
             sb.AppendLine(CultureInfo.InvariantCulture, $"  {badge,-10} Task: {b.TaskId} ({b.TaskStatus}) - {sourceStr}");
             sb.AppendLine(CultureInfo.InvariantCulture, $"    Kind: {b.Kind} | Owner: {b.Owner} | Review At: {b.ReviewAt} ({b.DueStatus})");
             sb.AppendLine(CultureInfo.InvariantCulture, $"    Summary: {b.Summary}");

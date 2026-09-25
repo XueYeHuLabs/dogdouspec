@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Xml.Linq;
 using DogdouSpec.Core.Changes;
 using DogdouSpec.Core.Diagnostics;
@@ -138,18 +139,31 @@ public sealed class TaskBlockerCoreTests
         var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
         var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-verify-{Guid.NewGuid():N}";
         var recId = $"{nowUtc:yyyyMMddTHHmmssZ}-rec-verify-{Guid.NewGuid():N}";
+        var tasksPath = Path.Combine(_workspace, iterId, "tasks.xml");
+        var xdoc = XDocument.Load(tasksPath);
+        var taskElem = xdoc.Descendants("task").First(t => (string?)t.Attribute("id") == taskId);
+        var critIds = taskElem.Descendants("criterion").Select(c => (string?)c.Attribute("id")).Where(id => !string.IsNullOrEmpty(id)).ToList();
+        var coversXml = new StringBuilder();
+        if (critIds.Count > 0)
+        {
+            coversXml.AppendLine("      <covers>");
+            foreach (var cid in critIds)
+            {
+                coversXml.AppendLine(CultureInfo.InvariantCulture, $"        <ref scope=\"document\" target=\"{cid}\" relation=\"covers\"/>");
+            }
+            coversXml.AppendLine("      </covers>");
+        }
+
         var xml = $"""
 <?xml version="1.0" encoding="utf-8"?>
 <task-update id="{opId}" transition="verify" actor="codex" occurred_at="{isoTime}">
   <records>
     <record id="{recId}" kind="verification" status="informational" created_at="{isoTime}" actor="codex" operation_id="{opId}">
       <summary>Verify task {taskId}.</summary>
-    </record>
+{coversXml}    </record>
   </records>
 </task-update>
 """;
-        var tasksPath = Path.Combine(_workspace, iterId, "tasks.xml");
-        var xdoc = XDocument.Load(tasksPath);
         var rev = int.Parse(xdoc.Root!.Attribute("revision")!.Value, CultureInfo.InvariantCulture);
         var (ok, _, diags) = TaskUpdater.Update(_workspace, iterId, taskId, rev, xml, clock: clock);
         Assert.IsTrue(ok, string.Join(", ", diags.Select(d => d.Message)));
@@ -596,5 +610,51 @@ public sealed class TaskBlockerCoreTests
         Assert.IsTrue(blk.IsDerived);
         Assert.AreEqual("dependency", blk.Kind);
         StringAssert.Contains(blk.Summary, taskUpActive);
+    }
+
+    [TestMethod]
+    public void Block_RecordOnly_KeepsStatusInProgressAndSurfacesInBlockers()
+    {
+        _workspace = CreateWorkspaceCopy();
+        var iterId = "20260823-xpath-core";
+        var taskId = "20260823-task-xpath-projection";
+
+        // Task in demo is in-progress
+        var (ok, envelope, diags) = TaskBlock.Block(
+            _workspace,
+            taskId,
+            iterationId: iterId,
+            summary: "Environment outage while continuing execution",
+            blockerKind: "environment",
+            blockerOwner: "infra",
+            recordOnly: true);
+
+        Assert.IsTrue(ok, string.Join(", ", diags.Select(d => d.Message)));
+        Assert.IsNotNull(envelope);
+
+        // Verify task status remains in-progress
+        var tasksDoc = XDocument.Load(Path.Combine(_workspace, iterId, "tasks.xml"));
+        var taskElem = tasksDoc.Root!.Elements("task").First(t => (string?)t.Attribute("id") == taskId);
+        Assert.AreEqual("in-progress", (string?)taskElem.Attribute("status"));
+
+        // Query blockers
+        var (qOk, qRes, qDiags) = TaskBlockers.Query(_workspace, iterId);
+        Assert.IsTrue(qOk, string.Join(", ", qDiags.Select(d => d.Message)));
+        Assert.IsNotNull(qRes);
+
+        var blocker = qRes.Blockers.FirstOrDefault(b => b.TaskId == taskId && b.Kind == "environment");
+        Assert.IsNotNull(blocker);
+        Assert.AreEqual("in-progress", blocker.TaskStatus);
+        Assert.IsTrue(blocker.IsRecordOnly);
+
+        // Query with mode: blocking -> should NOT include this blocker
+        var (blkOk, blkRes, _) = TaskBlockers.Query(_workspace, iterId, mode: "blocking");
+        Assert.IsTrue(blkOk);
+        Assert.IsFalse(blkRes!.Blockers.Any(b => b.TaskId == taskId && b.Kind == "environment"));
+
+        // Query with mode: record-only -> MUST include this blocker
+        var (recOk, recRes, _) = TaskBlockers.Query(_workspace, iterId, mode: "record-only");
+        Assert.IsTrue(recOk);
+        Assert.IsTrue(recRes!.Blockers.Any(b => b.TaskId == taskId && b.Kind == "environment"));
     }
 }
