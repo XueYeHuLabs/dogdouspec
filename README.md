@@ -2,6 +2,18 @@
 
 DogdouSpec is an iteration-first structured XML/XPath specification and technical execution engine designed for human and AI pairing.
 
+## Publisher and Support
+
+DogdouSpec is published by Hangzhou Xueyehu Technology Co., Ltd. The company
+hosts the project's source code and releases under its GitHub organization,
+[XueYeHuLabs](https://github.com/XueYeHuLabs). The `Vixasol` namespace in the
+WinGet package identifier `Vixasol.DogdouSpec` comes from the
+[vixasol.com](https://vixasol.com) domain; it is not a separate publisher.
+
+- Project source and releases: [XueYeHuLabs/dogdouspec](https://github.com/XueYeHuLabs/dogdouspec).
+- Support and issue reports: [GitHub Issues](https://github.com/XueYeHuLabs/dogdouspec/issues).
+- License: [MIT](LICENSE).
+
 ## 1. Quick Start & Adoption Guide
 
 ### Standard Global Installation (Recommended for Most Projects)
