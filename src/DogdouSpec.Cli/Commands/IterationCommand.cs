@@ -2,11 +2,14 @@ using System.CommandLine;
 using System.Globalization;
 using System.Security;
 using System.Text;
+using System.Xml;
 using System.Xml.Linq;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Iterations;
+using DogdouSpec.Core.Revisions;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Workspace;
 
 namespace DogdouSpec.Cli.Commands;
@@ -23,6 +26,8 @@ public static class IterationCommand
         var confirmCmd = BuildConfirmCommand();
         var activateCmd = BuildActivateCommand();
         var completeCmd = BuildCompleteCommand();
+        var summaryCmd = SummaryCommand.BuildCommand();
+        var criterionCmd = BuildCriterionCommand();
 
         iterationCmd.Add(listCmd);
         iterationCmd.Add(createCmd);
@@ -30,6 +35,8 @@ public static class IterationCommand
         iterationCmd.Add(confirmCmd);
         iterationCmd.Add(activateCmd);
         iterationCmd.Add(completeCmd);
+        iterationCmd.Add(summaryCmd);
+        iterationCmd.Add(criterionCmd);
 
         return iterationCmd;
     }
@@ -111,6 +118,12 @@ public static class IterationCommand
             Description = "Create iteration in active state immediately (with initial requirement approved)"
         };
 
+        var criterionOption = new Option<string[]>("--criterion")
+        {
+            Description = "Acceptance criterion text (repeatable)",
+            AllowMultipleArgumentsPerToken = false
+        };
+
         var workspaceRootOption = new Option<string?>("--workspace-root")
         {
             Description = "Explicit path to workspace root or project directory containing .dogdouspec"
@@ -125,6 +138,7 @@ public static class IterationCommand
         createCmd.Add(idOption);
         createCmd.Add(kindOption);
         createCmd.Add(activateOption);
+        createCmd.Add(criterionOption);
         createCmd.Add(workspaceRootOption);
         createCmd.Add(formatOption);
 
@@ -133,6 +147,7 @@ public static class IterationCommand
             var id = parseResult.GetValue(idOption);
             var kind = parseResult.GetValue(kindOption);
             var activate = parseResult.GetValue(activateOption);
+            var criteria = parseResult.GetValue(criterionOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
@@ -163,6 +178,31 @@ public static class IterationCommand
                 return 2;
             }
 
+            if (activate)
+            {
+                if (criteria == null || criteria.Length == 0)
+                {
+                    var envelope = new DiagnosticsEnvelope("iteration create", Diagnostic.Error(
+                        DiagnosticCodes.CriterionUndefined,
+                        "Iteration creation with --activate requires at least one defined --criterion. Cannot activate with default placeholder criteria."));
+                    Console.Error.Write(envelope.Format(format));
+                    return 5;
+                }
+
+                for (var i = 0; i < criteria.Length; i++)
+                {
+                    var (isValid, reason) = IterationCriterionPolicy.Validate(criteria[i], $"index-{i + 1}");
+                    if (!isValid)
+                    {
+                        var envelope = new DiagnosticsEnvelope("iteration create", Diagnostic.Error(
+                            DiagnosticCodes.CriterionUndefined,
+                            reason ?? "Acceptance criterion text is undefined."));
+                        Console.Error.Write(envelope.Format(format));
+                        return 5;
+                    }
+                }
+            }
+
             var (discoverSuccess, discoveredRoot, discoverError) = WorkspaceDiscovery.FindWorkspaceRoot(
                 workspaceRoot,
                 Environment.CurrentDirectory);
@@ -178,7 +218,8 @@ public static class IterationCommand
                 discoveredRoot,
                 id,
                 kind,
-                activate: activate);
+                activate: activate,
+                criteria: criteria);
 
             if (!success || diagnostics.Count > 0)
             {
@@ -293,16 +334,36 @@ public static class IterationCommand
 
     private static Command BuildConfirmCommand()
     {
-        var confirmCmd = new Command("confirm", "Atomically confirm iteration product decisions and lifecycle (mutating)");
+        var confirmCmd = new Command("confirm", "Atomically confirm iteration product decisions and lifecycle (mutating); --dry-run validates without writing. Template: iteration.confirmation (inspect with 'dogdouspec template show --name iteration.confirmation')");
 
         var stdinOption = new Option<bool>("--stdin")
         {
-            Description = "Read iteration-confirmation XML request from standard input"
+            Description = "Read iteration-confirmation XML request from standard input (mutually exclusive with --file; exactly one required; template: iteration.confirmation)"
         };
 
         var fileOption = new Option<string?>("--file")
         {
-            Description = "Path to file containing iteration-confirmation XML request"
+            Description = "Path to file containing iteration-confirmation XML request (mutually exclusive with --stdin; exactly one required; template: iteration.confirmation)"
+        };
+
+        var iterationOption = new Option<string?>("--iteration")
+        {
+            Description = "Iteration identifier; must match request attribute if both specified"
+        };
+
+        var expectedRevisionOption = new Option<int?>("--expected-revision")
+        {
+            Description = "Expected spec.xml revision; must match request attribute if both specified"
+        };
+
+        var expectedTasksRevisionOption = new Option<int?>("--expected-tasks-revision")
+        {
+            Description = "Expected tasks.xml revision; must match request attribute if both specified"
+        };
+
+        var dryRunOption = new Option<bool>("--dry-run")
+        {
+            Description = "Validate mutation preconditions and report prospective revision without writing"
         };
 
         var workspaceRootOption = new Option<string?>("--workspace-root")
@@ -318,6 +379,10 @@ public static class IterationCommand
 
         confirmCmd.Add(stdinOption);
         confirmCmd.Add(fileOption);
+        confirmCmd.Add(iterationOption);
+        confirmCmd.Add(expectedRevisionOption);
+        confirmCmd.Add(expectedTasksRevisionOption);
+        confirmCmd.Add(dryRunOption);
         confirmCmd.Add(workspaceRootOption);
         confirmCmd.Add(formatOption);
 
@@ -325,6 +390,10 @@ public static class IterationCommand
         {
             var hasStdin = parseResult.GetValue(stdinOption);
             var filePath = parseResult.GetValue(fileOption);
+            var iterationId = parseResult.GetValue(iterationOption);
+            var expectedRevision = parseResult.GetValue(expectedRevisionOption);
+            var expectedTasksRevision = parseResult.GetValue(expectedTasksRevisionOption);
+            var dryRun = parseResult.GetValue(dryRunOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
@@ -388,9 +457,53 @@ public static class IterationCommand
                 return 2;
             }
 
+            XDocument requestDoc;
+            try
+            {
+                using var sr = new StringReader(requestXml);
+                using var reader = SecureXmlReaderFactory.CreateReader(sr);
+                requestDoc = XDocument.Load(reader, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
+            }
+            catch (XmlException xmlEx)
+            {
+                var envelope = new DiagnosticsEnvelope("iteration confirm", Diagnostic.Error(
+                    DiagnosticCodes.XmlParseError,
+                    $"Failed to parse iteration-confirmation XML request: {xmlEx.Message}"));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var rootEl = requestDoc.Root;
+            if (rootEl == null || rootEl.Name.LocalName != "iteration-confirmation")
+            {
+                var envelope = new DiagnosticsEnvelope("iteration confirm", Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "Root element must be iteration-confirmation."));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var (requestResolved, finalXml, resolutionError) = IterationConfirmationRequestResolver.Reconcile(
+                discoveredRoot,
+                requestDoc,
+                iterationId,
+                expectedRevision,
+                expectedTasksRevision);
+            if (!requestResolved || resolutionError != null || string.IsNullOrWhiteSpace(finalXml))
+            {
+                var envelope = new DiagnosticsEnvelope(
+                    "iteration confirm",
+                    resolutionError ?? Diagnostic.Error(
+                        DiagnosticCodes.InvalidArgument,
+                        "Iteration confirmation request could not be resolved."));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
             var (success, envelopeResult, diagnostics) = IterationConfirmer.Confirm(
                 discoveredRoot,
-                requestXml);
+                finalXml,
+                dryRun: dryRun);
 
             if (!success || diagnostics.Count > 0)
             {
@@ -401,7 +514,15 @@ public static class IterationCommand
 
             if (envelopeResult != null)
             {
-                Console.Out.Write(envelopeResult.Format(format));
+                var action = (string?)rootEl?.Attribute("action");
+                if (!dryRun && string.Equals(action, "complete", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.Out.Write(FormatCompletionEnvelope(envelopeResult, format));
+                }
+                else
+                {
+                    Console.Out.Write(envelopeResult.Format(format));
+                }
             }
 
             return 0;
@@ -523,32 +644,31 @@ public static class IterationCommand
                 return 2;
             }
 
-            if (!specRev.HasValue)
+            var (specRevOk, resolvedSpecRev, specRevErr) = DocumentRevisionResolver.ResolveExpectedRevision(
+                discoveredRoot,
+                $"{iterId}/spec.xml",
+                specRev);
+            if (!specRevOk || specRevErr != null)
             {
-                if (int.TryParse(specDoc.Root?.Attribute("revision")?.Value, out var parsedSpecRev))
-                    specRev = parsedSpecRev;
-                else
-                    specRev = 1;
+                var envelope = new DiagnosticsEnvelope("iteration activate", specRevErr!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
             }
+            specRev = resolvedSpecRev;
 
-            if (!tasksRev.HasValue && File.Exists(tasksPath))
+            if (File.Exists(tasksPath) || tasksRev.HasValue)
             {
-                try
+                var (tasksRevOk, resolvedTasksRev, tasksRevErr) = DocumentRevisionResolver.ResolveExpectedRevision(
+                    discoveredRoot,
+                    $"{iterId}/tasks.xml",
+                    tasksRev);
+                if (!tasksRevOk || tasksRevErr != null)
                 {
-                    var tasksDoc = XDocument.Load(tasksPath);
-                    if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var parsedTasksRev))
-                        tasksRev = parsedTasksRev;
-                    else
-                        tasksRev = 1;
+                    var envelope = new DiagnosticsEnvelope("iteration activate", tasksRevErr!);
+                    Console.Error.Write(envelope.Format(format));
+                    return 2;
                 }
-                catch
-                {
-                    tasksRev = 1;
-                }
-            }
-            else if (!tasksRev.HasValue)
-            {
-                tasksRev = 1;
+                tasksRev = resolvedTasksRev;
             }
 
             var nowUtc = DateTimeOffset.UtcNow;
@@ -589,6 +709,7 @@ public static class IterationCommand
                 design.AppendLine("  </design>");
             }
 
+            var tasksRevLine = tasksRev.HasValue ? $"  expected_tasks_revision=\"{tasksRev.Value}\"\n" : "";
             var confirmXml = $"""
 <?xml version="1.0" encoding="utf-8"?>
 <iteration-confirmation
@@ -596,8 +717,7 @@ public static class IterationCommand
   iteration="{iterId}"
   action="activate"
   expected_spec_revision="{specRev}"
-  expected_tasks_revision="{tasksRev}"
-  actor="{actor}"
+{tasksRevLine}  actor="{actor}"
   decided_at="{isoTime}">
   <summary>{SecurityElement.Escape(summary)}</summary>
 {reqs}{design}</iteration-confirmation>
@@ -738,33 +858,29 @@ public static class IterationCommand
                 return 2;
             }
 
-            if (!specRev.HasValue)
+            var (specRevOk, resolvedSpecRev, specRevErr) = DocumentRevisionResolver.ResolveExpectedRevision(
+                discoveredRoot,
+                $"{iterId}/spec.xml",
+                specRev);
+            if (!specRevOk || specRevErr != null)
             {
-                if (int.TryParse(specDoc.Root?.Attribute("revision")?.Value, out var parsedSpecRev))
-                    specRev = parsedSpecRev;
-                else
-                    specRev = 1;
+                var envelope = new DiagnosticsEnvelope("iteration complete", specRevErr!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
             }
+            specRev = resolvedSpecRev;
 
-            if (!tasksRev.HasValue && File.Exists(tasksPath))
+            var (tasksRevOk, resolvedTasksRev, tasksRevErr) = DocumentRevisionResolver.ResolveExpectedRevision(
+                discoveredRoot,
+                $"{iterId}/tasks.xml",
+                tasksRev);
+            if (!tasksRevOk || tasksRevErr != null)
             {
-                try
-                {
-                    var tasksDoc = XDocument.Load(tasksPath);
-                    if (int.TryParse(tasksDoc.Root?.Attribute("revision")?.Value, out var parsedTasksRev))
-                        tasksRev = parsedTasksRev;
-                    else
-                        tasksRev = 1;
-                }
-                catch
-                {
-                    tasksRev = 1;
-                }
+                var envelope = new DiagnosticsEnvelope("iteration complete", tasksRevErr!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
             }
-            else if (!tasksRev.HasValue)
-            {
-                tasksRev = 1;
-            }
+            tasksRev = resolvedTasksRev;
 
             var nowUtc = DateTimeOffset.UtcNow;
             var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
@@ -785,6 +901,31 @@ public static class IterationCommand
                     acceptance.AppendLine(CultureInfo.InvariantCulture, $"    <criterion target=\"{critId}\" decision=\"accepted\"/>");
                 }
                 acceptance.AppendLine("  </acceptance>");
+            }
+            else if (string.Equals((string?)specDoc.Root?.Attribute("status"), "completed", StringComparison.OrdinalIgnoreCase))
+            {
+                var lastComplete = specDoc.Root?.Element("confirmations")?.Elements("confirmation")
+                    .LastOrDefault(c => string.Equals((string?)c.Attribute("action"), "complete", StringComparison.OrdinalIgnoreCase));
+                if (lastComplete != null)
+                {
+                    confirmId = (string?)lastComplete.Attribute("id") ?? confirmId;
+                    isoTime = (string?)lastComplete.Attribute("decided_at") ?? isoTime;
+                    actor = (string?)lastComplete.Attribute("actor") ?? actor;
+                    summary = lastComplete.Element("summary")?.Value ?? summary;
+
+                    var lastAcceptance = lastComplete.Element("acceptance");
+                    if (lastAcceptance != null)
+                    {
+                        acceptance.AppendLine("  <acceptance>");
+                        foreach (var crit in lastAcceptance.Elements("criterion"))
+                        {
+                            var target = (string?)crit.Attribute("target");
+                            var decision = (string?)crit.Attribute("decision") ?? "accepted";
+                            acceptance.AppendLine(CultureInfo.InvariantCulture, $"    <criterion target=\"{target}\" decision=\"{decision}\"/>");
+                        }
+                        acceptance.AppendLine("  </acceptance>");
+                    }
+                }
             }
 
             var confirmXml = $"""
@@ -814,13 +955,159 @@ public static class IterationCommand
 
             if (envelopeResult != null)
             {
-                Console.Out.Write(envelopeResult.Format(format));
+                Console.Out.Write(FormatCompletionEnvelope(envelopeResult, format));
             }
 
             return 0;
         });
 
         return cmd;
+    }
+
+    private static Command BuildCriterionCommand()
+    {
+        var criterionCmd = new Command("criterion", "Author and manage iteration acceptance criteria (mutating)");
+
+        int ExecuteCriterionAction(
+            string commandName,
+            string? explicitIterId,
+            string? text,
+            string? targetId,
+            bool isAdd,
+            int? expectedSpecRev,
+            string? workspaceRoot,
+            string? formatArg)
+        {
+            var format = WorkspaceCommand.ResolveFormat(formatArg);
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                var envelope = new DiagnosticsEnvelope(commandName, Diagnostic.Error(
+                    DiagnosticCodes.CriterionUndefined,
+                    "--text option is required and cannot be blank."));
+                Console.Error.Write(envelope.Format(format));
+                return 5;
+            }
+
+            var (discoverSuccess, discoveredRoot, discoverError) = WorkspaceDiscovery.FindWorkspaceRoot(
+                workspaceRoot,
+                Environment.CurrentDirectory);
+
+            if (!discoverSuccess || discoverError != null)
+            {
+                var envelope = new DiagnosticsEnvelope(commandName, discoverError!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var iterId = ResolveIterationId(explicitIterId, discoveredRoot);
+            if (string.IsNullOrWhiteSpace(iterId))
+            {
+                var envelope = new DiagnosticsEnvelope(commandName, Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "--iteration is required when multiple or zero candidate iterations exist."));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var (success, envelopeResult, diagnostics) = isAdd
+                ? IterationCriterionAuthor.Add(
+                    discoveredRoot,
+                    iterId,
+                    text,
+                    criterionId: targetId,
+                    expectedSpecRevision: expectedSpecRev)
+                : IterationCriterionAuthor.Define(
+                    discoveredRoot,
+                    iterId,
+                    text,
+                    criterionId: targetId,
+                    expectedSpecRevision: expectedSpecRev);
+
+            if (!success || diagnostics.Count > 0)
+            {
+                var diagEnvelope = new DiagnosticsEnvelope(commandName, diagnostics);
+                Console.Error.Write(diagEnvelope.Format(format));
+                return diagEnvelope.GetExitCode();
+            }
+
+            if (envelopeResult != null)
+            {
+                Console.Out.Write(envelopeResult.Format(format));
+            }
+
+            return 0;
+        }
+
+        Command BuildSetOrDefineCommand(string cmdName)
+        {
+            var cmd = new Command(cmdName, "Define or replace an acceptance criterion (mutating)");
+            var iterOpt = new Option<string?>("--iteration") { Description = "Iteration identifier (omitted auto-resolves candidate iteration)" };
+            var textOpt = new Option<string>("--text") { Description = "Acceptance criterion text", Required = true };
+            var critIdOpt = new Option<string?>("--criterion-id") { Description = "Target criterion ID or 1-based index (omitted targets single undefined criterion or single criterion)" };
+            var revOpt = new Option<int?>("--expected-spec-revision") { Description = "Expected revision of spec.xml (optimistic concurrency check)" };
+            var wsOpt = new Option<string?>("--workspace-root") { Description = "Explicit path to workspace root or project directory containing .dogdouspec" };
+            var fmtOpt = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+            fmtOpt.AcceptOnlyFromAmong("xml", "human");
+
+            cmd.Add(iterOpt);
+            cmd.Add(textOpt);
+            cmd.Add(critIdOpt);
+            cmd.Add(revOpt);
+            cmd.Add(wsOpt);
+            cmd.Add(fmtOpt);
+            cmd.SetAction(parseResult =>
+            {
+                return ExecuteCriterionAction(
+                    $"iteration criterion {cmdName}",
+                    parseResult.GetValue(iterOpt),
+                    parseResult.GetValue(textOpt),
+                    parseResult.GetValue(critIdOpt),
+                    isAdd: false,
+                    parseResult.GetValue(revOpt),
+                    parseResult.GetValue(wsOpt),
+                    parseResult.GetValue(fmtOpt));
+            });
+            return cmd;
+        }
+
+        var setCmd = BuildSetOrDefineCommand("set");
+        var defineCmd = BuildSetOrDefineCommand("define");
+
+        // Subcommand: add
+        var addCmd = new Command("add", "Add a new acceptance criterion (mutating)");
+        var addIterOpt = new Option<string?>("--iteration") { Description = "Iteration identifier (omitted auto-resolves candidate iteration)" };
+        var addTextOpt = new Option<string>("--text") { Description = "Acceptance criterion text", Required = true };
+        var addCritIdOpt = new Option<string?>("--criterion-id") { Description = "Explicit criterion ID (omitted auto-generates deterministic ID)" };
+        var addRevOpt = new Option<int?>("--expected-spec-revision") { Description = "Expected revision of spec.xml (optimistic concurrency check)" };
+        var addWsOpt = new Option<string?>("--workspace-root") { Description = "Explicit path to workspace root or project directory containing .dogdouspec" };
+        var addFmtOpt = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        addFmtOpt.AcceptOnlyFromAmong("xml", "human");
+
+        addCmd.Add(addIterOpt);
+        addCmd.Add(addTextOpt);
+        addCmd.Add(addCritIdOpt);
+        addCmd.Add(addRevOpt);
+        addCmd.Add(addWsOpt);
+        addCmd.Add(addFmtOpt);
+        addCmd.SetAction(parseResult =>
+        {
+            return ExecuteCriterionAction(
+                "iteration criterion add",
+                parseResult.GetValue(addIterOpt),
+                parseResult.GetValue(addTextOpt),
+                parseResult.GetValue(addCritIdOpt),
+                isAdd: true,
+                parseResult.GetValue(addRevOpt),
+                parseResult.GetValue(addWsOpt),
+                parseResult.GetValue(addFmtOpt));
+        });
+
+        criterionCmd.Add(setCmd);
+        criterionCmd.Add(defineCmd);
+        criterionCmd.Add(addCmd);
+
+        return criterionCmd;
     }
 
     internal static string? ResolveIterationId(string? explicitId, string workspaceRoot)
@@ -844,5 +1131,44 @@ public static class IterationCommand
             return result.Iterations[0].Id;
 
         return null;
+    }
+
+    public const string KnowledgeGuidanceMessage =
+        "Record stable reusable facts that outlive this iteration with dogdouspec knowledge add; do not record task-local status, transcripts, or one-off attempts.";
+
+    internal static string FormatCompletionEnvelope(MutationEnvelope envelope, OutputFormat format)
+    {
+        if (format == OutputFormat.Xml)
+        {
+            var rawXml = envelope.ToXmlString();
+            var doc = XDocument.Parse(rawXml);
+            doc.Root?.Add(new XElement("guidance", KnowledgeGuidanceMessage));
+            var settings = new XmlWriterSettings
+            {
+                Indent = true,
+                IndentChars = "  ",
+                OmitXmlDeclaration = false,
+                Encoding = new UTF8Encoding(false),
+                NewLineHandling = NewLineHandling.Replace,
+                NewLineChars = "\n"
+            };
+            using var ms = new MemoryStream();
+            using (var writer = XmlWriter.Create(ms, settings))
+            {
+                doc.Save(writer);
+            }
+            return Encoding.UTF8.GetString(ms.ToArray()) + "\n";
+        }
+        else
+        {
+            var human = envelope.ToHumanString();
+            var sb = new StringBuilder(human);
+            if (!human.EndsWith('\n'))
+            {
+                sb.AppendLine();
+            }
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Guidance: {KnowledgeGuidanceMessage}");
+            return sb.ToString();
+        }
     }
 }

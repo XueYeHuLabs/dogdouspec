@@ -9,6 +9,7 @@ using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -29,7 +30,8 @@ public static class TaskSplitter
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         if (string.IsNullOrWhiteSpace(workspaceRoot))
         {
@@ -70,6 +72,15 @@ public static class TaskSplitter
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         var normTasksDocPath = $"{normIterId}/tasks.xml";
@@ -290,7 +301,7 @@ public static class TaskSplitter
         var parentTask = matchingTasks[0];
         if (DateTimeOffset.TryParse(parentTask.Attribute("updated_at")?.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parentUpdatedAt) && reqOccurredAt < parentUpdatedAt)
         {
-            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"task-split @occurred_at '{occurredAt}' cannot be earlier than parent task updated_at '{parentTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"task-split @occurred_at '{occurredAt}' cannot be earlier than parent task updated_at '{parentTask.Attribute("updated_at")?.Value}'. Minimal acceptable timestamp is '{parentTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
         }
         var parentStatus = parentTask.Attribute("status")?.Value ?? "pending";
 
@@ -404,9 +415,17 @@ public static class TaskSplitter
                 using var fs = File.OpenRead(doc.FullPath);
                 using var r = SecureXmlReaderFactory.CreateReader(fs);
                 var xDoc = XDocument.Load(r);
-                if (xDoc.Descendants().Any(e => string.Equals((string?)e.Attribute("operation_id"), splitId, StringComparison.Ordinal)))
+                var conflictingElem = xDoc.Descendants().FirstOrDefault(e => string.Equals((string?)e.Attribute("operation_id"), splitId, StringComparison.Ordinal));
+                if (conflictingElem != null)
                 {
-                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Operation ID '{splitId}' already exists in document '{doc.RelativePath}'.", normTasksDocPath) });
+                    var conflictingTaskId = conflictingElem.Ancestors("task").FirstOrDefault()?.Attribute("id")?.Value
+                        ?? (string.Equals(conflictingElem.Name.LocalName, "task", StringComparison.Ordinal) ? (string?)conflictingElem.Attribute("id") : null);
+
+                    if (!string.IsNullOrEmpty(conflictingTaskId))
+                    {
+                        return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Operation ID '{splitId}' already exists under conflicting task '{conflictingTaskId}' in '{doc.RelativePath}'. Target task is '{taskId}'. Request IDs are document-scoped; generate a unique operation ID for target task '{taskId}' or do not reuse an ID from another task.", normTasksDocPath) });
+                    }
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Operation ID '{splitId}' already exists in document '{doc.RelativePath}'. Target task is '{taskId}'. Request IDs are document-scoped; generate a unique operation ID for target task '{taskId}'.", normTasksDocPath) });
                 }
             }
             catch { }
@@ -468,27 +487,7 @@ public static class TaskSplitter
         tasksRoot.SetAttributeValue("revision", newRevision.ToString(CultureInfo.InvariantCulture));
 
         // 5. Serialize and Commit
-        var writerSettings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "  ",
-            OmitXmlDeclaration = false,
-            Encoding = Utf8NoBom,
-            NewLineHandling = NewLineHandling.Replace,
-            NewLineChars = "\n"
-        };
-
-        using var memoryStream = new MemoryStream();
-        using (var writer = XmlWriter.Create(memoryStream, writerSettings))
-        {
-            tasksDoc.Save(writer);
-        }
-
-        var replacementContent = Encoding.UTF8.GetString(memoryStream.ToArray());
-        if (!replacementContent.EndsWith('\n'))
-        {
-            replacementContent += "\n";
-        }
+        var replacementContent = ManagedDocumentSerializer.Serialize(tasksDoc);
 
         var operation = new TransactionDocumentOperation(
             normTasksDocPath,
@@ -503,7 +502,8 @@ public static class TaskSplitter
             clock,
             faultInjector,
             version,
-            correlationId: splitId);
+            correlationId: splitId,
+            dryRun: dryRun);
     }
 
     private static bool IsValidUtcTimestamp(string? value, out DateTimeOffset dto)

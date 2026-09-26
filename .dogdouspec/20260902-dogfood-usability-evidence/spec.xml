@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20260902-dogfood-usability-evidence" schema_version="1.0" revision="10" kind="feature" status="completed" created_at="2026-09-02T03:08:21Z" updated_at="2026-09-02T03:56:30Z" completed_at="2026-09-02T03:56:30Z">
+  <index>
+    <summary>Draft feature iteration dogfood-usability-evidence.</summary>
+    <term key="kind" value="feature" />
+    <term key="iteration" value="20260902-dogfood-usability-evidence" />
+    <term key="status" value="completed" />
+  <term key="topic" value="dogfood-usability-evidence" /></index>
+  <product>
+    <objective>Objective pending definition for 20260902-dogfood-usability-evidence.</objective>
+    <deliverables>
+      <deliverable id="20260902-deliv-dogfood-usability-evidence">
+        <index>
+          <summary>Initial deliverable placeholder for 20260902-dogfood-usability-evidence.</summary>
+          <term key="kind" value="deliverable" />
+        </index>
+        <description>Deliverable pending definition.</description>
+      </deliverable>
+    <deliverable id="20260902-deliv-guidance-convergence">
+        <index>
+          <summary>Phase 0: Guidance convergence 鈥?Skill, README, CLI help, and generated guidance all agree on implemented behavior.</summary>
+          <term key="kind" value="deliverable" />
+          <term key="phase" value="0" />
+        </index>
+        <description>Merge the two prior proposals, remove the canonical work-results concept, update Skill, README, installation guide, generated guidance, workflow documentation, and existing CLI help. Add tests for generated and displayed guidance. No new commands are advertised until implemented.</description>
+      </deliverable><deliverable id="20260902-deliv-schema-neutral-visibility">
+        <index>
+          <summary>Phase 1: Schema-neutral visibility 鈥?task list/show/summary, scope explanation, readiness dimensions, and read-only VCS status.</summary>
+          <term key="kind" value="deliverable" />
+          <term key="phase" value="1" />
+        </index>
+        <description>Implement task list/show/summary views, scope explanation with bounded worktree verification, readiness dimension reporting, and read-only VCS status and checkpoint planning diagnostics.</description>
+      </deliverable><deliverable id="20260902-deliv-mutation-porcelain">
+        <index>
+          <summary>Phase 2: Mutation porcelain 鈥?review approve/request-changes and additive revise.</summary>
+          <term key="kind" value="deliverable" />
+          <term key="phase" value="2" />
+        </index>
+        <description>Implement high-level task review approve, task review request-changes, and additive task revise forms that compile to the existing schema-validated mutation engine while preserving expected revisions, reviewer separation, and immutable terminal states.</description>
+      </deliverable><deliverable id="20260902-deliv-evidence-references">
+        <index>
+          <summary>Phase 3 (conditional): Evidence references 鈥?minimal schema evolution for external raw-payload references, only if dogfood demand remains.</summary>
+          <term key="kind" value="deliverable" />
+          <term key="phase" value="3" />
+        </index>
+        <description>If dogfood demand remains, define the smallest schema evolution for external raw-payload references. Keep semantic outcomes in Task records. Provide no managed output directory or general report store. Require explicit workspace upgrade and old-CLI fail-closed behavior.</description>
+      </deliverable><deliverable id="20260902-deliv-readonly-aggregation">
+        <index>
+          <summary>Phase 4: Read-only workspace aggregation 鈥?bounded explicit members, per-workspace diagnostics, no shared authority.</summary>
+          <term key="kind" value="deliverable" />
+          <term key="phase" value="4" />
+        </index>
+        <description>Bounded aggregation over explicitly named workspace roots or an external member manifest. Takes no writer locks, performs no recursive discovery, mutates no child workspace, and reports each member independently.</description>
+      </deliverable></deliverables>
+    <scope>
+      <included><item>SKILL.md and generated AGENTS.md update: semantic results belong in Task records; no external report directory is authoritative.</item><item>README and installation guidance update: managed .dogdouspec/ documents versioned in Git-backed Mode B repositories; _tmp/ remains runtime-only.</item><item>Initialized _skill/README.md explaining result ownership, checkpoint responsibility, and Git authority boundaries.</item><item>Existing root, workspace, workspace init, skill, and skill sync CLI help corrections 鈥?no proposed commands listed as available.</item><item>Normative workflow documentation including the stop/handoff checkpoint check sequence (validate, query, git status).</item><item>Phased usability porcelain (phases 1-4) as separately approved CLI and schema work.</item><item>Read-only VCS diagnostics: workspace vcs-status and workspace checkpoint-plan.</item><item>Task visibility: task list, task show, task summary.</item><item>Scope explanation: task scope explain with --worktree verification mode.</item><item>Readiness dimensions: execution terminality, verification completeness, blocking findings, product confirmation state, VCS checkpoint state.</item></included>
+      <excluded><item>Automatic git add, git commit, push, tag, or branch mutation.</item><item>Detached evidence registry, report database, or managed work-results tree.</item><item>Retention of raw prompts, chat transcripts, provider telemetry, mutation envelopes, or hidden chain-of-thought by default.</item><item>Embedding large binary or high-volume payloads in XML.</item><item>Automatic product acceptance or iteration confirmation by an agent.</item><item>Shared cross-workspace transaction, lock, or central catalog.</item><item>Advertisement of proposed commands in current CLI help before implementation.</item></excluded>
+    </scope>
+    <requirements>
+      <requirement id="20260902-req-dogfood-usability-evidence" status="approved">
+        <index>
+          <summary>Initial proposed requirement for 20260902-dogfood-usability-evidence.</summary>
+          <term key="kind" value="requirement" />
+        </index>
+        <statement>Requirement statement pending definition.</statement>
+        <rationale>Rationale pending definition.</rationale>
+      </requirement>
+    <requirement id="20260902-req-result-ownership" status="approved">
+    <index>
+      <summary>Semantic agent results must have exactly one persisted owner in tasks.xml Task records.</summary>
+      <term key="area" value="ownership-model" />
+    </index>
+    <statement>Every durable semantic execution fact 鈥?implementation summary, changed files, commit identities, executed commands, exit codes, findings, risks, review disposition, blockers, and handoff instructions 鈥?must have exactly one persisted owner in tasks.xml. The same semantic report must not be maintained in both tasks.xml and a durable Markdown or JSON report.</statement>
+    <rationale>Dogfooding revealed agents naturally wrote detailed reports outside .dogdouspec/, duplicating Task state and making the iteration incomplete without an undocumented directory. Treating both external files and Task records as durable creates competing sources of truth.</rationale>
+  <records><record id="20260902T031200Z-reqprop-result-ownership-receipt" kind="discussion" status="informational" created_at="2026-09-02T03:12:00Z" actor="owner"><index><summary>Requirement proposal receipt.</summary><term key="request-sha256" value="2ca26712f014f7977525c13088854985768d07bfce26b4d4b1029895b36c930a" /></index><summary>Requirement proposal receipt. Operation 20260902T031200Z-reqprop-result-ownership.</summary></record></records></requirement><requirement id="20260902-req-external-evidence-boundary" status="approved">
+    <index>
+      <summary>Define a narrow external-evidence boundary for data intrinsically unsuitable for XML embedding.</summary>
+      <term key="area" value="ownership-model" />
+    </index>
+    <statement>Data that is inherently too large or binary for managed XML (ETL traces, crash dumps, packages, screenshots, complete test logs, coverage bundles, benchmark datasets) may be stored in a repository-approved artifact system. The owning Task record must contain the semantic outcome and, when needed, a stable locator, digest, media kind, size, producer, and coverage relationship. Losing the payload may reduce audit depth but must not erase the iteration's semantic outcome.</statement>
+    <rationale>Embedding complete logs, traces, or binaries in XML bloats managed documents and harms bounded XPath access. However, losing all reference to such evidence removes audit depth. The correct boundary is semantic ownership, not file format.</rationale>
+  <records><record id="20260902T031300Z-reqprop-external-evidence-boundary-receipt" kind="discussion" status="informational" created_at="2026-09-02T03:13:00Z" actor="owner"><index><summary>Requirement proposal receipt.</summary><term key="request-sha256" value="77507ac69b588a47003e181b63c53598c3e85c300329f33eb6a90c7ed6b7d1b7" /></index><summary>Requirement proposal receipt. Operation 20260902T031300Z-reqprop-external-evidence-boundary.</summary></record></records></requirement><requirement id="20260902-req-no-work-results-dependency" status="approved">
+    <index>
+      <summary>Remove any dependency on .agents/work-results/ for iteration recovery, review, or handoff.</summary>
+      <term key="area" value="ownership-model" />
+    </index>
+    <statement>The workflow must remain recoverable after all temporary worker output is deleted. DogdouSpec must not reserve or standardize .agents/work-results/ as a canonical hierarchy, persistence boundary, or recovery dependency. Deleting every .agents/work-results/ directory must not affect validation, recovery, review, readiness, or handoff.</statement>
+    <rationale>During dogfooding, agents wrote to .agents/work-results/ as a second persistence model, making handoff depend on non-authoritative files that could be absent in another worktree or later session.</rationale>
+  <records><record id="20260902T031400Z-reqprop-no-work-results-dependency-receipt" kind="discussion" status="informational" created_at="2026-09-02T03:14:00Z" actor="owner"><index><summary>Requirement proposal receipt.</summary><term key="request-sha256" value="148ef3bacaa06421253fa778f95c4d2b5d7376aeecf25c93a7fba2429a079496" /></index><summary>Requirement proposal receipt. Operation 20260902T031400Z-reqprop-no-work-results-dependency.</summary></record></records></requirement><requirement id="20260902-req-vcs-checkpoint-contract" status="approved">
+    <index>
+      <summary>Define Git checkpoint and handoff expectations for authoritative .dogdouspec/ state in Git-backed workspaces.</summary>
+      <term key="area" value="vcs-checkpoint" />
+    </index>
+    <statement>A Git-backed Mode B workspace must checkpoint validated authoritative .dogdouspec/ state before: iteration activation or owner adoption; material requirement/acceptance/scope/dependency/replanning decisions; Task transfer/split/supersession/cancellation/completion/review disposition; handoff to another agent/worktree/host; pausing for external blockers; release/deployment/verification gates; and iteration confirmation or closure. DogdouSpec must never infer Git mutation authority. Untracked or dirty authoritative XML must be reported as locally durable but not transport-ready, naming the exact uncheckpointed files.</statement>
+    <rationale>During dogfooding, valid product commits existed while active spec.xml and tasks.xml remained untracked. The implementation was committed but the governing iteration was not transport-ready, creating a handoff dependency on one worktree.</rationale>
+  <records><record id="20260902T031500Z-reqprop-vcs-checkpoint-contract-receipt" kind="discussion" status="informational" created_at="2026-09-02T03:15:00Z" actor="owner"><index><summary>Requirement proposal receipt.</summary><term key="request-sha256" value="306bbb5a9917d33643eb5c0e8aaf227fba23bd904abe5ace2f7fd4ddc6252895" /></index><summary>Requirement proposal receipt. Operation 20260902T031500Z-reqprop-vcs-checkpoint-contract.</summary></record></records></requirement><requirement id="20260902-req-guidance-convergence" status="approved">
+    <index>
+      <summary>Keep documentation, generated guidance, Skill content, installation instructions, and CLI help consistent with implemented behavior.</summary>
+      <term key="area" value="guidance-convergence" />
+    </index>
+    <statement>Before new porcelain or schema work: SKILL.md and generated AGENTS.md must state semantic results belong in Task records and no external report directory is authoritative; README and installation guidance must state managed .dogdouspec/ documents should be versioned while _tmp/ remains runtime-only; initialized _skill/README.md must explain result ownership, checkpoint responsibility, and Git authority boundaries; existing CLI help must not list proposed commands as available. Proposed porcelain must remain labeled as proposed in documentation until separately implemented and tested.</statement>
+    <rationale>Dogfooding exposed that guidance surfaces were inconsistent with each other and with implemented behavior, causing agent confusion about result ownership, checkpoint responsibility, and authority boundaries.</rationale>
+  <records><record id="20260902T031600Z-reqprop-guidance-convergence-receipt" kind="discussion" status="informational" created_at="2026-09-02T03:16:00Z" actor="owner"><index><summary>Requirement proposal receipt.</summary><term key="request-sha256" value="21fd7cd39fb1f9582545df0a92179014591b7f566e4266e969d17d52f6c67419" /></index><summary>Requirement proposal receipt. Operation 20260902T031600Z-reqprop-guidance-convergence.</summary></record></records></requirement><requirement id="20260902-req-usability-porcelain" status="approved">
+    <index>
+      <summary>Improve scope, review, revise, visibility, readiness, and aggregation UX without weakening schema or authority gates.</summary>
+      <term key="area" value="usability-porcelain" />
+    </index>
+    <statement>Implement phased usability improvements: Phase 1 鈥?task list/show/summary, task scope explain with --worktree mode, readiness dimension reporting, read-only workspace vcs-status and workspace checkpoint-plan. Phase 2 鈥?task review approve, task review request-changes, and additive task revise. Phase 3 (conditional) 鈥?minimal schema evolution for external raw-payload references only if dogfood demand remains. Phase 4 鈥?bounded read-only workspace aggregation over explicitly named roots. All commands must preserve expected revisions, reviewer separation, immutable terminal states, and raw XML fallback.</statement>
+    <rationale>Several common activities require raw XPath or XML request payloads, reducing usability. Porcelain must compile to the existing schema-validated mutation engine and must not introduce another authority store or weaken owner confirmation requirements.</rationale>
+  <records><record id="20260902T031700Z-reqprop-usability-porcelain-receipt" kind="discussion" status="informational" created_at="2026-09-02T03:17:00Z" actor="owner"><index><summary>Requirement proposal receipt.</summary><term key="request-sha256" value="9cd713cfac2ed8dfc9b1a76625cf5c07b3bdb4dfab9469ce19d4a602580bba26" /></index><summary>Requirement proposal receipt. Operation 20260902T031700Z-reqprop-usability-porcelain.</summary></record></records></requirement></requirements>
+    <acceptance>
+      <criterion id="20260902-crit-dogfood-usability-evidence" decision="accepted">Product criterion pending definition.</criterion>
+    <criterion id="20260902-crit-no-work-results" decision="accepted">Deleting every .agents/work-results/ directory does not affect validation, recovery, review, readiness, or handoff.</criterion><criterion id="20260902-crit-task-resumable" decision="accepted">A Task can be resumed from tasks.xml with its implementation summary, source commits, checks, findings, review state, risks, blocker, and next action intact.</criterion><criterion id="20260902-crit-no-raw-prompts" decision="accepted">Raw prompts, chats, mutation envelopes, and provider telemetry are absent from default persisted state.</criterion><criterion id="20260902-crit-external-evidence-auditable" decision="accepted">Large external evidence can be audited through a Task-owned locator and digest without duplicating its bytes in XML.</criterion><criterion id="20260902-crit-checkpoint-distinction" decision="accepted">Git-backed guidance distinguishes document commits from VCS checkpoints and ignores only .dogdouspec/_tmp/ by default.</criterion><criterion id="20260902-crit-handoff-fails-closed" decision="accepted">Handoff reports fail closed when authoritative documents are untracked or dirty relative to the intended checkpoint.</criterion><criterion id="20260902-crit-no-git-write" decision="accepted">DogdouSpec never performs a Git write without explicit user or repository authority.</criterion><criterion id="20260902-crit-cli-help-accurate" decision="accepted">Current CLI help documents only implemented commands; proposed porcelain remains labeled as proposed.</criterion><criterion id="20260902-crit-skill-sync-consistent" decision="accepted">Skill sync and workspace initialization generate guidance consistent with these rules.</criterion><criterion id="20260902-crit-owner-confirmation-required" decision="accepted">Owner confirmation remains required for product acceptance and iteration closure.</criterion></acceptance>
+  </product>
+  <confirmations><confirmation id="20260902T031800Z-confirm-activate" action="activate" decision="accepted" actor="owner" decided_at="2026-09-02T03:18:00Z"><summary>Owner activation of 20260902-dogfood-usability-evidence iteration approving baseline requirements.</summary><requirements>
+    <requirement target="20260902-req-dogfood-usability-evidence" decision="approved" />
+    <requirement target="20260902-req-result-ownership" decision="approved" />
+    <requirement target="20260902-req-external-evidence-boundary" decision="approved" />
+    <requirement target="20260902-req-no-work-results-dependency" decision="approved" />
+    <requirement target="20260902-req-vcs-checkpoint-contract" decision="approved" />
+    <requirement target="20260902-req-guidance-convergence" decision="approved" />
+    <requirement target="20260902-req-usability-porcelain" decision="approved" />
+  </requirements></confirmation><confirmation id="20260902T035630Z-confirm-complete" action="complete" decision="accepted" actor="owner" decided_at="2026-09-02T03:56:30Z"><summary>Complete iteration 20260902-dogfood-usability-evidence</summary><rationale>All 4 tasks completed and verified with 687 passing unit/integration tests, zero errors, and zero warnings.</rationale><acceptance>
+    <criterion target="20260902-crit-dogfood-usability-evidence" decision="accepted" />
+    <criterion target="20260902-crit-no-work-results" decision="accepted" />
+    <criterion target="20260902-crit-task-resumable" decision="accepted" />
+    <criterion target="20260902-crit-no-raw-prompts" decision="accepted" />
+    <criterion target="20260902-crit-external-evidence-auditable" decision="accepted" />
+    <criterion target="20260902-crit-checkpoint-distinction" decision="accepted" />
+    <criterion target="20260902-crit-handoff-fails-closed" decision="accepted" />
+    <criterion target="20260902-crit-no-git-write" decision="accepted" />
+    <criterion target="20260902-crit-cli-help-accurate" decision="accepted" />
+    <criterion target="20260902-crit-skill-sync-consistent" decision="accepted" />
+    <criterion target="20260902-crit-owner-confirmation-required" decision="accepted" />
+  </acceptance></confirmation></confirmations>
+</iteration>
+
+

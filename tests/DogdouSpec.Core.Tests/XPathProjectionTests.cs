@@ -551,4 +551,81 @@ public sealed class XPathProjectionTests
         Assert.AreEqual(7, ex.ExitCode);
         Assert.IsTrue(ex.Message.Contains("50000", StringComparison.Ordinal));
     }
+
+    [TestMethod]
+    public void Filter_NameAndNamespaceUri_AcceptedWithoutSyntaxError()
+    {
+        var doc = CreateTestDoc("tasks.xml", """
+            <?xml version="1.0" encoding="utf-8"?>
+            <tasks id="t" revision="1">
+              <task id="T1" status="pending">
+                <title>Test</title>
+              </task>
+            </tasks>
+            """);
+
+        var resName = XPathQueryEngine.EvaluateDocument(
+            _tempDir,
+            doc,
+            "ds:filter(//task, '@id', 'name()')",
+            null);
+
+        Assert.AreEqual(1, resName.Nodes.Count);
+        Assert.AreEqual("T1", resName.Nodes[0].GetAttribute("id", ""));
+
+        var resNs = XPathQueryEngine.EvaluateDocument(
+            _tempDir,
+            doc,
+            "ds:filter(//task, '@id', 'namespace-uri()')",
+            null);
+
+        Assert.AreEqual(1, resNs.Nodes.Count);
+        Assert.AreEqual("T1", resNs.Nodes[0].GetAttribute("id", ""));
+    }
+
+    [TestMethod]
+    public void Filter_AttributePredicatesOnMembers_FiltersProperly()
+    {
+        var doc = CreateTestDoc("tasks.xml", """
+            <?xml version="1.0" encoding="utf-8"?>
+            <tasks id="t" revision="1">
+              <task id="T1" status="pending">
+                <title lang="en">English Title</title>
+              </task>
+              <task id="T2" status="done">
+                <title lang="zh">Chinese Title</title>
+              </task>
+            </tasks>
+            """);
+
+        // Filter title with attribute predicate @lang='en'
+        var res1 = XPathQueryEngine.EvaluateDocument(
+            _tempDir,
+            doc,
+            "ds:filter(//task, '@id', 'title[@lang=\"en\"]')",
+            null);
+
+        Assert.AreEqual(2, res1.Nodes.Count);
+        // T1 has title
+        var t1 = res1.Nodes[0];
+        Assert.AreEqual("T1", t1.GetAttribute("id", ""));
+        Assert.IsTrue(t1.Clone().MoveToChild("title", ""));
+        // T2 title excluded because lang != en
+        var t2 = res1.Nodes[1];
+        Assert.AreEqual("T2", t2.GetAttribute("id", ""));
+        Assert.IsFalse(t2.Clone().MoveToChild("title", ""));
+
+        // Filter attribute with predicate
+        var res2 = XPathQueryEngine.EvaluateDocument(
+            _tempDir,
+            doc,
+            "ds:filter(//task, '@id[@status=\"done\"]')",
+            null);
+
+        Assert.AreEqual(2, res2.Nodes.Count);
+        // T1 has no @id because status != done
+        Assert.AreEqual(string.Empty, res2.Nodes[0].GetAttribute("id", ""));
+        // T2 has @id because status == done
+        Assert.AreEqual("T2", res2.Nodes[1].GetAttribute("id", ""));
+    }
 }

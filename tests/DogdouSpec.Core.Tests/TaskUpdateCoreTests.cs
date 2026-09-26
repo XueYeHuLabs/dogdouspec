@@ -174,14 +174,20 @@ public sealed class TaskUpdateCoreTests
   transition="resume"
   actor="codex"
   occurred_at="2026-08-23T05:20:00Z">
+  <resolve-records>
+    <record target="20260823T051000Z-record-blocker"/>
+  </resolve-records>
   <records>
     <record
       id="20260823T052000Z-record-resume"
-      kind="handoff"
-      status="informational"
+      kind="resolution"
+      status="resolved"
       created_at="2026-08-23T05:20:00Z"
       actor="codex">
       <summary>Resuming task.</summary>
+      <covers>
+        <ref scope="document" target="20260823T051000Z-record-blocker" relation="resolves"/>
+      </covers>
     </record>
   </records>
 </task-update>
@@ -219,6 +225,12 @@ public sealed class TaskUpdateCoreTests
       created_at="2026-08-23T05:30:00Z"
       actor="codex">
       <summary>Ready for verification.</summary>
+      <covers>
+        <ref scope="document" target="20260823-taskaccept-filter-members" relation="covers"/>
+        <ref scope="document" target="20260823-taskaccept-filterout-members" relation="covers"/>
+        <ref scope="document" target="20260823-taskaccept-filter-composition" relation="covers"/>
+        <ref scope="document" target="20260823-taskaccept-result-limit" relation="covers"/>
+      </covers>
     </record>
   </records>
 </task-update>
@@ -705,7 +717,75 @@ public sealed class TaskUpdateCoreTests
             requestXml: req2);
 
         Assert.IsFalse(s2);
-        Assert.IsTrue(d2.Any(d => d.Code == DiagnosticCodes.IdempotencyConflict));
+        var conflictDiag = d2.FirstOrDefault(d => d.Code == DiagnosticCodes.IdempotencyConflict);
+        Assert.IsNotNull(conflictDiag);
+        Assert.IsTrue(conflictDiag.Message.Contains("20260823-task-task-history"), "Should contain conflicting task ID");
+        Assert.IsTrue(conflictDiag.Message.Contains("20260823-task-atomic-update"), "Should contain target task ID");
+        Assert.IsTrue(conflictDiag.Message.Contains("document-scoped"), "Should note document-scoped");
+    }
+
+    [TestMethod]
+    public void TaskUpdate_CrossTaskRecordIdCollision_StatesBothTasksAndDocumentScoped()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var req1 = """
+<task-update
+  id="20260823T065100Z-update-rec-1"
+  transition="start"
+  actor="codex"
+  occurred_at="2026-08-23T06:51:00Z">
+  <records>
+    <record
+      id="20260823T065100Z-record-colliding"
+      kind="start"
+      status="informational"
+      created_at="2026-08-23T06:51:00Z"
+      actor="codex">
+      <summary>Record on first task.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+        var (s1, _, _) = TaskUpdater.Update(
+            workspace,
+            "20260823-xpath-core",
+            "20260823-task-task-history",
+            expectedRevision: 9,
+            requestXml: req1);
+        Assert.IsTrue(s1);
+
+        // Try using colliding record ID on second task with new operation ID
+        var req2 = """
+<task-update
+  id="20260823T065200Z-update-rec-2"
+  transition="start"
+  actor="codex"
+  occurred_at="2026-08-23T06:52:00Z">
+  <records>
+    <record
+      id="20260823T065100Z-record-colliding"
+      kind="start"
+      status="informational"
+      created_at="2026-08-23T06:52:00Z"
+      actor="codex">
+      <summary>Record on second task.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+        var (s2, _, d2) = TaskUpdater.Update(
+            workspace,
+            "20260823-xpath-core",
+            "20260823-task-atomic-update",
+            expectedRevision: 10,
+            requestXml: req2);
+
+        Assert.IsFalse(s2);
+        var conflictDiag = d2.FirstOrDefault(d => d.Code == DiagnosticCodes.IdempotencyConflict);
+        Assert.IsNotNull(conflictDiag);
+        Assert.IsTrue(conflictDiag.Message.Contains("20260823-task-task-history"), "Must name conflicting task ID");
+        Assert.IsTrue(conflictDiag.Message.Contains("20260823-task-atomic-update"), "Must name target task ID");
+        Assert.IsTrue(conflictDiag.Message.Contains("document-scoped"), "Must state that request IDs are document-scoped");
     }
 
     [TestMethod]
@@ -1138,10 +1218,57 @@ public sealed class TaskUpdateCoreTests
 
         Assert.IsFalse(success);
         Assert.IsNull(env);
-        Assert.IsTrue(diags.Any(d => d.Code == DiagnosticCodes.InvalidArgument && d.Message.Contains("cannot be earlier than")));
+        Assert.IsTrue(diags.Any(d => d.Code == DiagnosticCodes.InvalidArgument && d.Message.Contains("cannot be earlier than") && d.Message.Contains("Minimal acceptable timestamp is")));
 
         var afterBytes = File.ReadAllBytes(tasksPath);
         CollectionAssert.AreEqual(beforeBytes, afterBytes);
+    }
+
+    [TestMethod]
+    public void TaskUpdate_OccurredAtEqualToUpdatedAt_AllowedForRecordAppends()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260823-xpath-core";
+        var taskId = "20260823-task-task-history";
+        var tasksPath = Path.Combine(workspace, iterId, "tasks.xml");
+        var tasksDoc = XDocument.Load(tasksPath);
+        var taskElem = tasksDoc.Descendants("task").First(t => (string?)t.Attribute("id") == taskId);
+        var currentUpdatedAt = taskElem.Attribute("updated_at")!.Value;
+
+        var appendReq = $"""
+<task-update
+  id="20260823T080000Z-update-same-timestamp"
+  actor="codex"
+  occurred_at="{currentUpdatedAt}">
+  <records>
+    <record
+      id="20260823T080000Z-rec-same-timestamp"
+      kind="discussion"
+      status="informational"
+      created_at="{currentUpdatedAt}"
+      actor="codex"
+      operation_id="20260823T080000Z-update-same-timestamp">
+      <summary>Record append with occurred_at equal to updated_at.</summary>
+    </record>
+  </records>
+</task-update>
+""";
+
+        var (success, env, diags) = TaskUpdater.Update(
+            workspace,
+            iterId,
+            taskId,
+            expectedRevision: 9,
+            requestXml: appendReq);
+
+        Assert.IsTrue(success, string.Join("; ", diags.Select(d => d.Message)));
+        Assert.IsNotNull(env);
+        Assert.AreEqual(0, diags.Count);
+
+        var reloadedDoc = XDocument.Load(tasksPath);
+        var reloadedTask = reloadedDoc.Descendants("task").First(t => (string?)t.Attribute("id") == taskId);
+        Assert.AreEqual(currentUpdatedAt, (string?)reloadedTask.Attribute("updated_at"));
+        Assert.IsTrue(reloadedTask.Descendants("record").Any(r => (string?)r.Attribute("id") == "20260823T080000Z-rec-same-timestamp"));
     }
 
     [TestMethod]

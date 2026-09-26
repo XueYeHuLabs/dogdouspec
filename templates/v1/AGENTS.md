@@ -51,6 +51,10 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
      ```powershell
      dogdouspec query --document "<ITERATION_ID>/tasks.xml" --xpath "ds:filter(/tasks/task[@status='in-progress' or @status='verification'][1], '@id', '@status', '@agent', 'index')" --format xml
      ```
+     Or query bounded recovery context directly:
+     ```powershell
+     dogdouspec task context --task "<TASK_ID>" --format xml
+     ```
    - Phase 1b (If no task is in-progress, select first ready pending task):
      ```powershell
      dogdouspec task next --iteration "<ITERATION_ID>" --format xml
@@ -65,14 +69,22 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
    - Run `.\build.cmd` before and after changes. Ensure all test suites pass with 0 errors and 0 warnings.
 6. **Task Updates & State Transitions**:
    - Transition task: `pending` -> `start` (`in-progress`) -> `verify` (`verification`) -> `complete` (`done`).
+   - When obstructed by external dependencies, environment, or review gates: transition to `blocked` with `dogdouspec task block --task "<TASK_ID>" --summary "..." [--blocker-kind <KIND>] [--blocker-owner <OWNER>] [--blocker-review-at <TIMESTAMP>] [--condition "..."] [--next-action "..."]`.
+   - Inspect active blockers and recheck queues with `dogdouspec task blockers`.
+   - Resolve blockers and resume: `dogdouspec task resume --task "<TASK_ID>" (--finding <FINDING_ID> | --all) --summary "..."`.
    - Pass exact expected revisions (`--expected-revision <N>`).
    - After each write, run `dogdouspec validate --format xml` and re-query.
+   - Persist semantic agent results—implementation summary, source commits, checks, findings, risks, review outcome, blockers, and handoff instructions—in the relevant `tasks.xml` Task records. Do not rely on `.agents/work-results/` or another report folder for recovery.
 7. **Respect Product Authority Gates**:
    - Technical agents cannot auto-complete requirements, design decisions, or iterations.
    - Run `dogdouspec iteration readiness` to check gating status.
    - Only execute `iteration confirm` when explicitly instructed by the human owner in the current interaction.
 8. **Preserve User Work**:
    - Do not commit or push to git unless explicitly requested by the user.
+9. **Checkpoint Governed State**:
+   - In Git-backed Mode B work, inspect `git status --short -- .dogdouspec` at material lifecycle, review, handoff, external-blocker, and release boundaries.
+   - Version managed `.dogdouspec/` documents and ignore only `.dogdouspec/_tmp/`. If Git-write authority is absent, report the workspace as locally durable but not transport-ready and list the exact uncheckpointed files.
+   - Raw worker reports, prompts, mutation envelopes, and provider logs are transient by default. Only bulky raw evidence may remain external; summarize its outcome in the owning Task record.
 
 ## 3. Git Commit Guidelines
 
@@ -97,3 +109,5 @@ Title
   * Each line MUST be in all lowercase (except technical proper nouns, contains the first letter of a sentence).
   * Each line MUST end with a period (`.`).
   * Describes the detailed changes and rationale.
+* **Line Endings:**
+  * Use LF line endings only, no CRLF.

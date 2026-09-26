@@ -16,6 +16,10 @@ public sealed class IterationCreationAndListingTests
 {
     private static string RepoRoot = null!;
     private string _tempDir = null!;
+    private static readonly string[] TimestampFeatCriteria = new[] { "Timestamp feature acceptance criterion defined." };
+    private static readonly string[] FeatMultiCriteria = new[] { "Criterion first.", "Criterion second." };
+    private static readonly string[] ResSingleCriteria = new[] { "Research criterion single." };
+    private static readonly string[] ResMultiCriteria = new[] { "Research crit 1.", "Research crit 2." };
 
     [ClassInitialize]
     public static void ClassInit(TestContext context)
@@ -234,7 +238,8 @@ public sealed class IterationCreationAndListingTests
             workspace,
             iterId,
             "feature",
-            clock);
+            clock,
+            criteria: TimestampFeatCriteria);
 
         Assert.IsTrue(success, $"Creation failed: {string.Join("; ", diags.Select(d => d.Message))}");
         Assert.IsNotNull(env);
@@ -575,6 +580,127 @@ public sealed class IterationCreationAndListingTests
         Assert.IsTrue(diags.Any(d => d.Code == DiagnosticCodes.IterationIdMismatch || d.Code == DiagnosticCodes.TasksIterationMismatch));
         var envelope = new DiagnosticsEnvelope("iteration list", diags);
         Assert.AreEqual(3, envelope.GetExitCode());
+    }
+
+    [TestMethod]
+    public void SharedPolicy_ExactMatching_MatchesOnlyExactPlaceholdersAndBlanks()
+    {
+        // 1. Rejects exact placeholder literals
+        Assert.IsFalse(IterationCriterionPolicy.IsDefined("Product criterion pending definition."));
+        Assert.IsFalse(IterationCriterionPolicy.IsDefined("Research criterion pending definition."));
+        Assert.IsFalse(IterationCriterionPolicy.IsDefined("  Product criterion pending definition.  "));
+        Assert.IsFalse(IterationCriterionPolicy.IsDefined("  Research criterion pending definition.  "));
+
+        // 2. Rejects null, empty, whitespace
+        Assert.IsFalse(IterationCriterionPolicy.IsDefined(null));
+        Assert.IsFalse(IterationCriterionPolicy.IsDefined(string.Empty));
+        Assert.IsFalse(IterationCriterionPolicy.IsDefined("   \t\n  "));
+
+        // 3. Accepts legitimate prose containing placeholder words without fuzzy false positives
+        Assert.IsTrue(IterationCriterionPolicy.IsDefined("Product criterion pending definition must be resolved by sprint end."));
+        Assert.IsTrue(IterationCriterionPolicy.IsDefined("Review the research criterion pending definition note."));
+        Assert.IsTrue(IterationCriterionPolicy.IsDefined("Substantive defined acceptance criterion."));
+
+        // 4. Validate method returns structured failure reasons
+        var (valNull, reasonNull) = IterationCriterionPolicy.Validate(null, "crit-1");
+        Assert.IsFalse(valNull);
+        Assert.IsTrue(reasonNull!.Contains("cannot be blank or whitespace"));
+
+        var (valPlaceholder, reasonPlaceholder) = IterationCriterionPolicy.Validate("Product criterion pending definition.", "crit-2");
+        Assert.IsFalse(valPlaceholder);
+        Assert.IsTrue(reasonPlaceholder!.Contains("carries seeded placeholder literal"));
+
+        var (valValid, reasonValid) = IterationCriterionPolicy.Validate("Substantive criterion defined.", "crit-3");
+        Assert.IsTrue(valValid);
+        Assert.IsNull(reasonValid);
+    }
+
+    [TestMethod]
+    public void Create_FeatureAndResearch_DeterministicCriterionIds_AndXmlEscaping()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var fixedTime = new DateTime(2026, 8, 26, 10, 0, 0, DateTimeKind.Utc);
+        var clock = new TestClock(fixedTime);
+
+        // Feature with single criterion containing special XML characters
+        var featSingleId = "20260826-feat-single";
+        var specialText = "Criteria with <markup> & \"quotes\" and 'apostrophes'.";
+        var (f1Ok, _, _) = IterationCreator.Create(workspace, featSingleId, "feature", clock, criteria: new List<string> { specialText });
+        Assert.IsTrue(f1Ok);
+
+        var f1SpecDoc = XDocument.Load(Path.Combine(workspace, featSingleId, "spec.xml"));
+        var f1Crit = f1SpecDoc.Descendants("criterion").ToList();
+        Assert.AreEqual(1, f1Crit.Count);
+        Assert.AreEqual("20260826-crit-feat-single", f1Crit[0].Attribute("id")?.Value);
+        Assert.AreEqual(specialText, f1Crit[0].Value);
+
+        // Raw XML text check: ensures well-formed entity escaping
+        var f1RawXml = File.ReadAllText(Path.Combine(workspace, featSingleId, "spec.xml"));
+        Assert.IsTrue(f1RawXml.Contains("&lt;markup&gt;"));
+        Assert.IsTrue(f1RawXml.Contains("&amp;"));
+
+        // Feature with multiple criteria: deterministic 1-based indexing
+        var featMultiId = "20260826-feat-multi";
+        var (f2Ok, _, _) = IterationCreator.Create(workspace, featMultiId, "feature", clock, criteria: FeatMultiCriteria);
+        Assert.IsTrue(f2Ok);
+
+        var f2SpecDoc = XDocument.Load(Path.Combine(workspace, featMultiId, "spec.xml"));
+        var f2Crit = f2SpecDoc.Descendants("criterion").ToList();
+        Assert.AreEqual(2, f2Crit.Count);
+        Assert.AreEqual("20260826-crit-feat-multi-1", f2Crit[0].Attribute("id")?.Value);
+        Assert.AreEqual("20260826-crit-feat-multi-2", f2Crit[1].Attribute("id")?.Value);
+
+        // Research with single criterion
+        var resSingleId = "20260826-res-single";
+        var (r1Ok, _, _) = IterationCreator.Create(workspace, resSingleId, "research", clock, criteria: ResSingleCriteria);
+        Assert.IsTrue(r1Ok);
+
+        var r1SpecDoc = XDocument.Load(Path.Combine(workspace, resSingleId, "spec.xml"));
+        var r1Crit = r1SpecDoc.Descendants("criterion").ToList();
+        Assert.AreEqual(1, r1Crit.Count);
+        Assert.AreEqual("20260826-crit-res-single", r1Crit[0].Attribute("id")?.Value);
+
+        // Research with multiple criteria
+        var resMultiId = "20260826-res-multi";
+        var (r2Ok, _, _) = IterationCreator.Create(workspace, resMultiId, "research", clock, criteria: ResMultiCriteria);
+        Assert.IsTrue(r2Ok);
+
+        var r2SpecDoc = XDocument.Load(Path.Combine(workspace, resMultiId, "spec.xml"));
+        var r2Crit = r2SpecDoc.Descendants("criterion").ToList();
+        Assert.AreEqual(2, r2Crit.Count);
+        Assert.AreEqual("20260826-crit-res-multi-1", r2Crit[0].Attribute("id")?.Value);
+        Assert.AreEqual("20260826-crit-res-multi-2", r2Crit[1].Attribute("id")?.Value);
+
+        // Whole workspace validation
+        var valResult = SchemaValidator.Validate(workspace);
+        Assert.IsTrue(valResult.IsValid, string.Join("; ", valResult.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+    }
+
+    [TestMethod]
+    public void Create_Activate_WithoutCriteria_FailsAtomicallyInCore()
+    {
+        var workspace = CreateWorkspaceCopy();
+
+        // 1. Feature with null criteria
+        var nullFeatId = "20260826-feat-null";
+        var (fNullOk, _, fNullDiags) = IterationCreator.Create(workspace, nullFeatId, "feature", activate: true, criteria: null);
+        Assert.IsFalse(fNullOk);
+        Assert.IsTrue(fNullDiags.Any(d => d.Code == DiagnosticCodes.CriterionUndefined));
+        Assert.IsFalse(Directory.Exists(Path.Combine(workspace, nullFeatId)));
+
+        // 2. Feature with empty criteria array
+        var emptyFeatId = "20260826-feat-empty";
+        var (fEmptyOk, _, fEmptyDiags) = IterationCreator.Create(workspace, emptyFeatId, "feature", activate: true, criteria: Array.Empty<string>());
+        Assert.IsFalse(fEmptyOk);
+        Assert.IsTrue(fEmptyDiags.Any(d => d.Code == DiagnosticCodes.CriterionUndefined));
+        Assert.IsFalse(Directory.Exists(Path.Combine(workspace, emptyFeatId)));
+
+        // 3. Research with null criteria
+        var nullResId = "20260826-res-null";
+        var (rNullOk, _, rNullDiags) = IterationCreator.Create(workspace, nullResId, "research", activate: true, criteria: null);
+        Assert.IsFalse(rNullOk);
+        Assert.IsTrue(rNullDiags.Any(d => d.Code == DiagnosticCodes.CriterionUndefined));
+        Assert.IsFalse(Directory.Exists(Path.Combine(workspace, nullResId)));
     }
 }
 

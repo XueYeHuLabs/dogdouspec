@@ -9,6 +9,7 @@ using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -29,7 +30,8 @@ public static class ChangeProposer
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         if (string.IsNullOrWhiteSpace(workspaceRoot))
         {
@@ -70,6 +72,15 @@ public static class ChangeProposer
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         var normSpecDocPath = $"{normIterId}/spec.xml";
@@ -307,7 +318,7 @@ public static class ChangeProposer
 
             if (DateTimeOffset.TryParse(targetTask.Attribute("updated_at")?.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var taskUpdatedAt) && reqOccurredAt < taskUpdatedAt)
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-propose @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-propose @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'. Minimal acceptable timestamp is '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
             }
 
             var recId = rec.Attribute("id")?.Value;
@@ -411,7 +422,7 @@ public static class ChangeProposer
             }
             if (DateTimeOffset.TryParse(targetTask.Attribute("updated_at")?.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var frozenTaskUpdatedAt) && reqOccurredAt < frozenTaskUpdatedAt)
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-propose @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-propose @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'. Minimal acceptable timestamp is '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
             }
         }
         if (!findingTaskIds.SetEquals(freezeTaskIds))
@@ -518,31 +529,8 @@ public static class ChangeProposer
         tasksRoot.SetAttributeValue("revision", newTasksRevision.ToString(CultureInfo.InvariantCulture));
 
         // 7. Serialize Both Documents
-        var writerSettings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "  ",
-            OmitXmlDeclaration = false,
-            Encoding = Utf8NoBom,
-            NewLineHandling = NewLineHandling.Replace,
-            NewLineChars = "\n"
-        };
-
-        using var specMs = new MemoryStream();
-        using (var writer = XmlWriter.Create(specMs, writerSettings))
-        {
-            specDoc.Save(writer);
-        }
-        var specReplacementContent = Encoding.UTF8.GetString(specMs.ToArray());
-        if (!specReplacementContent.EndsWith('\n')) specReplacementContent += "\n";
-
-        using var tasksMs = new MemoryStream();
-        using (var writer = XmlWriter.Create(tasksMs, writerSettings))
-        {
-            tasksDoc.Save(writer);
-        }
-        var tasksReplacementContent = Encoding.UTF8.GetString(tasksMs.ToArray());
-        if (!tasksReplacementContent.EndsWith('\n')) tasksReplacementContent += "\n";
+        var specReplacementContent = ManagedDocumentSerializer.Serialize(specDoc);
+        var tasksReplacementContent = ManagedDocumentSerializer.Serialize(tasksDoc);
 
         var operations = new[]
         {
@@ -557,7 +545,8 @@ public static class ChangeProposer
             clock,
             faultInjector,
             version,
-            correlationId: proposeId);
+            correlationId: proposeId,
+            dryRun: dryRun);
     }
 
     private static bool IsValidUtcTimestamp(string? value, out DateTimeOffset dto)

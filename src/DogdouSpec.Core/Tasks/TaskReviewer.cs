@@ -8,6 +8,7 @@ using DogdouSpec.Core.Append;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.Workspace;
@@ -19,7 +20,7 @@ public static class TaskReviewer
 {
     public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Submit(
         string workspaceRoot, string iterationId, string taskId, int expectedRevision, string requestXml,
-        string version = "1.0")
+        string version = "1.0", bool dryRun = false)
     {
         if (expectedRevision <= 0 || string.IsNullOrWhiteSpace(requestXml))
         {
@@ -29,6 +30,14 @@ public static class TaskReviewer
         if (!workspaceSafe || workspaceError != null)
         {
             return (false, null, new[] { workspaceError! });
+        }
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
         var (iterationValid, normalizedIteration, iterationError) = PathSecurity.ValidateIterationId(iterationId);
         if (!iterationValid || iterationError != null)
@@ -222,7 +231,7 @@ public static class TaskReviewer
                 reviewTime < taskTime)
             {
                 return Failure(DiagnosticCodes.InvalidArgument,
-                    $"task-review @occurred_at '{occurredAt}' cannot be earlier than task {attributeName} '{taskTimeRaw}'.");
+                    $"task-review @occurred_at '{occurredAt}' cannot be earlier than task {attributeName} '{taskTimeRaw}'. Minimal acceptable timestamp is '{taskTimeRaw}'.");
             }
         }
         if (!string.Equals((string?)spec.Root?.Attribute("status"), "active", StringComparison.Ordinal))
@@ -276,7 +285,8 @@ public static class TaskReviewer
         tasks.Root!.SetAttributeValue("revision", actualRevision + 1);
         var operation = new TransactionDocumentOperation(tasksRelative, Serialize(tasks), actualRevision, actualRevision + 1);
         return WorkspaceTransactionCommitter.Commit(workspaceRoot, "task review", new[] { operation },
-            readPreconditions: new[] { new TransactionReadPrecondition(specRelative, specRevision) });
+            readPreconditions: new[] { new TransactionReadPrecondition(specRelative, specRevision) },
+            dryRun: dryRun);
     }
 
     private static (bool Success, XDocument? Document, IReadOnlyList<Diagnostic> Diagnostics) ParseRequest(
@@ -336,17 +346,8 @@ public static class TaskReviewer
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
-    private static string Serialize(XDocument document)
-    {
-        var settings = new XmlWriterSettings
-        {
-            Indent = true, IndentChars = "  ", OmitXmlDeclaration = false,
-            Encoding = new UTF8Encoding(false), NewLineHandling = NewLineHandling.Replace, NewLineChars = "\n"
-        };
-        using var stream = new MemoryStream();
-        using (var writer = XmlWriter.Create(stream, settings)) document.Save(writer);
-        return Encoding.UTF8.GetString(stream.ToArray()) + "\n";
-    }
+    private static string Serialize(XDocument document) =>
+        ManagedDocumentSerializer.Serialize(document);
 
     private static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Failure(string code, string message) =>
         (false, null, new[] { Diagnostic.Error(code, message) });

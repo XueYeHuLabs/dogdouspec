@@ -320,7 +320,8 @@ public sealed class IterationCliTests
             "iteration", "create",
             "--workspace-root", workspace,
             "--id", iterId,
-            "--kind", "feature");
+            "--kind", "feature",
+            "--criterion", "CLI activation criterion defined.");
         Assert.AreEqual(0, createExit);
 
         var specDoc = XDocument.Load(Path.Combine(workspace, iterId, "spec.xml"));
@@ -596,6 +597,7 @@ public sealed class IterationCliTests
             "iteration", "create",
             "--id", iterId,
             "--kind", "feature",
+            "--criterion", "CLI timestamp criterion defined.",
             "--workspace-root", workspace,
             "--format", "xml");
         Assert.AreEqual(0, createExit, $"Create stderr: {createErr}");
@@ -746,5 +748,186 @@ public sealed class IterationCliTests
         Assert.AreEqual(0, searchExit, $"Search stderr: {searchErr}");
         Assert.IsTrue(searchOut.Contains("20260823-feature-alpha/spec.xml", StringComparison.Ordinal));
         Assert.IsTrue(searchOut.Contains("20260824-research-beta/spec.xml", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void IterationCreate_Activate_WithoutCriterion_Cli_FailsAtomically()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260827-no-crit-cli";
+
+        var (exitCode, stdout, stderr) = RunCli(
+            "iteration", "create",
+            "--id", iterId,
+            "--kind", "feature",
+            "--activate",
+            "--workspace-root", workspace,
+            "--format", "xml");
+
+        Assert.AreEqual(5, exitCode);
+        Assert.IsTrue(stderr.Contains(DiagnosticCodes.CriterionUndefined, StringComparison.Ordinal));
+        Assert.IsFalse(Directory.Exists(Path.Combine(workspace, iterId)));
+    }
+
+    [TestMethod]
+    public void IterationCriterion_DefineAndAdd_Cli_Succeeds()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260827-crit-porcelain";
+
+        // Create draft iteration
+        var (cExit, _, cErr) = RunCli(
+            "iteration", "create",
+            "--id", iterId,
+            "--kind", "feature",
+            "--workspace-root", workspace);
+        Assert.AreEqual(0, cExit, cErr);
+
+        // 1. Define replacement criterion via CLI
+        var (defExit, defOut, defErr) = RunCli(
+            "iteration", "criterion", "define",
+            "--iteration", iterId,
+            "--text", "Defined criterion via CLI",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, defExit, $"Define stderr: {defErr}");
+        Assert.IsTrue(defOut.Contains("<mutation command=\"iteration criterion\"", StringComparison.Ordinal));
+
+        var specDoc1 = XDocument.Load(Path.Combine(workspace, iterId, "spec.xml"));
+        Assert.AreEqual("2", specDoc1.Root?.Attribute("revision")?.Value);
+        var crit1 = specDoc1.Descendants("criterion").ToList();
+        Assert.AreEqual(1, crit1.Count);
+        Assert.AreEqual("Defined criterion via CLI", crit1[0].Value);
+
+        // 2. Add new criterion via CLI
+        var (addExit, addOut, addErr) = RunCli(
+            "iteration", "criterion", "add",
+            "--iteration", iterId,
+            "--text", "Added criterion via CLI",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, addExit, $"Add stderr: {addErr}");
+        Assert.IsTrue(addOut.Contains("<mutation command=\"iteration criterion\"", StringComparison.Ordinal));
+
+        var specDoc2 = XDocument.Load(Path.Combine(workspace, iterId, "spec.xml"));
+        Assert.AreEqual("3", specDoc2.Root?.Attribute("revision")?.Value);
+        var crit2 = specDoc2.Descendants("criterion").ToList();
+        Assert.AreEqual(2, crit2.Count);
+        Assert.AreEqual("20260827-crit-crit-porcelain-2", crit2[1].Attribute("id")?.Value);
+        Assert.AreEqual("Added criterion via CLI", crit2[1].Value);
+
+        // 3. Set existing criterion via CLI
+        var (setExit, setOut, setErr) = RunCli(
+            "iteration", "criterion", "set",
+            "--iteration", iterId,
+            "--criterion-id", "20260827-crit-crit-porcelain",
+            "--text", "Updated criterion via set CLI",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, setExit, $"Set stderr: {setErr}");
+        Assert.IsTrue(setOut.Contains("<mutation command=\"iteration criterion\"", StringComparison.Ordinal));
+
+        var specDoc3 = XDocument.Load(Path.Combine(workspace, iterId, "spec.xml"));
+        Assert.AreEqual("4", specDoc3.Root?.Attribute("revision")?.Value);
+        Assert.AreEqual("Updated criterion via set CLI", specDoc3.Descendants("criterion").First().Value);
+    }
+
+    [TestMethod]
+    public void IterationCriterion_RepeatableCriterionOption_TokensDoNotConsumeFollowingOptions()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260827-multi-token";
+
+        var (exitCode, stdout, stderr) = RunCli(
+            "iteration", "create",
+            "--id", iterId,
+            "--kind", "feature",
+            "--criterion", "First criteria token.",
+            "--criterion", "Second criteria token.",
+            "--activate",
+            "--workspace-root", workspace,
+            "--format", "xml");
+
+        Assert.AreEqual(0, exitCode, $"Create stderr: {stderr}");
+        Assert.IsTrue(stdout.Contains("<mutation command=\"iteration create\"", StringComparison.Ordinal));
+
+        var specDoc = XDocument.Load(Path.Combine(workspace, iterId, "spec.xml"));
+        Assert.AreEqual("active", specDoc.Root?.Attribute("status")?.Value);
+        var criteria = specDoc.Descendants("criterion").ToList();
+        Assert.AreEqual(2, criteria.Count);
+        Assert.AreEqual("20260827-crit-multi-token-1", criteria[0].Attribute("id")?.Value);
+        Assert.AreEqual("First criteria token.", criteria[0].Value);
+        Assert.AreEqual("20260827-crit-multi-token-2", criteria[1].Attribute("id")?.Value);
+        Assert.AreEqual("Second criteria token.", criteria[1].Value);
+    }
+
+    [TestMethod]
+    public void IterationConfirmCli_RefreshesIndexSummaryOnActivationAndCompletion()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260828-refresh-test";
+
+        // 1. Create a draft iteration
+        var (createExit, createOut, createErr) = RunCli(
+            "iteration", "create",
+            "--id", iterId,
+            "--kind", "feature",
+            "--criterion", "Initial criterion.",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, createExit, $"Create stderr: {createErr}");
+
+        var specPath = Path.Combine(workspace, iterId, "spec.xml");
+        var specDoc = XDocument.Load(specPath);
+        Assert.AreEqual("draft", specDoc.Root?.Attribute("status")?.Value);
+
+        // 2. Activate the iteration with default summary
+        var (actExit, actOut, actErr) = RunCli(
+            "iteration", "activate",
+            "--iteration", iterId,
+            "--auto-approve",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, actExit, $"Activate stderr: {actErr}");
+
+        // Verify spec.xml index summary was updated to [Active]
+        specDoc = XDocument.Load(specPath);
+        Assert.AreEqual("active", specDoc.Root?.Attribute("status")?.Value);
+        var actSummary = specDoc.Root?.Element("index")?.Element("summary")?.Value;
+        Assert.IsNotNull(actSummary);
+        StringAssert.StartsWith(actSummary, "[Active]");
+
+        // 3. Verify iteration list displays refreshed summary
+        var (listExit, listOut, listErr) = RunCli(
+            "iteration", "list",
+            "--workspace-root", workspace,
+            "--format", "human");
+        Assert.AreEqual(0, listExit, $"List stderr: {listErr}");
+        StringAssert.Contains(listOut, iterId);
+        StringAssert.Contains(listOut, actSummary);
+
+        // 4. Complete the iteration with custom summary
+        var (compExit, compOut, compErr) = RunCli(
+            "iteration", "complete",
+            "--iteration", iterId,
+            "--accept-all",
+            "--summary", "all deliverables shipped",
+            "--workspace-root", workspace,
+            "--format", "xml");
+        Assert.AreEqual(0, compExit, $"Complete stderr: {compErr}");
+
+        // Verify spec.xml index summary was refreshed to [Completed]
+        specDoc = XDocument.Load(specPath);
+        Assert.AreEqual("completed", specDoc.Root?.Attribute("status")?.Value);
+        var compSummary = specDoc.Root?.Element("index")?.Element("summary")?.Value;
+        Assert.AreEqual("[Completed] all deliverables shipped", compSummary);
+
+        // 5. Verify iteration list displays [Completed] summary
+        var (listCompExit, listCompOut, _) = RunCli(
+            "iteration", "list",
+            "--workspace-root", workspace,
+            "--format", "human");
+        Assert.AreEqual(0, listCompExit);
+        StringAssert.Contains(listCompOut, "[Completed] all deliverables shipped");
     }
 }

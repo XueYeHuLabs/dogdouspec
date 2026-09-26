@@ -174,7 +174,7 @@ public sealed class TaskChangeWorkflowCliTests
     {
         CreateWorkspaceCopy();
         var iterId = "20260824-cli-quick";
-        var (createCode, _, createError) = RunCli("iteration", "create", "--id", iterId, "--kind", "feature", "--workspace-root", _tempDir);
+        var (createCode, _, createError) = RunCli("iteration", "create", "--id", iterId, "--kind", "feature", "--criterion", "Quick task criteria defined.", "--workspace-root", _tempDir);
         Assert.AreEqual(0, createCode, createError);
 
         var (dryCode, dryOut, dryErr) = RunCli("task", "quick", "--title", "Preview quick", "--scope", "src/**", "--done-when", "preview works", "--why", "test preview", "--iteration", iterId, "--dry-run", "--id", "20260824-task-cli-quick-preview", "--operation-id", "20260824T121000Z-quick-preview", "--workspace-root", _tempDir, "--format", "xml");
@@ -267,7 +267,7 @@ public sealed class TaskChangeWorkflowCliTests
     {
         CreateWorkspaceCopy();
         var iterId = "20260824-cli-e2e-change";
-        var (cCode, _, cErr) = RunCli("iteration", "create", "--id", iterId, "--kind", "feature", "--workspace-root", _tempDir);
+        var (cCode, _, cErr) = RunCli("iteration", "create", "--id", iterId, "--kind", "feature", "--criterion", "E2E change criteria defined.", "--workspace-root", _tempDir);
         Assert.AreEqual(0, cCode, $"Create iter failed: {cErr}");
 
         var specDoc = XDocument.Load(Path.Combine(_tempDir, ".dogdouspec", iterId, "spec.xml"));

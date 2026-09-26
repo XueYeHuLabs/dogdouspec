@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20260905-tasks-self-describing-upgrade" iteration="20260905-self-describing-upgrade" schema_version="1.0" revision="17">
+  <index>
+    <summary>Tasks for iteration 20260905-self-describing-upgrade.</summary>
+    <term key="iteration" value="20260905-self-describing-upgrade" />
+  </index>
+  <task id="20260905-task-upgrade-contract" status="done" created_at="2026-09-05T02:21:00Z" updated_at="2026-09-05T02:22:45Z" started_at="2026-09-05T02:21:00Z" completed_at="2026-09-05T02:22:45Z">
+    <index>
+      <summary>Define the authoritative self-describing upgrade contract</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Define the authoritative self-describing upgrade contract</title>
+    <objective>The embedded Guide is the normative upgrade entry point, orders inspection before mutation, and clearly assigns mechanical work to the CLI and repository-specific reconciliation to the caller.</objective>
+    <rationale>Agents need one current, offline, binary-owned source of upgrade truth before modifying a repository.</rationale>
+    <scope>
+      <repository path=".">
+        <include path=".agents/skills/dogdouspec" />
+        <include path="README.md" />
+        <include path="docs" />
+        <include path="src/DogdouSpec.Cli/Program.cs" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260905-self-describing-upgrade" relation="supports" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260905-task-upgrade-contract-done" status="passed">The embedded Guide is the normative upgrade entry point, orders inspection before mutation, and clearly assigns mechanical work to the CLI and repository-specific reconciliation to the caller.</criterion>
+    </acceptance>
+    <context>
+      <summary>Agents need one current, offline, binary-owned source of upgrade truth before modifying a repository.</summary>
+    </context>
+    <records>
+      <record id="20260905T022100Z-quick-upgrade-contract-start" kind="start" status="informational" created_at="2026-09-05T02:21:00Z" actor="quick-task" operation_id="20260905T022100Z-quick-upgrade-contract">
+        <summary>Quick task created and started atomically.</summary>
+      </record>
+      <record id="20260905T022100Z-quick-upgrade-contract-receipt" kind="discussion" status="informational" created_at="2026-09-05T02:21:00Z" actor="quick-task" operation_id="20260905T022100Z-quick-upgrade-contract">
+        <index>
+          <summary>Quick task creation-and-start receipt.</summary>
+          <term key="request-sha256" value="6646d9bcd34f34a10bf21f22a08356012a8160f1dd0e84e17ed64f3f8b95b66e" />
+        </index>
+        <summary>Quick task creation-and-start receipt.</summary>
+      </record>
+      <record id="20260905T022244Z-record-verify-4e27f024f21f4218aaadb4d88a710bf9" kind="verification" status="informational" created_at="2026-09-05T02:22:44Z" actor="agent" operation_id="20260905T022244Z-taskverify-e865254806cb49f9af09e93d7bad89f7">
+        <summary>Added the binary-embedded authoritative upgrade contract, corrected Guide-first ordering, and linked root help, README, and shipped Skill guidance.</summary>
+        <covers>
+          <ref scope="document" target="20260905-task-upgrade-contract-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260905T022245Z-record-complete-1f8a5704c566422c996163f23516c14c" kind="completion" status="informational" created_at="2026-09-05T02:22:45Z" actor="agent" operation_id="20260905T022245Z-taskcomplete-eeaf2d09e59040988b6ba4f1e6313dbb">
+        <summary>Authoritative self-describing upgrade contract is embedded and covered by focused Skill guide tests.</summary>
+        <covers>
+          <ref scope="document" target="20260905-task-upgrade-contract-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260905-task-skill-status" status="done" created_at="2026-09-05T02:21:01Z" updated_at="2026-09-05T02:23:03Z" started_at="2026-09-05T02:22:45Z" completed_at="2026-09-05T02:23:03Z">
+    <index>
+      <summary>Add read-only Skill synchronization status</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Add read-only Skill synchronization status</title>
+    <objective>A caller can obtain bounded human or XML status for matching, modified, missing, and extra Skill files before explicitly invoking deterministic synchronization.</objective>
+    <rationale>The agent should receive mechanical facts without the CLI deciding how repository customizations are reconciled.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Cli/Commands/SkillCommand.cs" />
+        <include path="src/DogdouSpec.Core/Resources/EmbeddedResources.cs" />
+        <include path="tests/DogdouSpec.Cli.Tests" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260905-self-describing-upgrade" relation="supports" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260905-task-upgrade-contract" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260905-task-skill-status-done" status="passed">A caller can obtain bounded human or XML status for matching, modified, missing, and extra Skill files before explicitly invoking deterministic synchronization.</criterion>
+    </acceptance>
+    <context>
+      <summary>The agent should receive mechanical facts without the CLI deciding how repository customizations are reconciled.</summary>
+    </context>
+    <records>
+      <record id="20260905T022101Z-quick-skill-status-receipt" kind="discussion" status="informational" created_at="2026-09-05T02:21:01Z" actor="quick-task" operation_id="20260905T022101Z-quick-skill-status">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="46c3840d43feeb2a8ee43432d14485f90fe4cd5a2c429dc9a64322cafa91fd0f" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260905T022245Z-record-start-8add1fa9aaea41dba0bdc11016ff85ca" kind="start" status="informational" created_at="2026-09-05T02:22:45Z" actor="agent" operation_id="20260905T022245Z-taskstart-75eda1bd154b44e98726593550904ea5">
+        <summary>Implement the read-only embedded-versus-repository Skill comparison primitive.</summary>
+      </record>
+      <record id="20260905T022303Z-record-verify-dd74cdef21e7424696400570bc33fed1" kind="verification" status="informational" created_at="2026-09-05T02:23:03Z" actor="agent" operation_id="20260905T022303Z-taskverify-3b5f4ffaca414300a8b355aa517b1103">
+        <summary>Implemented deterministic read-only Skill status with matching, modified, missing, and extra states, XML and human output, bounded inspection, and exit 1 for differences.</summary>
+        <covers>
+          <ref scope="document" target="20260905-task-skill-status-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260905T022303Z-record-complete-939e2b233f734e658cb3220d15b91bda" kind="completion" status="informational" created_at="2026-09-05T02:23:03Z" actor="agent" operation_id="20260905T022303Z-taskcomplete-3f4d62939ca541ee976fe41f67093fc3">
+        <summary>Skill status passes eleven focused Skill CLI tests and reports the repository's five managed files in sync.</summary>
+        <covers>
+          <ref scope="document" target="20260905-task-skill-status-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260905-task-schema-sync" status="done" created_at="2026-09-05T02:21:02Z" updated_at="2026-09-05T02:41:01Z" started_at="2026-09-05T02:23:04Z" completed_at="2026-09-05T02:41:01Z">
+    <index>
+      <summary>Add governed readable-schema status and synchronization</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Add governed readable-schema status and synchronization</title>
+    <objective>A caller can inspect schema-copy drift and atomically refresh known readable schema copies through the CLI with version and path safety checks.</objective>
+    <rationale>Agents must not directly write managed .dogdouspec schema content, while deterministic refresh remains a CLI responsibility.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Cli/Commands/SchemaCommand.cs" />
+        <include path="src/DogdouSpec.Core" />
+        <include path="tests" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260905-self-describing-upgrade" relation="supports" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260905-task-upgrade-contract" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260905-task-schema-sync-done" status="passed">A caller can inspect schema-copy drift and atomically refresh known readable schema copies through the CLI with version and path safety checks.</criterion>
+    </acceptance>
+    <context>
+      <summary>Agents must not directly write managed .dogdouspec schema content, while deterministic refresh remains a CLI responsibility.</summary>
+    </context>
+    <records>
+      <record id="20260905T022102Z-quick-schema-sync-receipt" kind="discussion" status="informational" created_at="2026-09-05T02:21:02Z" actor="quick-task" operation_id="20260905T022102Z-quick-schema-sync">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="1896e8cb49b9993f3713fd691c699a05de7f6a9e627194f35550674414081f64" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260905T022304Z-record-start-9a02a350e9924289bf2f729f9a20e6ad" kind="start" status="informational" created_at="2026-09-05T02:23:04Z" actor="agent" operation_id="20260905T022304Z-taskstart-a069df215bde425fbb3ec27eabfbd833">
+        <summary>Implement read-only schema status and atomic version-gated schema synchronization.</summary>
+      </record>
+      <record id="20260905T024100Z-record-schema-sync-verification" kind="verification" status="informational" created_at="2026-09-05T02:41:00Z" actor="codex" operation_id="20260905T024100Z-update-schema-sync-verification">
+        <summary>Implemented read-only schema status and version-gated atomic schema synchronization with writer locking, startup recovery, rollback preservation, and known-file-only updates.</summary>
+        <covers>
+          <ref scope="document" target="20260905-task-schema-sync-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260905T024101Z-record-schema-sync-completion" kind="completion" status="informational" created_at="2026-09-05T02:41:01Z" actor="codex" operation_id="20260905T024101Z-update-schema-sync-complete">
+        <summary>Focused CLI and Core coverage passed for drift reporting, explicit repair, idempotence, version refusal, lock conflict, recovery, and repository-owned schema preservation.</summary>
+        <covers>
+          <ref scope="document" target="20260905-task-schema-sync-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260905-task-upgrade-convergence" status="done" created_at="2026-09-05T02:21:03Z" updated_at="2026-09-05T05:49:07Z" agent="codex" started_at="2026-09-05T05:38:40Z" completed_at="2026-09-05T05:49:07Z">
+    <index>
+      <summary>Converge upgrade documentation, tests, and independent review</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Converge upgrade documentation, tests, and independent review</title>
+    <objective>Global and vendored upgrade paths follow the authoritative contract, cross-version fixtures cover the intended flow, the full build passes, and independent review finds no blocking defects.</objective>
+    <rationale>The correction must be consistent across shipped guidance, implementation, evidence, and governed iteration state.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="README.md" />
+        <include path="docs" />
+        <include path=".agents/skills/dogdouspec" />
+        <include path="tests" />
+        <include path=".dogdouspec" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260905-self-describing-upgrade" relation="supports" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260905-task-skill-status" relation="depends-on" />
+      <ref scope="document" target="20260905-task-schema-sync" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260905-task-upgrade-convergence-done" status="passed">Global and vendored upgrade paths follow the authoritative contract, cross-version fixtures cover the intended flow, the full build passes, and independent review finds no blocking defects.</criterion>
+    </acceptance>
+    <context>
+      <summary>The correction must be consistent across shipped guidance, implementation, evidence, and governed iteration state.</summary>
+    </context>
+    <review required="true">
+      <submission id="20260905T054907Z-sub-3c84185d0d58400ebd910019b22ca90f" disposition="approved" actor="agy-gemini-3.7-flash-high" reviewed_at="2026-09-05T05:49:07Z" record="20260905T054907Z-sub-3c84185d0d58400ebd910019b22ca90f-record" />
+    </review>
+    <records>
+      <record id="20260905T022103Z-quick-upgrade-convergence-receipt" kind="discussion" status="informational" created_at="2026-09-05T02:21:03Z" actor="quick-task" operation_id="20260905T022103Z-quick-upgrade-convergence">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="8fe4c53ed23eba4f9af3b63990000ca35fef37ff17f67c1ac3146788ff68bdb6" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260905T053840Z-record-start-88648b94da4946e397e398f43bc41783" kind="start" status="informational" created_at="2026-09-05T05:38:40Z" actor="codex" operation_id="20260905T053840Z-taskstart-e615f82c01ff4ab9b5f057906f6e6f1b">
+        <summary>Converge authoritative upgrade documentation, cross-version validation, full build evidence, and independent review.</summary>
+      </record>
+      <record id="20260905T054849Z-record-verify-e128963538e44d0d9ba2b1949fb8c460" kind="verification" status="informational" created_at="2026-09-05T05:48:49Z" actor="codex" operation_id="20260905T054849Z-taskverify-2c518867d454463e967e0d48570fc6b9">
+        <summary>Global and vendored documentation now follow the embedded Guide-first contract; cross-version, status, synchronization, preservation, and recovery tests pass in the 809-test build.</summary>
+        <covers>
+          <ref scope="document" target="20260905-task-upgrade-convergence-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260905T054907Z-sub-3c84185d0d58400ebd910019b22ca90f-record" kind="decision" status="informational" created_at="2026-09-05T05:49:07Z" actor="agy-gemini-3.7-flash-high" operation_id="20260905T054907Z-taskrev-539b87a094e64c47829010a4b3890be3">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="287fb0eea5aaff957ac71a75b4716846c99703e4009e07c734ae67d425924009" />
+        </index>
+        <summary>Independent read-only review and targeted follow-up passed with no actionable P0-P3 findings; locking, crash recovery, reparse safety, command boundaries, and documentation parity were inspected.</summary>
+      </record>
+      <record id="20260905T054907Z-record-complete-394344c0ee3e46cb954d427eee5a36d8" kind="completion" status="informational" created_at="2026-09-05T05:49:07Z" actor="codex" operation_id="20260905T054907Z-taskcomplete-3e9da084f682442cbdcd823c7bb992c7">
+        <summary>Authoritative self-describing upgrade flow converged with 809 passing tests, zero build warnings or errors, synchronized candidate smoke checks, and approved independent review.</summary>
+        <covers>
+          <ref scope="document" target="20260905-task-upgrade-convergence-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+</tasks>

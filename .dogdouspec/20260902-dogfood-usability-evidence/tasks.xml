@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20260902-tasks-dogfood-usability-evidence" iteration="20260902-dogfood-usability-evidence" schema_version="1.0" revision="17">
+  <index>
+    <summary>Tasks for iteration 20260902-dogfood-usability-evidence.</summary>
+    <term key="iteration" value="20260902-dogfood-usability-evidence" />
+  </index>
+<task id="20260902-task-guidance-convergence" status="done" created_at="2026-09-02T03:25:00Z" updated_at="2026-09-02T03:25:00Z" started_at="2026-09-02T03:25:00Z" completed_at="2026-09-02T03:25:00Z">
+    <index>
+      <summary>Guidance and documentation convergence for result ownership and VCS checkpoints</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Guidance and documentation convergence for result ownership and VCS checkpoints</title>
+    <objective>All guidance, templates, docs, and skill files consistently document task record result ownership, VCS checkpoint boundaries, and transient output rules</objective>
+    <rationale>Fulfill guidance convergence prerequisite before new porcelain work</rationale>
+    <scope>
+      <repository path=".">
+        <include path=".agents/skills/dogdouspec/**" />
+        <include path="AGENTS.md" />
+        <include path="README.md" />
+        <include path="templates/v1/**" />
+        <include path="docs/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260902-req-guidance-convergence" relation="implements" />
+      <ref scope="iteration" target="20260902-req-result-ownership" relation="implements" />
+      <ref scope="iteration" target="20260902-req-external-evidence-boundary" relation="implements" />
+      <ref scope="iteration" target="20260902-req-no-work-results-dependency" relation="implements" />
+      <ref scope="iteration" target="20260902-req-vcs-checkpoint-contract" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260902-task-guidance-convergence-done" status="passed">All guidance, templates, docs, and skill files consistently document task record result ownership, VCS checkpoint boundaries, and transient output rules</criterion>
+    </acceptance>
+    <context>
+      <summary>Fulfill guidance convergence prerequisite before new porcelain work</summary>
+    </context>
+    <records><record id="20260902T032500Z-taskadd-guidance-receipt" kind="discussion" status="informational" created_at="2026-09-02T03:25:00Z" actor="quick-task" operation_id="20260902T032500Z-taskadd-guidance"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="7ed041d9f6dcf36be62efeb3da5ca7389120db8903b3f99a85ba603d5e152bf7" /></index><summary>Task addition receipt.</summary></record><record id="20260902T032500Z-record-start-1ce268fd52274b169d07dd26d73490d7" kind="start" status="informational" created_at="2026-09-02T03:25:00Z" actor="agent" operation_id="20260902T032500Z-taskstart-0b92e9707ef9492fa06e27195eb8fe00">
+      <summary>Starting Task 1: Guidance and documentation convergence</summary>
+    </record><record id="20260902T032500Z-record-verify-e256fa07a3394cec970387820bfa30f8" kind="verification" status="informational" created_at="2026-09-02T03:25:00Z" actor="agent" operation_id="20260902T032500Z-taskverify-e6a701a1bc324c9b96c7c85b71248216">
+      <summary>Verified that all guidance surfaces, skill documentation, templates, and embedded texts align on result ownership, VCS checkpoints, and transient output rules</summary>
+      <covers>
+        <ref scope="document" target="20260902-task-guidance-convergence-done" relation="covers" />
+      </covers>
+    </record><record id="20260902T032500Z-record-complete-ad8fa6e971d04cb982262f8d05e76385" kind="completion" status="informational" created_at="2026-09-02T03:25:00Z" actor="agent" operation_id="20260902T032500Z-taskcomplete-28daa686939d42d79a196ee540d4dc50">
+      <summary>Completed Task 1: Guidance and documentation convergence verified across SKILL.md, AGENTS.md, templates, README.md, and initialization code</summary>
+      <covers>
+        <ref scope="document" target="20260902-task-guidance-convergence-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260902-task-porcelain-phase1" status="done" created_at="2026-09-02T03:25:30Z" updated_at="2026-09-02T03:53:34Z" started_at="2026-09-02T03:25:30Z" completed_at="2026-09-02T03:53:34Z">
+    <index>
+      <summary>Implement usability porcelain Phase 1: task list/show/summary, scope explain, readiness dimensions, vcs status/checkpoint plan</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Implement usability porcelain Phase 1: task list/show/summary, scope explain, readiness dimensions, vcs status/checkpoint plan</title>
+    <objective>Porcelain Phase 1 commands (task list/show/summary, scope explain --worktree, readiness dimensions, workspace vcs-status/checkpoint-plan) are fully implemented and verified</objective>
+    <rationale>Provide ergonomics for task inspection, worktree scope checking, and VCS status without raw XML</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/**" />
+        <include path="src/DogdouSpec.Cli/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260902-req-usability-porcelain" relation="implements" />
+      <ref scope="iteration" target="20260902-req-vcs-checkpoint-contract" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260902-task-guidance-convergence" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260902-task-porcelain-phase1-done" status="passed">Porcelain Phase 1 commands (task list/show/summary, scope explain --worktree, readiness dimensions, workspace vcs-status/checkpoint-plan) are fully implemented and verified</criterion>
+    </acceptance>
+    <context>
+      <summary>Provide ergonomics for task inspection, worktree scope checking, and VCS status without raw XML</summary>
+    </context>
+    <records><record id="20260902T032530Z-taskadd-phase1-receipt" kind="discussion" status="informational" created_at="2026-09-02T03:25:30Z" actor="quick-task" operation_id="20260902T032530Z-taskadd-phase1"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="9917d95c48fa0a2ec6ed2565d5fd9c88247a14be441124fdd50f8baa5970375a" /></index><summary>Task addition receipt.</summary></record><record id="20260902T032530Z-record-start-ef4337fc32c3455cb630e6030493f798" kind="start" status="informational" created_at="2026-09-02T03:25:30Z" actor="agent" operation_id="20260902T032530Z-taskstart-ba7a014e6b8f44d093fd56ec71184f4b">
+      <summary>Starting Task 2: Implement usability porcelain Phase 1</summary>
+    </record><record id="20260902T035326Z-record-verify-4c5180f5bea64b7da4e03cb74f78f8c5" kind="verification" status="informational" created_at="2026-09-02T03:53:26Z" actor="agent" operation_id="20260902T035326Z-taskverify-115eb800fd074f218b0b0c95f79da3f2">
+      <summary>Verification: Phase 1 porcelain commands implemented with clean build and passing unit tests</summary>
+      <covers>
+        <ref scope="document" target="20260902-task-porcelain-phase1-done" relation="covers" />
+      </covers>
+    </record><record id="20260902T035334Z-record-complete-0c4e7e0e825645f7b83c4532e1634783" kind="completion" status="informational" created_at="2026-09-02T03:53:34Z" actor="agent" operation_id="20260902T035334Z-taskcomplete-2b5af650e6214e0186f5f4461475c9b9">
+      <summary>Phase 1 porcelain commands fully implemented, tested, and verified</summary>
+      <covers>
+        <ref scope="document" target="20260902-task-porcelain-phase1-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260902-task-porcelain-phase2" status="done" created_at="2026-09-02T03:26:00Z" updated_at="2026-09-02T03:54:15Z" started_at="2026-09-02T03:53:52Z" completed_at="2026-09-02T03:54:15Z">
+    <index>
+      <summary>Implement usability porcelain Phase 2: task review approve/request-changes and additive task revise</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Implement usability porcelain Phase 2: task review approve/request-changes and additive task revise</title>
+    <objective>Porcelain Phase 2 commands (task review approve, task review request-changes, additive task revise CLI options) are fully implemented and verified</objective>
+    <rationale>Provide ergonomics for structured review submission and task revision without manual XML writing</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/**" />
+        <include path="src/DogdouSpec.Cli/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260902-req-usability-porcelain" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260902-task-porcelain-phase1" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260902-task-porcelain-phase2-done" status="passed">Porcelain Phase 2 commands (task review approve, task review request-changes, additive task revise CLI options) are fully implemented and verified</criterion>
+    </acceptance>
+    <context>
+      <summary>Provide ergonomics for structured review submission and task revision without manual XML writing</summary>
+    </context>
+    <records><record id="20260902T032600Z-taskadd-phase2-receipt" kind="discussion" status="informational" created_at="2026-09-02T03:26:00Z" actor="quick-task" operation_id="20260902T032600Z-taskadd-phase2"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="6fabc404deed7f6d52c12b19585d6bccbbd4f31c3c6ffea270a1af15f1a7306f" /></index><summary>Task addition receipt.</summary></record><record id="20260902T035352Z-record-start-6e61088f6e6343608edda46afffb1de7" kind="start" status="informational" created_at="2026-09-02T03:53:52Z" actor="agent" operation_id="20260902T035352Z-taskstart-e300e63e77004b3fb9edb3ed1af649f2">
+      <summary>Starting Task 3: Implement usability porcelain Phase 2</summary>
+    </record><record id="20260902T035408Z-record-verify-aabc025194cd40e7bd21e78979c3bba2" kind="verification" status="informational" created_at="2026-09-02T03:54:08Z" actor="agent" operation_id="20260902T035408Z-taskverify-8b202b4b479f4c0b86d51b507236f2f5">
+      <summary>Verification: Phase 2 porcelain commands (task review approve/request-changes, additive task revise) verified and tested</summary>
+      <covers>
+        <ref scope="document" target="20260902-task-porcelain-phase2-done" relation="covers" />
+      </covers>
+    </record><record id="20260902T035415Z-record-complete-0a780b44bfda4c3bb961469740226e2d" kind="completion" status="informational" created_at="2026-09-02T03:54:15Z" actor="agent" operation_id="20260902T035415Z-taskcomplete-b9e8462f412b45e8a5a6db6feff77493">
+      <summary>Phase 2 porcelain commands fully implemented, tested, and verified</summary>
+      <covers>
+        <ref scope="document" target="20260902-task-porcelain-phase2-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task><task id="20260902-task-tests-and-evidence-verification" status="done" created_at="2026-09-02T03:26:30Z" updated_at="2026-09-02T03:55:08Z" started_at="2026-09-02T03:54:28Z" completed_at="2026-09-02T03:55:08Z">
+    <index>
+      <summary>Add tests for porcelain commands, verify external evidence and work-results isolation, and ensure clean build</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Add tests for porcelain commands, verify external evidence and work-results isolation, and ensure clean build</title>
+    <objective>All unit/integration tests pass with 0 warnings 0 errors, deleting .agents/work-results/ does not break any flow, and evidence boundaries are verified</objective>
+    <rationale>Verify complete functionality, isolation, and robustness across entire test suite</rationale>
+    <scope>
+      <repository path=".">
+        <include path="tests/**" />
+        <include path="src/**" />
+        <include path="docs/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260902-req-dogfood-usability-evidence" relation="implements" />
+      <ref scope="iteration" target="20260902-req-external-evidence-boundary" relation="implements" />
+      <ref scope="iteration" target="20260902-req-no-work-results-dependency" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260902-task-porcelain-phase2" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260902-task-tests-and-evidence-verification-done" status="passed">All unit/integration tests pass with 0 warnings 0 errors, deleting .agents/work-results/ does not break any flow, and evidence boundaries are verified</criterion>
+    </acceptance>
+    <context>
+      <summary>Verify complete functionality, isolation, and robustness across entire test suite</summary>
+    </context>
+    <records><record id="20260902T032630Z-taskadd-tests-receipt" kind="discussion" status="informational" created_at="2026-09-02T03:26:30Z" actor="quick-task" operation_id="20260902T032630Z-taskadd-tests"><index><summary>Task addition receipt.</summary><term key="request-sha256" value="c001755ab256fe21c4e587eb6547534360674fb19f613f90955a951023ef603d" /></index><summary>Task addition receipt.</summary></record><record id="20260902T035428Z-record-start-91d685e3d17d40838df7213e9b0466ff" kind="start" status="informational" created_at="2026-09-02T03:54:28Z" actor="agent" operation_id="20260902T035428Z-taskstart-c137bed4f2fa450aa78f65c553e892d4">
+      <summary>Starting Task 4: Tests and evidence verification</summary>
+    </record><record id="20260902T035501Z-record-verify-25ac02fd679649f598f8bf4cb384618f" kind="verification" status="informational" created_at="2026-09-02T03:55:01Z" actor="agent" operation_id="20260902T035501Z-taskverify-4911d32a700646d3b1c6cf69887911a2">
+      <summary>Verification: Full test suite passing with 0 warnings 0 errors, evidence isolation and VCS status verified</summary>
+      <covers>
+        <ref scope="document" target="20260902-task-tests-and-evidence-verification-done" relation="covers" />
+      </covers>
+    </record><record id="20260902T035508Z-record-complete-38049fda8fd24dd691fc8b49fa94deab" kind="completion" status="informational" created_at="2026-09-02T03:55:08Z" actor="agent" operation_id="20260902T035508Z-taskcomplete-b429ca1cb3fc48f59f6a4f01b0a6ef78">
+      <summary>Task 4 complete: all tests passing, external evidence boundaries verified, zero work-results dependency</summary>
+      <covers>
+        <ref scope="document" target="20260902-task-tests-and-evidence-verification-done" relation="covers" />
+      </covers>
+    </record></records>
+  </task></tasks>

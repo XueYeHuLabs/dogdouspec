@@ -11,10 +11,27 @@ public static class Program
     {
         try
         {
-            var rootCommand = new RootCommand("DogdouSpec CLI - iteration-first XML/XPath project workspace engine");
+            var rootDescription = """
+DogdouSpec CLI - iteration-first XML/XPath project workspace engine
+
+AI AGENT SETUP & WORKFLOW:
+  1. Read current binary guidance         : dogdouspec skill guide --all
+  2. Initialize workspace & skills        : dogdouspec workspace init
+  3. Inspect repository upgrade status    : dogdouspec skill status --format xml
+  4. Select next ready task to implement  : dogdouspec task next --format xml
+  5. View instant progress summary card   : dogdouspec summary --format markdown
+
+PERSISTENCE & GOVERNANCE:
+  Semantic agent results belong in tasks.xml records, not external report folders.
+  In Git-backed governed work, validate and checkpoint managed .dogdouspec state;
+  DogdouSpec never stages or commits repository files on your behalf.
+""";
+
+            var rootCommand = new RootCommand(rootDescription);
 
             rootCommand.Add(WorkspaceCommand.BuildCommand());
             rootCommand.Add(IterationCommand.BuildCommand());
+            rootCommand.Add(SummaryCommand.BuildCommand());
             rootCommand.Add(SchemaCommand.BuildCommand());
             rootCommand.Add(TemplateCommand.BuildCommand());
             rootCommand.Add(ValidateCommand.BuildCommand());
@@ -25,6 +42,7 @@ public static class Program
             rootCommand.Add(RequirementCommand.BuildCommand());
             rootCommand.Add(ChangeCommand.BuildCommand());
             rootCommand.Add(BacklogCommand.BuildCommand());
+            rootCommand.Add(KnowledgeCommand.BuildCommand());
             rootCommand.Add(TransactionCommand.BuildCommand());
             rootCommand.Add(SkillCommand.BuildCommand());
 

@@ -3,5 +3,7 @@ namespace DogdouSpec.Core.Formatting;
 public enum OutputFormat
 {
     Xml,
-    Human
+    Human,
+    Markdown,
+    Json
 }

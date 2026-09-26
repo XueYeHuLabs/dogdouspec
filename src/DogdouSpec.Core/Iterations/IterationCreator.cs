@@ -1,10 +1,13 @@
 using System.Globalization;
+using System.Security;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 using System.Xml.Schema;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -27,7 +30,8 @@ public static class IterationCreator
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
         string version = "1.0",
-        bool activate = false)
+        bool activate = false,
+        IEnumerable<string>? criteria = null)
     {
         clock ??= SystemClock.Instance;
 
@@ -43,6 +47,28 @@ public static class IterationCreator
             !string.Equals(kind, "research", StringComparison.Ordinal))
         {
             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Iteration kind must be 'feature' or 'research', but got '{kind}'.") });
+        }
+
+        var criteriaList = criteria != null ? criteria.ToList() : null;
+        if (activate && (criteriaList == null || criteriaList.Count == 0))
+        {
+            return (false, null, new[] { Diagnostic.Error(
+                DiagnosticCodes.CriterionUndefined,
+                "Iteration activation requires all acceptance criteria to be defined. Supply at least one defined criterion.") });
+        }
+
+        if (criteriaList != null)
+        {
+            for (var i = 0; i < criteriaList.Count; i++)
+            {
+                var (isValid, reason) = IterationCriterionPolicy.Validate(criteriaList[i], $"index-{i + 1}");
+                if (!isValid)
+                {
+                    return (false, null, new[] { Diagnostic.Error(
+                        DiagnosticCodes.CriterionUndefined,
+                        reason ?? "Acceptance criterion text is undefined.") });
+                }
+            }
         }
 
         // 3. Acquire writer lock
@@ -80,14 +106,17 @@ public static class IterationCreator
             string specContent;
             if (string.Equals(kind, "feature", StringComparison.Ordinal))
             {
-                specContent = GenerateFeatureSpecXml(normalizedId, timePrefix, slug, isoTime, activate);
+                specContent = GenerateFeatureSpecXml(normalizedId, timePrefix, slug, isoTime, activate, criteriaList);
             }
             else
             {
-                specContent = GenerateResearchSpecXml(normalizedId, timePrefix, slug, isoTime, activate);
+                specContent = GenerateResearchSpecXml(normalizedId, timePrefix, slug, isoTime, activate, criteriaList);
             }
 
             var tasksContent = GenerateTasksXml(normalizedId, timePrefix, slug);
+
+            specContent = ManagedDocumentSerializer.Normalize(specContent);
+            tasksContent = ManagedDocumentSerializer.Normalize(tasksContent);
 
             // 7. Prospective validation against prospective workspace view
             var specRelPath = $"{normalizedId}/spec.xml";
@@ -189,10 +218,13 @@ public static class IterationCreator
 
     private static void WriteCreateMarkerXml(string markerPath, string txId, string iterationId, string state, string isoTime)
     {
-        var markerXml = $"""
-<?xml version="1.0" encoding="utf-8"?>
-<create-marker id="{txId}" iteration_id="{iterationId}" state="{state}" created_at="{isoTime}"/>
-""";
+        var markerDoc = new XDocument(
+            new XElement("create-marker",
+                new XAttribute("id", txId),
+                new XAttribute("iteration_id", iterationId),
+                new XAttribute("state", state),
+                new XAttribute("created_at", isoTime)));
+        var markerXml = ManagedDocumentSerializer.Serialize(markerDoc);
         using var fs = new FileStream(markerPath, FileMode.Create, FileAccess.Write, FileShare.None);
         using var sw = new StreamWriter(fs, Utf8NoBom);
         sw.Write(markerXml);
@@ -200,14 +232,36 @@ public static class IterationCreator
         fs.Flush(true);
     }
 
-    private static string GenerateFeatureSpecXml(string id, string date, string slug, string isoTime, bool activate)
+    private static string GenerateCriteriaXml(string date, string slug, IReadOnlyList<string>? criteriaList, string defaultPlaceholder)
+    {
+        if (criteriaList == null || criteriaList.Count == 0)
+        {
+            return $"      <criterion id=\"{date}-crit-{slug}\" decision=\"pending\">{defaultPlaceholder}</criterion>";
+        }
+
+        var sb = new StringBuilder();
+        for (var i = 0; i < criteriaList.Count; i++)
+        {
+            var id = criteriaList.Count == 1 ? $"{date}-crit-{slug}" : string.Create(CultureInfo.InvariantCulture, $"{date}-crit-{slug}-{i + 1}");
+            var escapedText = SecurityElement.Escape(criteriaList[i].Trim());
+            if (i > 0)
+            {
+                sb.AppendLine();
+            }
+            sb.Append(CultureInfo.InvariantCulture, $"      <criterion id=\"{id}\" decision=\"pending\">{escapedText}</criterion>");
+        }
+        return sb.ToString();
+    }
+
+    private static string GenerateFeatureSpecXml(string id, string date, string slug, string isoTime, bool activate, IReadOnlyList<string>? criteriaList)
     {
         var status = activate ? "active" : "draft";
         var reqStatus = activate ? "approved" : "proposed";
+        var confirmIdPrefix = date.Contains('T', StringComparison.Ordinal) ? date : $"{date}T000000Z";
         var confirmationsElement = activate
             ? $"""
   <confirmations>
-    <confirmation id="{date}T000000Z-confirm-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="{isoTime}">
+    <confirmation id="{confirmIdPrefix}-confirm-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="{isoTime}">
       <summary>Initial iteration activation.</summary>
       <requirements>
         <requirement target="{date}-req-{slug}" decision="approved"/>
@@ -259,7 +313,7 @@ public static class IterationCreator
       </requirement>
     </requirements>
     <acceptance>
-      <criterion id="{date}-crit-{slug}" decision="pending">Product criterion pending definition.</criterion>
+{GenerateCriteriaXml(date, slug, criteriaList, "Product criterion pending definition.")}
     </acceptance>
   </product>
 {confirmationsElement}
@@ -268,13 +322,14 @@ public static class IterationCreator
 """.Replace("\r\n", "\n");
     }
 
-    private static string GenerateResearchSpecXml(string id, string date, string slug, string isoTime, bool activate)
+    private static string GenerateResearchSpecXml(string id, string date, string slug, string isoTime, bool activate, IReadOnlyList<string>? criteriaList)
     {
         var status = activate ? "active" : "draft";
+        var confirmIdPrefix = date.Contains('T', StringComparison.Ordinal) ? date : $"{date}T000000Z";
         var confirmationsElement = activate
             ? $"""
   <confirmations>
-    <confirmation id="{date}T000000Z-confirm-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="{isoTime}">
+    <confirmation id="{confirmIdPrefix}-confirm-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="{isoTime}">
       <summary>Initial iteration activation.</summary>
     </confirmation>
   </confirmations>
@@ -313,7 +368,7 @@ public static class IterationCreator
     <boundaries/>
     <outputs/>
     <acceptance>
-      <criterion id="{date}-crit-{slug}" decision="pending">Research criterion pending definition.</criterion>
+{GenerateCriteriaXml(date, slug, criteriaList, "Research criterion pending definition.")}
     </acceptance>
   </research>
 {confirmationsElement}

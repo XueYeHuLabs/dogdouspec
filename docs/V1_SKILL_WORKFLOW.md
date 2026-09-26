@@ -360,6 +360,30 @@ Add `design_snapshot` only when those fields cannot preserve material technical
 context needed for safe resumption or verification; it is not mandatory
 handoff boilerplate.
 
+Semantic agent results are part of the iteration. The relevant Task records
+preserve implementation summaries, source commits, commands and exit codes,
+review disposition, findings, risks, blockers, and next actions. Worker response
+files, raw prompts, mutation envelopes, chat transcripts, and provider telemetry
+are transient by default and must not become a second ledger. Large traces,
+dumps, packages, screenshots, or complete logs may remain in repository-approved
+artifact storage, but the Task records the semantic outcome and any required
+stable locator or digest. Recovery must not depend on `.agents/work-results/`.
+
+In a Git-backed governed workspace, handoff also checks outer persistence:
+
+```powershell
+dogdouspec validate --format xml
+git status --short -- .dogdouspec
+```
+
+Managed `.dogdouspec/` documents are checkpointed at material lifecycle, review,
+handoff, external-blocker, and release boundaries when Git-write authority
+exists. Only `.dogdouspec/_tmp/` is runtime-only. If authority is unavailable,
+the handoff names the exact untracked or dirty managed files and reports the
+workspace as locally durable but not transport-ready. DogdouSpec document
+commit success never depends on Git, and the Skill never infers commit or push
+authority.
+
 ## 13. Prohibited Skill behavior
 
 The Skill must not:
@@ -374,3 +398,6 @@ The Skill must not:
   committed.
 - Use raw transaction XML when a v1 helper expresses the operation.
 - Convert unresolved current acceptance into backlog merely to complete work.
+- Persist semantic Task results in an external agent-report directory.
+- Treat raw prompts, worker response files, or provider logs as required handoff state.
+- Claim transport readiness while authoritative `.dogdouspec/` files are untracked or dirty relative to the intended checkpoint.

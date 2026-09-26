@@ -119,9 +119,8 @@ public sealed class SkillDeploymentTests
             "wrapper-create",
             "workspace-init",
             "skill-install",
-            "agents-merge",
+            "agents-guide",
             "workspace-validate",
-            "upgrade-procedure",
             "rollback-initial",
             "uninstall"
         ];
@@ -400,7 +399,7 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
         RunProcess("git", $"commit -m \"{message}\"", targetPath);
     }
 
-    private static void SetupExistingInstalledWorkspace(string targetPath)
+    private void SetupExistingInstalledWorkspace(string targetPath)
     {
         // Place wrapper
         var wrapperContent = "@echo off\r\nsetlocal\r\n\"%~dp0tools\\dogdouspec\\dogdouspec.exe\" %*\r\nexit /b %ERRORLEVEL%\r\n";
@@ -418,6 +417,9 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
         var cmdPath = Path.Combine(targetPath, "dogdouspec.cmd");
         var res = RunProcess("cmd.exe", $"/c \"{cmdPath}\" workspace init --format xml", targetPath);
         Assert.AreEqual(0, res.ExitCode, $"Setup workspace init failed: {res.Stderr}");
+
+        // Ensure installed skill files match source fixture
+        InstallDefaultSkillFiles(targetPath);
     }
 
     private void InstallDefaultSkillFiles(string targetPath)
@@ -432,8 +434,17 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
         }
     }
 
-    private void InstallLegacySkillFiles(string targetPath)
+    private void InstallLegacySkillFiles(string targetPath, bool removeDotAgents = false)
     {
+        if (removeDotAgents)
+        {
+            var dotAgents = Path.Combine(targetPath, ".agents");
+            if (Directory.Exists(dotAgents))
+            {
+                Directory.Delete(dotAgents, true);
+            }
+        }
+
         var sourceSkillDir = Path.Combine(_cleanSourceRepo, ".agents", "skills", "dogdouspec");
         var targetSkillDir = Path.Combine(targetPath, "skills", "dogdouspec");
         Directory.CreateDirectory(Path.Combine(targetSkillDir, "references"));
@@ -514,7 +525,7 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
 
 " + DocSnippets["skill-install"] + @"
 
-" + DocSnippets["agents-merge"] + @"
+" + DocSnippets["agents-guide"] + @"
 
 " + DocSnippets["workspace-validate"];
 
@@ -532,11 +543,9 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
         Assert.IsTrue(File.Exists(Path.Combine(targetDefaultSkill, "references", "mutations.md")), "mutations.md must exist");
         Assert.IsTrue(File.Exists(Path.Combine(targetDefaultSkill, "references", "xpath.md")), "xpath.md must exist");
 
-        // Assert AGENTS.md was merged non-destructively
-        var mergedAgents = File.ReadAllText(Path.Combine(targetRepo, "AGENTS.md"));
-        Assert.IsTrue(mergedAgents.Contains("# Project Rules"), "Original guidelines must be preserved");
-        Assert.IsTrue(mergedAgents.Contains("## DogdouSpec Workflow"), "DogdouSpec workflow block must be present");
-        Assert.IsTrue(mergedAgents.Contains(".agents/skills/dogdouspec/SKILL.md"), "AGENTS.md must reference default .agents/skills path");
+        // Assert AGENTS.md was left untouched for user+agent decision
+        var agentsContent = File.ReadAllText(Path.Combine(targetRepo, "AGENTS.md"));
+        Assert.AreEqual("# Project Rules\n\nRule 1.\n", agentsContent, "Original AGENTS.md must be untouched by installation");
     }
 
     [TestMethod]
@@ -552,267 +561,6 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
 
         Assert.AreNotEqual(0, result.ExitCode, "Preflight must fail when existing skill directory is detected");
         Assert.IsTrue(result.Stderr.Contains("Existing DogdouSpec components detected", StringComparison.OrdinalIgnoreCase), $"Unexpected error: {result.Stderr}");
-    }
-
-    [TestMethod]
-    public void Upgrade_ExactCurrentDefaultInstall_ExecutesDocumentedSnippet_SucceedsIdempotently()
-    {
-        var targetRepo = CreateTargetGitRepo("ExactDefaultUpgradeTarget");
-        SetupExistingInstalledWorkspace(targetRepo);
-        InstallDefaultSkillFiles(targetRepo);
-        File.WriteAllText(Path.Combine(targetRepo, "AGENTS.md"), "# Guidelines\n- Read [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md)\n");
-        CommitAllInRepo(targetRepo);
-
-        var upgradeSnippet = DocSnippets["upgrade-procedure"];
-        var result = ExecutePowerShellSnippet(upgradeSnippet, targetRepo);
-
-        Assert.AreEqual(0, result.ExitCode, $"Upgrade failed. Stderr: {result.Stderr}\nStdout: {result.Stdout}");
-        Assert.IsTrue(Directory.Exists(Path.Combine(targetRepo, ".agents", "skills", "dogdouspec")), "Default skill directory must remain intact");
-    }
-
-    [TestMethod]
-    public void Upgrade_LegacyInstallStandard_ExecutesDocumentedSnippet_MigratesToDotAgentsAndPrunesSkillsDir()
-    {
-        var targetRepo = CreateTargetGitRepo("LegacyStandardUpgradeTarget");
-        SetupExistingInstalledWorkspace(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
-        File.WriteAllText(Path.Combine(targetRepo, "AGENTS.md"), "# Guidelines\n- Read [`skills/dogdouspec/SKILL.md`](skills/dogdouspec/SKILL.md)\n");
-        CommitAllInRepo(targetRepo);
-
-        var upgradeSnippet = DocSnippets["upgrade-procedure"];
-        var result = ExecutePowerShellSnippet(upgradeSnippet, targetRepo);
-
-        Assert.AreEqual(0, result.ExitCode, $"Legacy upgrade failed. Stderr: {result.Stderr}\nStdout: {result.Stdout}");
-
-        var targetDefaultSkill = Path.Combine(targetRepo, ".agents", "skills", "dogdouspec");
-        Assert.IsTrue(Directory.Exists(targetDefaultSkill), ".agents/skills/dogdouspec must exist after migration");
-        Assert.IsTrue(File.Exists(Path.Combine(targetDefaultSkill, "SKILL.md")));
-        Assert.IsTrue(File.Exists(Path.Combine(targetDefaultSkill, "references", "authority.md")));
-
-        // Legacy directory must be removed and parent pruned
-        Assert.IsFalse(Directory.Exists(Path.Combine(targetRepo, "skills", "dogdouspec")), "Legacy skill directory must be removed");
-        Assert.IsFalse(Directory.Exists(Path.Combine(targetRepo, "skills")), "Empty skills parent directory must be pruned");
-
-        // AGENTS.md must be updated
-        var updatedAgents = File.ReadAllText(Path.Combine(targetRepo, "AGENTS.md"));
-        Assert.IsTrue(updatedAgents.Contains(".agents/skills/dogdouspec/SKILL.md"));
-        Assert.IsFalse(Regex.IsMatch(updatedAgents, @"(?<!\.agents/)skills/dogdouspec/SKILL\.md"));
-    }
-
-    [TestMethod]
-    public void Upgrade_LegacyInstallModifiedStandardFile_ExecutesDocumentedSnippet_PreservesLegacyDirectory()
-    {
-        var targetRepo = CreateTargetGitRepo("LegacyModifiedUpgradeTarget");
-        SetupExistingInstalledWorkspace(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
-
-        // User modified a standard file
-        var legacyAuthFile = Path.Combine(targetRepo, "skills", "dogdouspec", "references", "authority.md");
-        File.WriteAllText(legacyAuthFile, "# Custom Modified Authority Content");
-        File.WriteAllText(Path.Combine(targetRepo, "AGENTS.md"), "# Guidelines\n- Read [`skills/dogdouspec/references/authority.md`](skills/dogdouspec/references/authority.md)\n");
-        CommitAllInRepo(targetRepo);
-
-        var upgradeSnippet = DocSnippets["upgrade-procedure"];
-        var result = ExecutePowerShellSnippet(upgradeSnippet, targetRepo);
-
-        Assert.AreEqual(0, result.ExitCode, $"Upgrade failed. Stderr: {result.Stderr}\nStdout: {result.Stdout}");
-
-        // Both default and legacy directories must exist (legacy preserved due to custom content)
-        var targetDefaultSkill = Path.Combine(targetRepo, ".agents", "skills", "dogdouspec");
-        var targetLegacySkill = Path.Combine(targetRepo, "skills", "dogdouspec");
-
-        Assert.IsTrue(Directory.Exists(targetDefaultSkill), ".agents/skills/dogdouspec must exist");
-        Assert.IsTrue(Directory.Exists(targetLegacySkill), "Legacy skills/dogdouspec must be preserved when standard file was modified");
-        Assert.AreEqual("# Custom Modified Authority Content", File.ReadAllText(legacyAuthFile), "User modification must not be overwritten or deleted");
-    }
-
-    [TestMethod]
-    public void Upgrade_LegacyInstallExtraFile_ExecutesDocumentedSnippet_PreservesLegacyDirectory()
-    {
-        var targetRepo = CreateTargetGitRepo("LegacyExtraFileUpgradeTarget");
-        SetupExistingInstalledWorkspace(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
-
-        // User added a custom extra file
-        var customNoteFile = Path.Combine(targetRepo, "skills", "dogdouspec", "custom-notes.md");
-        File.WriteAllText(customNoteFile, "# Custom Notes");
-        File.WriteAllText(Path.Combine(targetRepo, "AGENTS.md"), "# Guidelines\n- Read [`skills/dogdouspec/SKILL.md`](skills/dogdouspec/SKILL.md)\n");
-        CommitAllInRepo(targetRepo);
-
-        var upgradeSnippet = DocSnippets["upgrade-procedure"];
-        var result = ExecutePowerShellSnippet(upgradeSnippet, targetRepo);
-
-        Assert.AreEqual(0, result.ExitCode, $"Upgrade failed. Stderr: {result.Stderr}\nStdout: {result.Stdout}");
-
-        var targetDefaultSkill = Path.Combine(targetRepo, ".agents", "skills", "dogdouspec");
-        var targetLegacySkill = Path.Combine(targetRepo, "skills", "dogdouspec");
-
-        Assert.IsTrue(Directory.Exists(targetDefaultSkill), ".agents/skills/dogdouspec must exist");
-        Assert.IsTrue(Directory.Exists(targetLegacySkill), "Legacy skills/dogdouspec must be preserved when extra files exist");
-        Assert.IsTrue(File.Exists(customNoteFile), "custom-notes.md must remain untouched");
-    }
-
-    [TestMethod]
-    public void Upgrade_DivergentExistingDefaultInstall_ExecutesDocumentedSnippet_FailsClosedWithoutOverwriting()
-    {
-        var targetRepo = CreateTargetGitRepo("DivergentDefaultUpgradeTarget");
-        SetupExistingInstalledWorkspace(targetRepo);
-        InstallDefaultSkillFiles(targetRepo);
-
-        // User modified default SKILL.md
-        var defaultSkillMd = Path.Combine(targetRepo, ".agents", "skills", "dogdouspec", "SKILL.md");
-        File.WriteAllText(defaultSkillMd, "# Customized Default Skill");
-        CommitAllInRepo(targetRepo);
-
-        var upgradeSnippet = DocSnippets["upgrade-procedure"];
-        var result = ExecutePowerShellSnippet(upgradeSnippet, targetRepo);
-
-        Assert.AreNotEqual(0, result.ExitCode, "Upgrade must fail closed when existing default skill has divergent modifications");
-        var errorText = result.Stderr + " " + result.Stdout;
-        Assert.IsTrue(errorText.Contains("Aborting upgrade to prevent overwriting local customizations", StringComparison.OrdinalIgnoreCase) &&
-                      errorText.Contains("Existing default skill at", StringComparison.OrdinalIgnoreCase),
-                      $"Unexpected output: Stderr: {result.Stderr}, Stdout: {result.Stdout}");
-        Assert.AreEqual("# Customized Default Skill", File.ReadAllText(defaultSkillMd), "Modified default skill must not be overwritten");
-    }
-
-    [TestMethod]
-    public void Upgrade_BothRootsExist_ExactDefaultAndLegacy_ExecutesDocumentedSnippet_CleansLegacy()
-    {
-        var targetRepo = CreateTargetGitRepo("BothRootsExactUpgradeTarget");
-        SetupExistingInstalledWorkspace(targetRepo);
-        InstallDefaultSkillFiles(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
-        File.WriteAllText(Path.Combine(targetRepo, "AGENTS.md"), "# Guidelines\n- Read [skills/dogdouspec/SKILL.md](skills/dogdouspec/SKILL.md)\n");
-        CommitAllInRepo(targetRepo);
-
-        var upgradeSnippet = DocSnippets["upgrade-procedure"];
-        var result = ExecutePowerShellSnippet(upgradeSnippet, targetRepo);
-
-        Assert.AreEqual(0, result.ExitCode, $"Upgrade failed. Stderr: {result.Stderr}\nStdout: {result.Stdout}");
-
-        var targetDefaultSkill = Path.Combine(targetRepo, ".agents", "skills", "dogdouspec");
-        var targetLegacySkill = Path.Combine(targetRepo, "skills", "dogdouspec");
-
-        Assert.IsTrue(Directory.Exists(targetDefaultSkill), ".agents/skills/dogdouspec must exist");
-        Assert.IsFalse(Directory.Exists(targetLegacySkill), "Redundant exact legacy skill must be removed");
-        Assert.IsFalse(Directory.Exists(Path.Combine(targetRepo, "skills")), "Empty skills parent directory must be pruned");
-    }
-
-    [TestMethod]
-    public void Upgrade_BothRootsExist_DivergentDefault_ExecutesDocumentedSnippet_FailsClosed()
-    {
-        var targetRepo = CreateTargetGitRepo("BothRootsDivergentDefaultTarget");
-        SetupExistingInstalledWorkspace(targetRepo);
-        InstallDefaultSkillFiles(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
-
-        // Modify default
-        File.WriteAllText(Path.Combine(targetRepo, ".agents", "skills", "dogdouspec", "custom.md"), "custom default");
-        CommitAllInRepo(targetRepo);
-
-        var upgradeSnippet = DocSnippets["upgrade-procedure"];
-        var result = ExecutePowerShellSnippet(upgradeSnippet, targetRepo);
-
-        Assert.AreNotEqual(0, result.ExitCode, "Upgrade must fail closed when default root is divergent");
-        var errorText = result.Stderr + " " + result.Stdout;
-        Assert.IsTrue(errorText.Contains("Aborting upgrade to prevent overwriting local customizations", StringComparison.OrdinalIgnoreCase) &&
-                      errorText.Contains("Existing default skill at", StringComparison.OrdinalIgnoreCase),
-                      $"Unexpected output: Stderr: {result.Stderr}, Stdout: {result.Stdout}");
-    }
-
-    [TestMethod]
-    public void Upgrade_BothRootsExist_ExactDefaultAndModifiedLegacy_ExecutesDocumentedSnippet_PreservesLegacy()
-    {
-        var targetRepo = CreateTargetGitRepo("BothRootsExactDefaultModLegacyTarget");
-        SetupExistingInstalledWorkspace(targetRepo);
-        InstallDefaultSkillFiles(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
-
-        // Modify legacy
-        File.WriteAllText(Path.Combine(targetRepo, "skills", "dogdouspec", "references", "authority.md"), "custom legacy authority");
-        CommitAllInRepo(targetRepo);
-
-        var upgradeSnippet = DocSnippets["upgrade-procedure"];
-        var result = ExecutePowerShellSnippet(upgradeSnippet, targetRepo);
-
-        Assert.AreEqual(0, result.ExitCode, $"Upgrade failed. Stderr: {result.Stderr}\nStdout: {result.Stdout}");
-
-        var targetDefaultSkill = Path.Combine(targetRepo, ".agents", "skills", "dogdouspec");
-        var targetLegacySkill = Path.Combine(targetRepo, "skills", "dogdouspec");
-
-        Assert.IsTrue(Directory.Exists(targetDefaultSkill), ".agents/skills/dogdouspec must exist");
-        Assert.IsTrue(Directory.Exists(targetLegacySkill), "Modified legacy skills/dogdouspec must be preserved");
-    }
-
-    [TestMethod]
-    public void Upgrade_MixedAgentsMdReferences_ExecutesDocumentedSnippet_MigratesAllLegacyWithoutDoublePrefix()
-    {
-        var targetRepo = CreateTargetGitRepo("MixedAgentsReferencesTarget");
-        SetupExistingInstalledWorkspace(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
-
-        var initialAgents = @"# Project Guidelines
-1. Read [.agents/skills/dogdouspec/SKILL.md](.agents/skills/dogdouspec/SKILL.md)
-2. Read legacy [skills/dogdouspec/references/authority.md](skills/dogdouspec/references/authority.md)
-3. See also skills/dogdouspec/references/xpath.md
-4. Custom skills/other_skill/doc.md
-";
-        File.WriteAllText(Path.Combine(targetRepo, "AGENTS.md"), initialAgents);
-        CommitAllInRepo(targetRepo);
-
-        var upgradeSnippet = DocSnippets["upgrade-procedure"];
-        var result = ExecutePowerShellSnippet(upgradeSnippet, targetRepo);
-
-        Assert.AreEqual(0, result.ExitCode, $"Upgrade failed. Stderr: {result.Stderr}\nStdout: {result.Stdout}");
-
-        var finalAgents = File.ReadAllText(Path.Combine(targetRepo, "AGENTS.md"));
-
-        // Must not produce double .agents/.agents
-        Assert.IsFalse(finalAgents.Contains(".agents/.agents", StringComparison.Ordinal), "Must never produce .agents/.agents");
-
-        // Must update unprefixed skills/dogdouspec
-        Assert.IsTrue(finalAgents.Contains("[.agents/skills/dogdouspec/references/authority.md](.agents/skills/dogdouspec/references/authority.md)", StringComparison.Ordinal));
-        Assert.IsTrue(finalAgents.Contains(".agents/skills/dogdouspec/references/xpath.md", StringComparison.Ordinal));
-
-        // Must preserve other unrelated skills
-        Assert.IsTrue(finalAgents.Contains("skills/other_skill/doc.md", StringComparison.Ordinal));
-    }
-
-    [TestMethod]
-    public void Upgrade_ValidationFailure_ExecutesDocumentedSnippet_RestoresPreUpgradeStateAndPrunesEmptyParents()
-    {
-        var targetRepo = CreateTargetGitRepo("ValidationRollbackTarget");
-        SetupExistingInstalledWorkspace(targetRepo);
-        InstallLegacySkillFiles(targetRepo);
-
-        var originalAgents = "# Pre-Upgrade Guidelines\n- Read skills/dogdouspec/SKILL.md\n";
-        File.WriteAllText(Path.Combine(targetRepo, "AGENTS.md"), originalAgents);
-        CommitAllInRepo(targetRepo);
-
-        // Pre-condition: .agents does not exist
-        Assert.IsFalse(Directory.Exists(Path.Combine(targetRepo, ".agents")), ".agents must not exist before upgrade");
-
-        // Corrupt workspace so validate will fail, and commit it so preflight clean check passes
-        File.WriteAllText(Path.Combine(targetRepo, ".dogdouspec", "backlog.xml"), "<invalid>corrupted");
-        CommitAllInRepo(targetRepo, "Corrupt backlog for validation test");
-
-        var upgradeSnippet = DocSnippets["upgrade-procedure"];
-        var result = ExecutePowerShellSnippet(upgradeSnippet, targetRepo);
-
-        Assert.AreNotEqual(0, result.ExitCode, "Upgrade must fail on validation failure");
-        Assert.IsTrue(result.Stderr.Contains("[ROLLBACK]", StringComparison.OrdinalIgnoreCase) || result.Stdout.Contains("[ROLLBACK]", StringComparison.OrdinalIgnoreCase), $"Expected rollback diagnostic. Stderr: {result.Stderr}, Stdout: {result.Stdout}");
-
-        // Verify rollback restoration:
-        // 1. .agents directory must be pruned completely since it was created during upgrade
-        Assert.IsFalse(Directory.Exists(Path.Combine(targetRepo, ".agents")), "Newly-created empty .agents parent must be pruned on rollback");
-
-        // 2. Legacy skill must be restored
-        var targetLegacySkill = Path.Combine(targetRepo, "skills", "dogdouspec");
-        Assert.IsTrue(Directory.Exists(targetLegacySkill), "Legacy skill directory must be restored on rollback");
-        Assert.IsTrue(File.Exists(Path.Combine(targetLegacySkill, "SKILL.md")));
-
-        // 3. AGENTS.md must be restored
-        Assert.AreEqual(originalAgents, File.ReadAllText(Path.Combine(targetRepo, "AGENTS.md")), "AGENTS.md must be restored to pre-upgrade backup");
     }
 
     [TestMethod]
@@ -837,7 +585,7 @@ $EXPECTED_STAGING_PATH = $STAGING_DIR
 
 " + DocSnippets["skill-install"] + @"
 
-" + DocSnippets["agents-merge"];
+" + DocSnippets["agents-guide"];
 
         var installResult = ExecutePowerShellSnippet(installScript, targetRepo);
         Assert.AreEqual(0, installResult.ExitCode, $"Install failed: {installResult.Stderr}");

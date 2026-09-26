@@ -9,6 +9,7 @@ using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -28,7 +29,8 @@ public static class RequirementProposer
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         if (string.IsNullOrWhiteSpace(workspaceRoot))
         {
@@ -64,6 +66,15 @@ public static class RequirementProposer
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         var normSpecDocPath = $"{normIterId}/spec.xml";
@@ -206,7 +217,7 @@ public static class RequirementProposer
         }
         if (DateTimeOffset.TryParse(specRoot.Attribute("updated_at")?.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var specUpdatedAt) && reqOccurredAt < specUpdatedAt)
         {
-            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"requirement-propose @occurred_at '{occurredAt}' cannot be earlier than spec updated_at '{specRoot.Attribute("updated_at")?.Value}'.", normSpecDocPath) });
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"requirement-propose @occurred_at '{occurredAt}' cannot be earlier than spec updated_at '{specRoot.Attribute("updated_at")?.Value}'. Minimal acceptable timestamp is '{specRoot.Attribute("updated_at")?.Value}'.", normSpecDocPath) });
         }
 
         var kind = specRoot.Attribute("kind")?.Value;
@@ -325,27 +336,7 @@ public static class RequirementProposer
         specRoot.SetAttributeValue("revision", newRevision.ToString(CultureInfo.InvariantCulture));
 
         // 5. Serialize and Commit
-        var writerSettings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "  ",
-            OmitXmlDeclaration = false,
-            Encoding = Utf8NoBom,
-            NewLineHandling = NewLineHandling.Replace,
-            NewLineChars = "\n"
-        };
-
-        using var memoryStream = new MemoryStream();
-        using (var writer = XmlWriter.Create(memoryStream, writerSettings))
-        {
-            specDoc.Save(writer);
-        }
-
-        var replacementContent = Encoding.UTF8.GetString(memoryStream.ToArray());
-        if (!replacementContent.EndsWith('\n'))
-        {
-            replacementContent += "\n";
-        }
+        var replacementContent = ManagedDocumentSerializer.Serialize(specDoc);
 
         var operation = new TransactionDocumentOperation(
             normSpecDocPath,
@@ -360,7 +351,8 @@ public static class RequirementProposer
             clock,
             faultInjector,
             version,
-            correlationId: proposeId);
+            correlationId: proposeId,
+            dryRun: dryRun);
     }
 
     private static XElement CreateReceipt(string operationId, string actor, string occurredAt, string fingerprint, string summary) =>

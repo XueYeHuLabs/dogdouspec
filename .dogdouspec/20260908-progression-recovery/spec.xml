@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20260908-progression-recovery" schema_version="1.0" revision="5" kind="feature" status="completed" created_at="2026-09-08T00:16:46Z" updated_at="2026-09-08T06:13:29Z" completed_at="2026-09-08T06:13:29Z">
+  <index>
+    <summary>Unified Progression Decisions and Blocker Recovery: reliable action recommendations, actual checkpoint status, blocker resolution, and bounded recovery context.</summary>
+    <term key="kind" value="feature" />
+    <term key="iteration" value="20260908-progression-recovery" />
+    <term key="topic" value="progression-recovery" />
+    <term key="status" value="completed" />
+  </index>
+  <product>
+    <objective>Enable DogdouSpec to reliably explain what can be executed now, why progress is blocked, how to resolve blockers, and how a new session can resume from authoritative state; correct misleading terminal-state and checkpoint-success messages.</objective>
+    <deliverables>
+      <deliverable id="20260908-deliv-pr-01">
+        <index>
+          <summary>Shared progression assessment integrated with existing queries and summaries</summary>
+          <term key="kind" value="deliverable" />
+        </index>
+        <description>Shared progression assessment integrated with existing queries and summaries</description>
+      </deliverable>
+      <deliverable id="20260908-deliv-pr-02">
+        <index>
+          <summary>Actual Git checkpoint readiness dimension</summary>
+          <term key="kind" value="deliverable" />
+        </index>
+        <description>Actual Git checkpoint readiness dimension</description>
+      </deliverable>
+      <deliverable id="20260908-deliv-pr-03">
+        <index>
+          <summary>Task-record-based blocker registration, recovery, and recheck queues</summary>
+          <term key="kind" value="deliverable" />
+        </index>
+        <description>Task-record-based blocker registration, recovery, and recheck queues</description>
+      </deliverable>
+      <deliverable id="20260908-deliv-pr-04">
+        <index>
+          <summary>Bounded recovery context with source revisions</summary>
+          <term key="kind" value="deliverable" />
+        </index>
+        <description>Bounded recovery context with source revisions</description>
+      </deliverable>
+      <deliverable id="20260908-deliv-pr-05">
+        <index>
+          <summary>Consistent contracts, help, skills, and complete scenario regression coverage</summary>
+          <term key="kind" value="deliverable" />
+        </index>
+        <description>Consistent contracts, help, skills, and complete scenario regression coverage</description>
+      </deliverable>
+    </deliverables>
+    <scope>
+      <included>
+        <item>Task and iteration progression assessment within one workspace, preserving cross-iteration dependencies.</item>
+        <item>Shared facts, legal action recommendations, bounded candidate queues, and agent filtering.</item>
+        <item>An actual read-only VCS dimension, multiple blocker records, explicit recovery, recheck queues, and recovery context.</item>
+        <item>Retain the v1 schema by default and use the existing CLI/Core, tests, contracts, and skill distribution surfaces.</item>
+      </included>
+      <excluded>
+        <item>Task leases, heartbeats, preemption, automatic claiming, or a multi-agent runtime.</item>
+        <item>Binding evidence to source versions, external evidence registries, or automatic verifiers.</item>
+        <item>Cross-workspace aggregation or scheduling, priority optimization, duration forecasting, graphical interfaces, or MCP adapters.</item>
+        <item>Automatic scheduled rechecks or notifications, automatic recovery, Git writes, or activation and acceptance on the owner's behalf.</item>
+        <item>Changes to historical iterations, CI/CD releases, or schema upgrades without an owner decision.</item>
+      </excluded>
+    </scope>
+    <requirements>
+      <requirement id="20260908-req-pr-01" status="approved">
+        <index>
+          <summary>Unify progression facts and lifecycle assessment</summary>
+          <term key="kind" value="requirement" />
+          <term key="priority" value="p0" />
+        </index>
+        <statement>Establish a shared read-only progression assessment model for task next, summary, task summary, and iteration readiness. Represent task terminality, dependency satisfaction, verification completeness, review outcomes, active findings, product confirmation, and VCS checkpoints separately; the absence of pending tasks must not imply that all work is complete.</statement>
+        <rationale>Existing entry points derive state independently; TaskNext can incorrectly report all tasks as terminal when only blocked tasks remain. Shared facts are the foundation for reliable progression.</rationale>
+        <key_points>
+          <point id="20260908-point-pr-01-1">Distinguish an empty task set, blocked tasks, pending tasks, work in progress, verification, and complete execution terminality; cancellation, transfer, and supersession do not mean successful completion.</point>
+          <point id="20260908-point-pr-01-2">Include draft/replanning/completed/cancelled/superseded iteration states when determining action legality; preserve the existing state machine and owner authority.</point>
+          <point id="20260908-point-pr-01-3">Use the same eligible-task denominator for counts and completion percentages in both summary views; explicitly identify a set containing only cancelled/transferred/superseded tasks without presenting it as successful delivery.</point>
+          <point id="20260908-point-pr-01-4">Each view reports the spec/tasks revisions and dependency-document revisions it read; detect revision drift during reading and retry within a bound or return a diagnostic, without claiming an atomic snapshot outside a lock.</point>
+        </key_points>
+      </requirement>
+      <requirement id="20260908-req-pr-02" status="approved">
+        <index>
+          <summary>Explainable and legally executable next actions</summary>
+          <term key="kind" value="requirement" />
+          <term key="priority" value="p0" />
+        </index>
+        <statement>Progression recommendations must provide an action category, reason code, target task or blocking object, required role, and follow-up query locator; commands must not reach contradictory conclusions from the same facts. Preserve default single-task selection and provide read-only access to bounded candidate queues and agent filtering.</statement>
+        <rationale>Returning only the first active task in document order cannot distinguish implementation, verification, independent review, and waiting, and does not help multiple executors find actionable work.</rationale>
+        <key_points>
+          <point id="20260908-point-pr-02-1">Distinguish at least continuing implementation, preparing verification, awaiting review, resolving findings, explicit recovery, waiting for dependencies, waiting for external conditions, awaiting the owner, no tasks, and execution terminality.</point>
+          <point id="20260908-point-pr-02-2">Recommendation reasons must reflect unapproved requirements, unsatisfied dependencies, active findings, and review requirements; do not recommend finish/start/resume actions that current gates would reject.</point>
+          <point id="20260908-point-pr-02-3">Return candidates in stable document order and define how agent filtering treats unassigned tasks and independent reviewer roles; do not assign tasks automatically or introduce a priority algorithm.</point>
+          <point id="20260908-point-pr-02-4">Return structural diagnostics for missing or cyclic dependencies rather than treating them as ordinary waiting; preserve existing same-document and cross-iteration dependency resolution.</point>
+        </key_points>
+      </requirement>
+      <requirement id="20260908-req-pr-03" status="approved">
+        <index>
+          <summary>Derive checkpoint readiness from actual read-only diagnostics</summary>
+          <term key="kind" value="requirement" />
+          <term key="priority" value="p0" />
+        </index>
+        <statement>The VCS dimension of iteration readiness must reuse actual WorkspaceVcsStatus results, distinguish passed, failed, unknown, and not-applicable, and display managed paths that have not been checkpointed with their reasons.</statement>
+        <rationale>The current vcs_checkpoint value is fixed to passed, which can make uncommitted authoritative state appear ready for handoff.</rationale>
+        <key_points>
+          <point id="20260908-point-pr-03-1">Do not report a passed checkpoint when managed files are untracked, modified, staged but uncommitted, or ignored; remain consistent with workspace vcs-status/checkpoint-plan.</point>
+          <point id="20260908-point-pr-03-2">Report not-applicable for non-Git workspaces and unknown when Git is unavailable or inspection fails; unknown must not be treated as passed.</point>
+          <point id="20260908-point-pr-03-3">Diagnostics must not modify HEAD, the index, file contents, or ignore rules, or perform Git writes automatically; the Git dimension neither replaces product confirmation nor silently introduces additional confirmation gates.</point>
+        </key_points>
+      </requirement>
+      <requirement id="20260908-req-pr-04" status="approved">
+        <index>
+          <summary>Register blockers, resolve them individually, and resume explicitly</summary>
+          <term key="kind" value="requirement" />
+          <term key="priority" value="p1" />
+        </index>
+        <statement>Provide task block and task resume convenience commands that persist blocker reasons, types, responsible parties, resolution conditions, optional recheck times, resolution evidence, and next actions after recovery in Task records, supporting multiple blockers per task and historical traceability.</statement>
+        <rationale>The blocked state and underlying transitions already exist, but waiting for external conditions and recording recovery information lack consistent input and query conventions.</rationale>
+        <key_points>
+          <point id="20260908-point-pr-04-1">Reuse v1 finding/resolution and index/context/outcome fields; standardize blocker-kind, blocker-owner, and blocker-review-at index conventions, using a compact UTC time format. Report unspecified/unknown for missing historical fields.</point>
+          <point id="20260908-point-pr-04-2">Define blocker IDs, repeated requests, updates, individual resolution, and behavior when active blockers remain; preserve exact revisions, existing idempotency rules, and the absence of partial writes on failure.</point>
+          <point id="20260908-point-pr-04-3">Before recovery, verify satisfied dependencies, approved requirements, no remaining active blockers, and an unfrozen iteration; the caller must explicitly confirm resolution conditions and record evidence. Do not resume automatically when a recheck time arrives.</point>
+          <point id="20260908-point-pr-04-4">Do not extend the existing state machine with a pending-to-blocked transition; after verification is blocked, the existing resume transition returns to in-progress for subsequent verification. Derive dependency waiting from the dependency graph without duplicating storage.</point>
+        </key_points>
+      </requirement>
+      <requirement id="20260908-req-pr-05" status="approved">
+        <index>
+          <summary>Read-only blocker and recheck queues</summary>
+          <term key="kind" value="requirement" />
+          <term key="priority" value="p1" />
+        </index>
+        <statement>Provide a task blockers read-only view that combines explicit external blockers, unresolved findings, and derived dependency waiting; support filters for task, type, responsible party, and recheck due status, and display resolution conditions and next actions.</statement>
+        <rationale>The manager should explain who can resolve each blocker, rather than merely reporting the number of blocked tasks.</rationale>
+        <key_points>
+          <point id="20260908-point-pr-05-1">Distinguish persisted blockers from derived dependency edges and include source record/task IDs, upstream and downstream references, and the revisions used.</point>
+          <point id="20260908-point-pr-05-2">Use an injectable clock to determine due status, compare times in UTC, and sort deterministically; distinguish missing recheck times from overdue entries and keep records with missing fields visible.</point>
+          <point id="20260908-point-pr-05-3">Queries must not change tasks, records, locks, or Git state; existing ordinary active findings must remain visible in queues and gates even without blocker tags.</point>
+        </key_points>
+      </requirement>
+      <requirement id="20260908-req-pr-06" status="approved">
+        <index>
+          <summary>Bounded and traceable recovery context</summary>
+          <term key="kind" value="requirement" />
+          <term key="priority" value="p1" />
+        </index>
+        <statement>Provide a task context read-only recovery view that combines the task objective, effective scope and constraints, source requirements, acceptance criteria, dependency results, recent verification and review, unresolved findings, next actions, and authority boundaries, with sources and revisions.</statement>
+        <rationale>New sessions currently have to assemble several XML fragments themselves; a unified minimal recovery view can reduce omissions and repeated loading.</rationale>
+        <key_points>
+          <point id="20260908-point-pr-06-1">Bound output by default and define item/byte limits, truncation markers, omitted counts, and follow-up query locators; do not expand the entire history by default.</point>
+          <point id="20260908-point-pr-06-2">Do not silently truncate objectives, effective constraints, unresolved blockers, or prohibited actions; return an explicit diagnostic when essential information exceeds the limit instead of claiming a complete result.</point>
+          <point id="20260908-point-pr-06-3">Recovery must remain possible after deleting temporary reports such as .agents/work-results; derive semantics only from existing authoritative XML without adding authoritative reports, chat memory, or private caches.</point>
+          <point id="20260908-point-pr-06-4">Identify unknown facts or structural errors when evidence, responsible parties, or references are missing; handle concurrent revision drift within a bound, and provide only history and permitted follow-up actions for terminal tasks.</point>
+        </key_points>
+      </requirement>
+      <requirement id="20260908-req-pr-07" status="approved">
+        <index>
+          <summary>Preserve compatibility, read-only boundaries, and governance guarantees</summary>
+          <term key="kind" value="requirement" />
+          <term key="priority" value="p1" />
+        </index>
+        <statement>Retain the v1 managed schema and valid-request compatibility by default, declaring new output and convenience commands in the contract; existing exact-revision checks, idempotency, transaction recovery, independent review, terminal immutability, and owner-confirmation rules remain in force.</statement>
+        <rationale>Improving progression must not sacrifice established state correctness or make old workspaces depend on implicit migrations.</rationale>
+        <key_points>
+          <point id="20260908-point-pr-07-1">Existing valid commands and XML requests remain usable, and existing output fields must not be silently renamed or have their meanings changed; document compatibility effects when correcting erroneous results or introducing new status values.</point>
+          <point id="20260908-point-pr-07-2">New candidate, context, and queue views are read-only; failure diagnostics must not leave partially written records. Add regression coverage using existing v1 samples and temporary workspaces.</point>
+          <point id="20260908-point-pr-07-3">If schema evolution or an expansion of product scope is required, first follow the change and owner-decision process; do not synchronize schemas automatically or activate or accept the product on the owner's behalf.</point>
+        </key_points>
+      </requirement>
+      <requirement id="20260908-req-pr-08" status="approved">
+        <index>
+          <summary>Consistent guidance and complete scenario acceptance</summary>
+          <term key="kind" value="requirement" />
+          <term key="priority" value="p1" />
+        </index>
+        <statement>Synchronize workflow guidance in README, CLI contracts, skills, templates, and help; identify implemented and still-proposed portions of older proposals, and validate the iteration through complete scenarios and independent technical review.</statement>
+        <rationale>Documentation still describes some implemented commands as proposals; testing individual getters cannot demonstrate a complete progression workflow.</rationale>
+        <key_points>
+          <point id="20260908-point-pr-08-1">Official help must list only implemented commands; draft interface prototypes must be marked as proposed, and guidance must use a consistent blocking, recovery, and readiness workflow.</point>
+          <point id="20260908-point-pr-08-2">Scenarios cover creation, authorized activation, implementation, blocking, recovery, verification, independent review, Git checkpoint diagnostics, and pending owner acceptance; tests must not modify actual historical iterations.</point>
+          <point id="20260908-point-pr-08-3">Run build.cmd before and after code changes, with all tests passing and zero errors and warnings at the end; persist semantic results, risks, and handoff records in Tasks, and do not substitute implementer validation for independent review.</point>
+        </key_points>
+      </requirement>
+    </requirements>
+    <acceptance>
+      <criterion id="20260908-accept-pr-01" decision="accepted">Workspaces containing only blocked tasks, blocked+done tasks, no tasks, or only terminal tasks produce accurate and distinct results; no entry point misreports blocking, cancellation, transfer, or supersession as successful delivery, and counts and eligible-task denominators agree.</criterion>
+      <criterion id="20260908-accept-pr-02" decision="accepted">The same workspace produces consistent facts across next, summary, task summary, and readiness; draft/replanning/terminal lifecycle states, multiple candidates, and agent filtering never produce illegal execution recommendations, and reason codes and follow-up locators are complete.</criterion>
+      <criterion id="20260908-accept-pr-03" decision="accepted">Shared gate rules produce accurate actions for same-document and cross-iteration dependencies, missing/cyclic references, unapproved requirements, active findings, pending review, changes-requested, and independent approval.</criterion>
+      <criterion id="20260908-accept-pr-04" decision="accepted">Clean/untracked/modified/staged/ignored states, non-Git workspaces, unavailable Git, and inspection failures produce actual VCS dimensions consistent with existing diagnostics, without changing HEAD, the index, or working files, and without replacing owner confirmation.</criterion>
+      <criterion id="20260908-accept-pr-05" decision="accepted">The public CLI registers, updates, and individually resolves multiple blockers while preserving history; stale revisions, conflicting repeated requests, and unmet resolution conditions leave no partial writes, and remaining active blockers cannot be bypassed.</criterion>
+      <criterion id="20260908-accept-pr-06" decision="accepted">Blocker queues correctly show responsible parties, resolution conditions, due and undated entries, missing historical fields, and derived dependencies; explicit recovery must satisfy dependency, requirement, and lifecycle gates, and reaching a recheck time does not change state.</criterion>
+      <criterion id="20260908-accept-pr-07" decision="accepted">Task context retains the required semantics after temporary reports are deleted; long histories are truncated under explicit limits with follow-up queries available, essential-information overflow never yields a falsely complete result, and missing facts and revision drift are explained.</criterion>
+      <criterion id="20260908-accept-pr-08" decision="accepted">Regression tests pass for historical v1 samples and existing valid CLI/XML requests; old and new command output, README, Skill, templates, and help agree, with no regression in schema, authority, terminal-state, review, or transaction guarantees.</criterion>
+      <criterion id="20260908-accept-pr-09" decision="accepted">Complete scenario exercises and build.cmd pass with zero errors and warnings; tasks retain verification and independent-review evidence, unresolved issues are explicitly recorded, and readiness separately reports pending owner acceptance and actual checkpoint state.</criterion>
+    </acceptance>
+  </product>
+  <design>
+    <overview>Use a shared Core model of progression facts and actions, with the existing CLI responsible for presentation and compiling convenience requests. Blocker semantics belong to Task records, and recovery context is a bounded read-only derived view; reuse existing dependency, review, transaction, and VCS diagnostics. See docs/iterations/20260908-progression-recovery/PLAN.md for the implementation plan. Execute the contract, shared model, existing-entry-point and Git integration, blocker workflow, recovery view, documentation, and overall technical acceptance phases in that order.</overview>
+    <boundaries>
+      <boundary id="20260908-boundary-pr-1">Spec.xml is authoritative for requirements and design, and tasks.xml is authoritative for tasks and execution facts; PLAN.md explains sequencing, risks, and verification methods without maintaining a second task-state model.</boundary>
+      <boundary id="20260908-boundary-pr-2">Views are read-only; candidates do not claim tasks, due times do not resolve blockers, and execution terminality does not confirm the product. This iteration performs no automatic Git writes.</boundary>
+      <boundary id="20260908-boundary-pr-3">Do not evolve the managed XSD by default; new record conventions must be expressible in v1, without ignoring existing findings or fabricating historical fields.</boundary>
+      <boundary id="20260908-boundary-pr-4">Cross-document reads do not promise an atomic snapshot; report revisions and handle drift within a bound. Minimal context must retain essential constraints and blockers.</boundary>
+    </boundaries>
+    <decisions>
+      <decision id="20260908-design-pr-01" status="accepted">
+        <index>
+          <summary>Share the fact model while preserving existing query responsibilities</summary>
+          <term key="kind" value="decision" />
+        </index>
+        <rationale>Use the same lifecycle, dependency, review, and finding facts to drive multiple views; avoid divergent copies of the decision logic. T01 defines the action matrix and compatibility policy.</rationale>
+        <sources>
+          <ref scope="document" target="20260908-req-pr-01" relation="supports" />
+          <ref scope="document" target="20260908-req-pr-02" relation="supports" />
+          <ref scope="document" target="20260908-req-pr-07" relation="supports" />
+        </sources>
+      </decision>
+      <decision id="20260908-design-pr-02" status="accepted">
+        <index>
+          <summary>Reuse v1 Task records to represent blockers</summary>
+          <term key="kind" value="decision" />
+        </index>
+        <rationale>Persist blocking and resolution history through finding/resolution records and index keys, deriving queues from those records; propose a change if fields are insufficient rather than adding another authoritative database.</rationale>
+        <sources>
+          <ref scope="document" target="20260908-req-pr-04" relation="supports" />
+          <ref scope="document" target="20260908-req-pr-05" relation="supports" />
+          <ref scope="document" target="20260908-req-pr-07" relation="supports" />
+        </sources>
+      </decision>
+      <decision id="20260908-design-pr-03" status="accepted">
+        <index>
+          <summary>Make checkpoint status an actual and independent diagnostic dimension</summary>
+          <term key="kind" value="decision" />
+        </index>
+        <rationale>Reuse read-only VCS results without presenting unknown or not-applicable as passed; do not equate this dimension with product confirmation or authorization for Git writes.</rationale>
+        <sources>
+          <ref scope="document" target="20260908-req-pr-03" relation="supports" />
+          <ref scope="document" target="20260908-req-pr-07" relation="supports" />
+        </sources>
+      </decision>
+      <decision id="20260908-design-pr-04" status="accepted">
+        <index>
+          <summary>Layer recovery context by necessity and enforce size limits</summary>
+          <term key="kind" value="decision" />
+        </index>
+        <rationale>Prioritize essential objectives, constraints, and blockers; explicitly decline to claim completeness when limits are exceeded. Keep sources and revisions traceable, without depending on temporary reports.</rationale>
+        <sources>
+          <ref scope="document" target="20260908-req-pr-06" relation="supports" />
+          <ref scope="document" target="20260908-req-pr-07" relation="supports" />
+        </sources>
+      </decision>
+    </decisions>
+  </design>
+  <confirmations>
+    <confirmation id="20260908T003929Z-confirm-activate" action="activate" decision="accepted" actor="owner" decided_at="2026-09-08T00:39:29Z">
+      <summary>Iteration activation.</summary>
+      <requirements>
+        <requirement target="20260908-req-pr-01" decision="approved" />
+        <requirement target="20260908-req-pr-02" decision="approved" />
+        <requirement target="20260908-req-pr-03" decision="approved" />
+        <requirement target="20260908-req-pr-04" decision="approved" />
+        <requirement target="20260908-req-pr-05" decision="approved" />
+        <requirement target="20260908-req-pr-06" decision="approved" />
+        <requirement target="20260908-req-pr-07" decision="approved" />
+        <requirement target="20260908-req-pr-08" decision="approved" />
+      </requirements>
+      <design>
+        <decision target="20260908-design-pr-01" decision="accepted" />
+        <decision target="20260908-design-pr-02" decision="accepted" />
+        <decision target="20260908-design-pr-03" decision="accepted" />
+        <decision target="20260908-design-pr-04" decision="accepted" />
+      </design>
+    </confirmation>
+    <confirmation id="20260908T061329Z-confirm-complete-progression" action="complete" decision="accepted" actor="owner" decided_at="2026-09-08T06:13:29Z">
+      <summary>Owner reviewed the completed progression and recovery implementation, accepted all defined acceptance criteria, and confirmed the iteration is complete.</summary>
+      <rationale>All tasks are terminal, the review-required repair task has independent approval, focused regressions and the complete build pass, and no unresolved findings remain.</rationale>
+      <acceptance>
+        <criterion target="20260908-accept-pr-01" decision="accepted" />
+        <criterion target="20260908-accept-pr-02" decision="accepted" />
+        <criterion target="20260908-accept-pr-03" decision="accepted" />
+        <criterion target="20260908-accept-pr-04" decision="accepted" />
+        <criterion target="20260908-accept-pr-05" decision="accepted" />
+        <criterion target="20260908-accept-pr-06" decision="accepted" />
+        <criterion target="20260908-accept-pr-07" decision="accepted" />
+        <criterion target="20260908-accept-pr-08" decision="accepted" />
+        <criterion target="20260908-accept-pr-09" decision="accepted" />
+      </acceptance>
+    </confirmation>
+  </confirmations>
+</iteration>
