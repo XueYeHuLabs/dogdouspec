@@ -329,6 +329,15 @@ public sealed class UsabilityPorcelainCliTests
         var taskElem = tasksDoc.Descendants("task").First(t => t.Element("title")?.Value == "OccurredAt Flow Task");
         var taskId = taskElem.Attribute("id")!.Value;
         var createdAt = taskElem.Attribute("created_at")!.Value;
+        var createdAtValue = DateTimeOffset.Parse(
+            createdAt,
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind);
+
+        string TimestampAfterCreation(int minutes) => createdAtValue
+            .AddMinutes(minutes)
+            .ToUniversalTime()
+            .ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture);
 
         // Monotonicity violation: earlier than created_at
         var backdatedExit = Program.Main(new[] {
@@ -341,7 +350,7 @@ public sealed class UsabilityPorcelainCliTests
         Assert.AreNotEqual(0, backdatedExit);
 
         // 2. Start task with explicit --occurred-at
-        var t1 = "2026-09-25T12:00:00Z";
+        var t1 = createdAt;
         var startExit = Program.Main(new[] {
             "task", "start",
             "--task", taskId,
@@ -374,7 +383,7 @@ public sealed class UsabilityPorcelainCliTests
         Assert.AreEqual(t1, (string?)taskElem.Attribute("updated_at"));
 
         // 4. Verify task with explicit --occurred-at
-        var t2 = "2026-09-25T12:05:00Z";
+        var t2 = TimestampAfterCreation(5);
         var verifyExit = Program.Main(new[] {
             "task", "verify",
             "--task", taskId,
@@ -390,7 +399,7 @@ public sealed class UsabilityPorcelainCliTests
         Assert.AreEqual(t2, (string?)taskElem.Attribute("updated_at"));
 
         // 5. Block task with explicit --occurred-at
-        var t3 = "2026-09-25T12:10:00Z";
+        var t3 = TimestampAfterCreation(10);
         var blockExit = Program.Main(new[] {
             "task", "block",
             "--task", taskId,
@@ -407,7 +416,7 @@ public sealed class UsabilityPorcelainCliTests
         Assert.AreEqual(t3, (string?)taskElem.Attribute("updated_at"));
 
         // 6. Resume task with explicit --occurred-at
-        var t4 = "2026-09-25T12:15:00Z";
+        var t4 = TimestampAfterCreation(15);
         var resumeExit = Program.Main(new[] {
             "task", "resume",
             "--task", taskId,
@@ -425,7 +434,7 @@ public sealed class UsabilityPorcelainCliTests
         Assert.AreEqual(t4, (string?)taskElem.Attribute("updated_at"));
 
         // 7. Finish task with explicit --occurred-at
-        var t5 = "2026-09-25T12:20:00Z";
+        var t5 = TimestampAfterCreation(20);
         var finishExit = Program.Main(new[] {
             "task", "finish",
             "--task", taskId,
