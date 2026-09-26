@@ -77,11 +77,14 @@ public sealed class TaskChangeWorkflowTests
         }
     }
 
-    private void InitWorkspaceWithFeatureIteration(string iterId = "20260824-test-feature")
+    private static readonly string[] DefaultFeatureCriteria = new[] { "Workflow integration verified." };
+
+    private void InitWorkspaceWithFeatureIteration(string iterId = "20260824-test-feature", IEnumerable<string>? criteria = null)
     {
         _workspace = CreateWorkspaceCopy();
         var clock = new TestClock(new DateTime(2026, 8, 24, 9, 0, 0, DateTimeKind.Utc));
-        var (iSuccess, _, iDiags) = IterationCreator.Create(_workspace, iterId, "feature", clock);
+        criteria ??= DefaultFeatureCriteria;
+        var (iSuccess, _, iDiags) = IterationCreator.Create(_workspace, iterId, "feature", clock, criteria: criteria);
         Assert.IsTrue(iSuccess, $"Iteration create failed: {string.Join(", ", iDiags.Select(d => d.Message))}");
     }
 
@@ -283,6 +286,491 @@ public sealed class TaskChangeWorkflowTests
         Assert.IsTrue(retrySuccess, $"Retry failed: {string.Join(", ", retryDiags.Select(d => d.Message))}");
         Assert.IsNotNull(retryEnv);
         Assert.IsTrue(retryEnv.AlreadyApplied);
+
+        AssertDryRunReplayBlocked(
+            _workspace,
+            "task add",
+            () => TaskAdder.Add(_workspace, iterId, 1, requestXml, dryRun: true));
+    }
+
+    [TestMethod]
+    public void TaskAdd_OperationalOrigin_FromTaskQuickDryRun_SucceedsUnmodified()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        var quickInput = new QuickTaskInput(
+            "Composed operational task",
+            new List<string> { "src/**" },
+            "operational task completed",
+            "test composition across commands",
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            new List<string> { "kind=quick" },
+            iterId,
+            1,
+            false,
+            true,
+            "20260824-task-quick-op-dry",
+            "20260824T120000Z-quick-op-dry");
+
+        var (drySuccess, dryResult, _, dryDiags) = TaskQuick.Create(_workspace, quickInput);
+        Assert.IsTrue(drySuccess, $"task quick dry-run failed: {string.Join(", ", dryDiags.Select(d => d.Message))}");
+        Assert.IsNotNull(dryResult);
+        var requestXml = dryResult.RequestXml;
+
+        // Submit the dry-run output completely unmodified through TaskAdder.Add
+        var (addSuccess, addEnv, addDiags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsTrue(addSuccess, $"task add failed with unmodified operational request: {string.Join(", ", addDiags.Select(d => d.Message))}");
+        Assert.IsNotNull(addEnv);
+        Assert.IsFalse(addEnv.AlreadyApplied);
+
+        var tasksXmlPath = Path.Combine(_workspace, iterId, "tasks.xml");
+        var tasksDoc = XDocument.Load(tasksXmlPath);
+        var addedTask = tasksDoc.Descendants("task").SingleOrDefault(t => (string?)t.Attribute("id") == "20260824-task-quick-op-dry");
+        Assert.IsNotNull(addedTask);
+        Assert.AreEqual("pending", (string?)addedTask.Attribute("status"));
+
+        var originRef = addedTask.Element("origin")?.Elements("ref").SingleOrDefault();
+        Assert.IsNotNull(originRef);
+        Assert.AreEqual("iteration", (string?)originRef.Attribute("scope"));
+        Assert.AreEqual("supports", (string?)originRef.Attribute("relation"));
+        Assert.AreEqual(iterId, (string?)originRef.Attribute("target"));
+
+        // Idempotent retry succeeds
+        var (retrySuccess, retryEnv, retryDiags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsTrue(retrySuccess, $"Retry failed: {string.Join(", ", retryDiags.Select(d => d.Message))}");
+        Assert.IsNotNull(retryEnv);
+        Assert.IsTrue(retryEnv.AlreadyApplied);
+    }
+
+    [TestMethod]
+    public void TaskAdd_QuickStartDryRunRequest_SucceedsUnmodifiedAndRejectsImpostors()
+    {
+        var iterId = "20260824-test-feature";
+        _workspace = CreateWorkspaceCopy();
+        var (createSuccess, _, createDiags) = IterationCreator.Create(
+            _workspace,
+            iterId,
+            "feature",
+            activate: true,
+            criteria: DefaultFeatureCriteria);
+        Assert.IsTrue(createSuccess, string.Join(", ", createDiags.Select(d => d.Message)));
+
+        var dependencyInput = new QuickTaskInput(
+            "Pending dependency",
+            new List<string> { "src/dependency/**" },
+            "dependency completed",
+            "exercise raw quick-start dependency enforcement",
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            iterId,
+            1,
+            false,
+            false,
+            "20260824-task-quick-start-dependency",
+            "20260824T120000Z-quick-start-dependency");
+        var (dependencySuccess, _, _, dependencyDiags) = TaskQuick.Create(_workspace, dependencyInput);
+        Assert.IsTrue(dependencySuccess, string.Join(", ", dependencyDiags.Select(d => d.Message)));
+
+        var quickInput = new QuickTaskInput(
+            "Composed operational start task",
+            new List<string> { "src/**" },
+            "operational start task completed",
+            "test start composition across commands",
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            iterId,
+            2,
+            true,
+            true,
+            "20260824-task-quick-start-dry",
+            "20260824T120100Z-quick-start-dry");
+
+        var (drySuccess, dryResult, _, dryDiags) = TaskQuick.Create(_workspace, quickInput);
+        Assert.IsTrue(drySuccess, $"task quick --start dry-run failed: {string.Join(", ", dryDiags.Select(d => d.Message))}");
+        Assert.IsNotNull(dryResult);
+
+        var requestXml = dryResult.RequestXml;
+
+        var positionalCompatibility = TaskAdder.Add(
+            _workspace,
+            iterId,
+            0,
+            requestXml,
+            new TestClock(new DateTime(2026, 8, 24, 12, 1, 0, DateTimeKind.Utc)));
+        Assert.IsFalse(positionalCompatibility.Success);
+        Assert.IsTrue(positionalCompatibility.Diagnostics.Any(d => d.Code == DiagnosticCodes.InvalidArgument));
+
+        var dependentDocument = XDocument.Parse(requestXml);
+        var dependentTask = dependentDocument.Root!.Element("task")!;
+        dependentTask.Element("origin")!.AddAfterSelf(
+            new XElement(
+                "dependencies",
+                new XElement(
+                    "ref",
+                    new XAttribute("scope", "document"),
+                    new XAttribute("target", "20260824-task-quick-start-dependency"),
+                    new XAttribute("relation", "depends-on"))));
+        var (dependentSuccess, _, dependentDiags) = TaskAdder.Add(
+            _workspace,
+            iterId,
+            2,
+            dependentDocument.ToString(SaveOptions.DisableFormatting));
+        Assert.IsFalse(dependentSuccess, "Raw canonical quick-start must re-evaluate dependencies at execution time.");
+        Assert.IsTrue(dependentDiags.Any(d => d.Code == DiagnosticCodes.TaskTransitionConflict));
+
+        var (addSuccess, addEnv, addDiags) = TaskAdder.Add(_workspace, iterId, 2, requestXml);
+        Assert.IsTrue(addSuccess, $"task add failed with unmodified quick-start request: {string.Join(", ", addDiags.Select(d => d.Message))}");
+        Assert.IsNotNull(addEnv);
+
+        var tasksDoc = XDocument.Load(Path.Combine(_workspace, iterId, "tasks.xml"));
+        var addedTask = tasksDoc.Root!.Elements("task").Single(t => (string?)t.Attribute("id") == "20260824-task-quick-start-dry");
+        Assert.AreEqual("in-progress", (string?)addedTask.Attribute("status"));
+        Assert.AreEqual("2026-08-24T12:01:00Z", (string?)addedTask.Attribute("started_at"));
+        var startRecord = addedTask.Element("records")!.Elements("record").Single(r => (string?)r.Attribute("kind") == "start");
+        Assert.AreEqual("quick-task", (string?)startRecord.Attribute("actor"));
+        Assert.AreEqual("20260824T120100Z-quick-start-dry", (string?)startRecord.Attribute("operation_id"));
+
+        var impostors = new Dictionary<string, Action<XDocument>>
+        {
+            ["extra record"] = document => document.Root!.Element("task")!.Element("records")!.Add(
+                new XElement(
+                    "record",
+                    new XAttribute("id", "20260824T120100Z-extra-impostor-record"),
+                    new XAttribute("kind", "discussion"),
+                    new XAttribute("status", "informational"),
+                    new XAttribute("created_at", "2026-08-24T12:01:00Z"),
+                    new XAttribute("actor", "quick-task"),
+                    new XElement("summary", "Noncanonical extra record."))),
+            ["repository exclude"] = document => document.Root!.Element("task")!.Element("scope")!.Element("repository")!.Add(
+                new XElement("exclude", new XAttribute("path", "src/generated/**"))),
+            ["context key points"] = document => document.Root!.Element("task")!.Element("context")!.Add(
+                new XElement(
+                    "key_points",
+                    new XElement(
+                        "point",
+                        new XAttribute("id", "20260824T120100Z-point-impostor-context"),
+                        "TaskQuick cannot generate this context."))),
+            ["index summary mismatch"] = document => document.Root!.Element("task")!.Element("index")!.Element("summary")!.Value = "Different generated title."
+        };
+
+        foreach (var (name, mutate) in impostors)
+        {
+            var impostorDocument = XDocument.Parse(requestXml);
+            mutate(impostorDocument);
+            var impostorXml = impostorDocument.ToString(SaveOptions.DisableFormatting);
+            var (impostorSuccess, _, impostorDiags) = TaskAdder.Add(_workspace, iterId, 3, impostorXml);
+            Assert.IsFalse(impostorSuccess, $"{name} must not be accepted as canonical TaskQuick output.");
+            Assert.IsTrue(
+                impostorDiags.Any(d => d.Code == DiagnosticCodes.InvalidArgument),
+                $"{name} diagnostics: {string.Join(", ", impostorDiags.Select(d => $"{d.Code}: {d.Message}"))}");
+        }
+    }
+
+    [TestMethod]
+    public void TaskAdd_QuickStart_RechecksAutomaticallyCapturedSpecRevisionUnderWriterLock()
+    {
+        const string iterId = "20260824-race-feature";
+        _workspace = CreateWorkspaceCopy();
+        var (createSuccess, _, createDiags) = IterationCreator.Create(
+            _workspace,
+            iterId,
+            "feature",
+            activate: true,
+            criteria: DefaultFeatureCriteria);
+        Assert.IsTrue(createSuccess, string.Join(", ", createDiags.Select(d => d.Message)));
+
+        var quickInput = new QuickTaskInput(
+            "Authorization race task",
+            new List<string> { "src/**" },
+            "authorization remains current through commit",
+            "prove automatic spec read capture",
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            iterId,
+            1,
+            true,
+            true,
+            "20260824-task-quick-start-race",
+            "20260824T120200Z-quick-start-race");
+        var (drySuccess, dryResult, _, dryDiags) = TaskQuick.Create(_workspace, quickInput);
+        Assert.IsTrue(drySuccess, string.Join(", ", dryDiags.Select(d => d.Message)));
+        Assert.IsNotNull(dryResult);
+
+        var tasksPath = Path.Combine(_workspace, iterId, "tasks.xml");
+        var specPath = Path.Combine(_workspace, iterId, "spec.xml");
+        var tasksBefore = File.ReadAllBytes(tasksPath);
+        var originalSpecRevision = int.Parse(
+            XDocument.Load(specPath).Root!.Attribute("revision")!.Value,
+            System.Globalization.CultureInfo.InvariantCulture);
+        var injector = new CallbackFaultInjector(
+            FaultPhase.AfterRecoveryBeforePreconditionValidation,
+            () =>
+            {
+                var spec = XDocument.Load(specPath);
+                spec.Root!.SetAttributeValue("revision", originalSpecRevision + 1);
+                spec.Save(specPath);
+            });
+
+        var (success, envelope, diagnostics) = TaskAdder.Add(
+            _workspace,
+            iterId,
+            1,
+            dryResult.RequestXml,
+            faultInjector: injector);
+
+        Assert.IsFalse(success);
+        Assert.IsNull(envelope);
+        Assert.IsTrue(
+            diagnostics.Any(d =>
+                d.Code == DiagnosticCodes.RevisionConflict &&
+                d.Document == $"{iterId}/spec.xml" &&
+                d.ExpectedRevision == originalSpecRevision &&
+                d.ActualRevision == originalSpecRevision + 1),
+            string.Join(", ", diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        CollectionAssert.AreEqual(tasksBefore, File.ReadAllBytes(tasksPath), "The authorized tasks write must not be staged or published.");
+
+        var tmpPath = Path.Combine(_workspace, "_tmp");
+        if (Directory.Exists(tmpPath))
+        {
+            Assert.AreEqual(
+                0,
+                Directory.GetFileSystemEntries(tmpPath).Count(path =>
+                    !path.EndsWith("writer.lock", StringComparison.OrdinalIgnoreCase)),
+                "Revision conflict before precondition validation must not leave transaction artifacts.");
+        }
+    }
+
+    private sealed class CallbackFaultInjector : IFaultInjector
+    {
+        private readonly FaultPhase _phase;
+        private readonly Action _callback;
+        private bool _invoked;
+
+        public CallbackFaultInjector(FaultPhase phase, Action callback)
+        {
+            _phase = phase;
+            _callback = callback;
+        }
+
+        public void InjectFaultIfMatched(FaultPhase phase)
+        {
+            if (!_invoked && phase == _phase)
+            {
+                _invoked = true;
+                _callback();
+            }
+        }
+    }
+
+    [TestMethod]
+    public void TaskAdd_OperationalOrigin_WrongTarget_FailsWithUsefulDiagnostics()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        var requestXml = $"""
+<task-add
+  id="20260824T120001Z-taskadd-wrong-target"
+  actor="codex"
+  occurred_at="2026-08-24T12:00:01Z">
+  <task
+    id="20260824-task-wrong-target"
+    status="pending"
+    created_at="2026-08-24T12:00:01Z"
+    updated_at="2026-08-24T12:00:01Z">
+    <index><summary>Wrong target.</summary></index>
+    <title>Wrong Target</title>
+    <objective>Fails on wrong target.</objective>
+    <rationale>Test wrong target diagnostic.</rationale>
+    <scope><repository path="src/test.cs"/></scope>
+    <origin>
+      <ref scope="iteration" target="20260824-other-iteration" relation="supports"/>
+    </origin>
+    <constraints/>
+    <acceptance><criterion id="20260824-crit-wt" status="pending">Done.</criterion></acceptance>
+    <context><summary>Test.</summary></context>
+    <records/>
+  </task>
+</task-add>
+""";
+
+        var (success, _, diags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.SingleOrDefault(d => d.Code == DiagnosticCodes.InvalidReferenceTargetType);
+        Assert.IsNotNull(diag, $"Expected INVALID_REFERENCE_TARGET_TYPE, got: {string.Join(", ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains($"target='{iterId}'"), $"Expected target '{iterId}' in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("target='20260824-other-iteration'"), $"Actual target in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("count=1"), $"Count in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("scope='iteration'"), $"Scope in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("relation='supports'"), $"Relation in message: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void TaskAdd_OperationalOrigin_WrongRelation_FailsWithUsefulDiagnostics()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        var requestXml = $"""
+<task-add
+  id="20260824T120002Z-taskadd-wrong-rel"
+  actor="codex"
+  occurred_at="2026-08-24T12:00:02Z">
+  <task
+    id="20260824-task-wrong-rel"
+    status="pending"
+    created_at="2026-08-24T12:00:02Z"
+    updated_at="2026-08-24T12:00:02Z">
+    <index><summary>Wrong relation.</summary></index>
+    <title>Wrong Relation</title>
+    <objective>Fails on wrong relation.</objective>
+    <rationale>Test wrong relation diagnostic.</rationale>
+    <scope><repository path="src/test.cs"/></scope>
+    <origin>
+      <ref scope="iteration" target="{iterId}" relation="implements"/>
+    </origin>
+    <constraints/>
+    <acceptance><criterion id="20260824-crit-wr" status="pending">Done.</criterion></acceptance>
+    <context><summary>Test.</summary></context>
+    <records/>
+  </task>
+</task-add>
+""";
+
+        var (success, _, diags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.SingleOrDefault(d => d.Code == DiagnosticCodes.InvalidReferenceTargetType);
+        Assert.IsNotNull(diag, $"Expected INVALID_REFERENCE_TARGET_TYPE, got: {string.Join(", ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains("relation='supports'"), $"Expected relation in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("relation='implements'"), $"Actual relation in message: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void TaskAdd_OperationalOrigin_WrongScope_FailsWithUsefulDiagnostics()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        var requestXml = $"""
+<task-add
+  id="20260824T120003Z-taskadd-wrong-scope"
+  actor="codex"
+  occurred_at="2026-08-24T12:00:03Z">
+  <task
+    id="20260824-task-wrong-scope"
+    status="pending"
+    created_at="2026-08-24T12:00:03Z"
+    updated_at="2026-08-24T12:00:03Z">
+    <index><summary>Wrong scope.</summary></index>
+    <title>Wrong Scope</title>
+    <objective>Fails on wrong scope.</objective>
+    <rationale>Test wrong scope diagnostic.</rationale>
+    <scope><repository path="src/test.cs"/></scope>
+    <origin>
+      <ref scope="document" target="{iterId}" relation="supports"/>
+    </origin>
+    <constraints/>
+    <acceptance><criterion id="20260824-crit-ws" status="pending">Done.</criterion></acceptance>
+    <context><summary>Test.</summary></context>
+    <records/>
+  </task>
+</task-add>
+""";
+
+        var (success, _, diags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.SingleOrDefault(d => d.Code == DiagnosticCodes.InvalidReferenceTargetType);
+        Assert.IsNotNull(diag, $"Expected INVALID_REFERENCE_TARGET_TYPE, got: {string.Join(", ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains("scope='iteration'"), $"Expected scope in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("scope='document'"), $"Actual scope in message: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void TaskAdd_OperationalOrigin_MultipleRefs_FailsWithUsefulDiagnostics()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        var requestXml = $"""
+<task-add
+  id="20260824T120004Z-taskadd-multiple-refs"
+  actor="codex"
+  occurred_at="2026-08-24T12:00:04Z">
+  <task
+    id="20260824-task-multiple-refs"
+    status="pending"
+    created_at="2026-08-24T12:00:04Z"
+    updated_at="2026-08-24T12:00:04Z">
+    <index><summary>Multiple refs.</summary></index>
+    <title>Multiple Refs</title>
+    <objective>Fails on multiple refs.</objective>
+    <rationale>Test multiple refs diagnostic.</rationale>
+    <scope><repository path="src/test.cs"/></scope>
+    <origin>
+      <ref scope="iteration" target="{iterId}" relation="supports"/>
+      <ref scope="iteration" target="{iterId}" relation="supports"/>
+    </origin>
+    <constraints/>
+    <acceptance><criterion id="20260824-crit-mr" status="pending">Done.</criterion></acceptance>
+    <context><summary>Test.</summary></context>
+    <records/>
+  </task>
+</task-add>
+""";
+
+        var (success, _, diags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.SingleOrDefault(d => d.Code == DiagnosticCodes.InvalidReferenceTargetType);
+        Assert.IsNotNull(diag, $"Expected INVALID_REFERENCE_TARGET_TYPE, got: {string.Join(", ", diags.Select(d => $"{d.Code}: {d.Message}"))}");
+        Assert.IsTrue(diag.Message.Contains("count=1"), $"Expected count in message: {diag.Message}");
+        Assert.IsTrue(diag.Message.Contains("count=2"), $"Actual count in message: {diag.Message}");
+    }
+
+    [TestMethod]
+    public void TaskAdd_OperationalOrigin_DiagnosticsSanitizesWithoutLeakingUnsafeContent()
+    {
+        var iterId = "20260824-test-feature";
+        InitWorkspaceWithFeatureIteration(iterId);
+
+        // Target with control characters and extra length
+        var longTarget = "20260824-long-" + new string('a', 100);
+        var requestXml = $"""
+<task-add
+  id="20260824T120005Z-taskadd-unsafe"
+  actor="codex"
+  occurred_at="2026-08-24T12:00:05Z">
+  <task
+    id="20260824-task-unsafe"
+    status="pending"
+    created_at="2026-08-24T12:00:05Z"
+    updated_at="2026-08-24T12:00:05Z">
+    <index><summary>Unsafe target.</summary></index>
+    <title>Unsafe Target</title>
+    <objective>Sanitizes without leaking.</objective>
+    <rationale>Test sanitization.</rationale>
+    <scope><repository path="src/test.cs"/></scope>
+    <origin>
+      <ref scope="iteration" target="{longTarget}" relation="supports"/>
+    </origin>
+    <constraints/>
+    <acceptance><criterion id="20260824-crit-unsafe" status="pending">Done.</criterion></acceptance>
+    <context><summary>Test.</summary></context>
+    <records/>
+  </task>
+</task-add>
+""";
+
+        var (success, _, diags) = TaskAdder.Add(_workspace, iterId, 1, requestXml);
+        Assert.IsFalse(success);
+        var diag = diags.Single(d => d.Code == DiagnosticCodes.InvalidReferenceTargetType);
+        Assert.IsTrue(diag.Message.Contains("..."), "Diagnostic should truncate overly long input with ellipsis.");
+        Assert.IsFalse(diag.Message.Contains(longTarget), "Raw overly long content must not leak unconstrained.");
+        Assert.IsFalse(diag.Message.Any(char.IsControl), "Diagnostic must contain no raw control characters.");
     }
 
     [TestMethod]
@@ -419,6 +907,11 @@ public sealed class TaskChangeWorkflowTests
         Assert.AreEqual("Elaborated technical rationale.", task.Element("rationale")?.Value);
         Assert.IsNotNull(task.Element("constraints")?.Elements("constraint").FirstOrDefault(c => (string?)c.Attribute("id") == "20260824-const-perf"));
         Assert.IsNotNull(task.Element("acceptance")?.Elements("criterion").FirstOrDefault(c => (string?)c.Attribute("id") == "20260824-crit-perf"));
+
+        AssertDryRunReplayBlocked(
+            _workspace,
+            "task revise",
+            () => TaskReviser.Revise(_workspace, iterId, "20260824-task-to-revise", 2, reviseXml, dryRun: true));
     }
 
     [TestMethod]
@@ -636,6 +1129,11 @@ public sealed class TaskChangeWorkflowTests
         var sub2 = tasksDoc.Descendants("task").FirstOrDefault(t => (string?)t.Attribute("id") == "20260824-task-sub-2");
         Assert.IsNotNull(sub1);
         Assert.IsNotNull(sub2);
+
+        AssertDryRunReplayBlocked(
+            _workspace,
+            "task split",
+            () => TaskSplitter.Split(_workspace, iterId, "20260824-task-parent-split", 2, splitXml, dryRun: true));
     }
 
     [TestMethod]
@@ -668,6 +1166,11 @@ public sealed class TaskChangeWorkflowTests
         var req = specDoc.Descendants("requirement").FirstOrDefault(r => (string?)r.Attribute("id") == "20260824-req-technical-extension");
         Assert.IsNotNull(req);
         Assert.AreEqual("proposed", (string?)req.Attribute("status"));
+
+        AssertDryRunReplayBlocked(
+            _workspace,
+            "requirement propose",
+            () => RequirementProposer.Propose(_workspace, iterId, 1, proposeXml, dryRun: true));
     }
 
     [TestMethod]
@@ -786,6 +1289,11 @@ public sealed class TaskChangeWorkflowTests
         Assert.IsTrue(cpOk, $"Change propose failed: {string.Join(", ", cpDiags.Select(d => d.Message))}");
         Assert.IsNotNull(cpEnv);
 
+        AssertDryRunReplayBlocked(
+            _workspace,
+            "change propose",
+            () => ChangeProposer.Propose(_workspace, iterId, 2, 2, changeProposeXml, dryRun: true));
+
         // Verify tasks.xml: task is blocked and has active finding
         var tasksDoc = XDocument.Load(Path.Combine(_workspace, iterId, "tasks.xml"));
         var task = tasksDoc.Descendants("task").First(t => (string?)t.Attribute("id") == "20260824-task-to-freeze");
@@ -821,6 +1329,37 @@ public sealed class TaskChangeWorkflowTests
         var recoveredRequirement = recoveredSpec.Descendants("requirement").Any(r => (string?)r.Attribute("id") == "20260824-req-scope-gap-fault");
         var recoveredFinding = recoveredTasks.Descendants("record").Any(r => (string?)r.Attribute("id") == "20260824T091700Z-rec-finding-fault");
         Assert.AreEqual(recoveredRequirement, recoveredFinding, "Recovery must converge change-propose documents to one complete old or new state.");
+    }
+
+    [TestMethod]
+    public void ChangeApply_ExactDryRunReplay_RejectsPendingRecovery()
+    {
+        const string iterId = "20260823-xpath-core";
+        _workspace = CreateWorkspaceCopy();
+        var replanRequest = $"""
+<iteration-confirmation id="20260904T161100Z-confirm-change-apply-replay" iteration="{iterId}" action="replan" expected_spec_revision="4" expected_tasks_revision="9" actor="owner" decided_at="2026-09-04T16:11:00Z">
+  <summary>Authorize exact change-apply replay regression.</summary>
+</iteration-confirmation>
+""";
+        var (replanSuccess, _, replanDiagnostics) = IterationConfirmer.Confirm(_workspace, replanRequest);
+        Assert.IsTrue(replanSuccess, string.Join("; ", replanDiagnostics.Select(d => d.Message)));
+
+        var applyRequest = """
+<change-apply id="20260904T161200Z-change-apply-replay" actor="test" occurred_at="2026-09-04T16:12:00Z">
+  <summary>Exercise exact change-apply dry-run replay.</summary>
+  <task_dispositions>
+    <task target="20260823-task-task-history" transition="cancel" rationale="Verify recovery before replay shortcut."/>
+  </task_dispositions>
+</change-apply>
+""";
+        var (success, envelope, diagnostics) = ChangeApplier.Apply(_workspace, iterId, 5, 9, applyRequest);
+        Assert.IsTrue(success, string.Join("; ", diagnostics.Select(d => d.Message)));
+        Assert.IsFalse(envelope!.AlreadyApplied);
+
+        AssertDryRunReplayBlocked(
+            _workspace,
+            "change apply",
+            () => ChangeApplier.Apply(_workspace, iterId, 5, 9, applyRequest, dryRun: true));
     }
 
     [TestMethod]
@@ -1091,5 +1630,38 @@ public sealed class TaskChangeWorkflowTests
         var (infoOk, infoEnv, infoDiags) = TaskUpdater.Update(_workspace, iterId, "20260824-task-terminal-immutability", 3, infoRecXml);
         Assert.IsTrue(infoOk, $"Informational record append to terminal task must succeed: {string.Join(", ", infoDiags.Select(d => d.Message))}");
         Assert.IsNotNull(infoEnv);
+    }
+
+    private static void AssertDryRunReplayBlocked(
+        string workspace,
+        string family,
+        Func<(bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics)> replay)
+    {
+        var before = Directory.GetFiles(workspace, "*.xml", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(Path.DirectorySeparatorChar + "_tmp" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(
+                path => Path.GetRelativePath(workspace, path),
+                File.ReadAllBytes,
+                StringComparer.OrdinalIgnoreCase);
+        var pendingRoot = Path.Combine(workspace, "_tmp", "tx_pending_" + family.Replace(' ', '_'));
+        var pendingDirectory = Path.Combine(pendingRoot, "staged");
+        Directory.CreateDirectory(pendingDirectory);
+
+        var result = replay();
+
+        Assert.IsFalse(result.Success, $"{family} exact dry-run replay must fail closed while recovery is pending.");
+        Assert.IsTrue(
+            result.Diagnostics.Any(d => d.Code == DiagnosticCodes.RecoveryFailed),
+            $"{family} diagnostics: {string.Join("; ", result.Diagnostics.Select(d => d.Message))}");
+        Assert.IsTrue(Directory.Exists(pendingDirectory), $"{family} dry-run must preserve pending recovery artifacts.");
+        foreach (var (relativePath, originalBytes) in before)
+        {
+            CollectionAssert.AreEqual(
+                originalBytes,
+                File.ReadAllBytes(Path.Combine(workspace, relativePath)),
+                $"{family} dry-run changed managed document '{relativePath}'.");
+        }
+
+        Directory.Delete(pendingRoot, recursive: true);
     }
 }

@@ -72,6 +72,7 @@ public static class DiagnosticCodes
     public const string OwnerDecisionRequired = "OWNER_DECISION_REQUIRED";
     public const string RequirementSuccessorMissing = "REQUIREMENT_SUCCESSOR_MISSING";
     public const string ChangeApplicationInvalid = "CHANGE_APPLICATION_INVALID";
+    public const string CriterionUndefined = "CRITERION_UNDEFINED";
 
     // Atomic write, locking, and recovery
     public const string LockConflict = "LOCK_CONFLICT";
@@ -82,4 +83,8 @@ public static class DiagnosticCodes
     public const string FilesystemError = "FILESYSTEM_ERROR";
     public const string RecoveryFailed = "RECOVERY_FAILED";
     public const string CommitFailed = "COMMIT_FAILED";
+
+    // Informational
+    public const string Informational = "INFORMATIONAL";
+    public const string IterationAutoSelected = "ITERATION_AUTO_SELECTED";
 }

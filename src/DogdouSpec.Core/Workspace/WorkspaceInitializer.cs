@@ -2,6 +2,7 @@ using System.Text;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 
 namespace DogdouSpec.Core.Workspace;
 
@@ -106,8 +107,17 @@ public static class WorkspaceInitializer
 
             // Write _skill/README.md
             var skillReadme = Path.Combine(skillDir, "README.md");
-            var skillReadmeContent = "# Skill Directory\n\nManaged workflow skill definitions and environment adapters.\n";
-            File.WriteAllText(skillReadme, skillReadmeContent, Utf8NoBom);
+            var skillReadmeContent = """
+# Skill Directory
+
+This directory contains managed DogdouSpec workflow guidance and environment adapters.
+
+Authoritative specification and execution state lives in the managed XML documents under `.dogdouspec/`. Semantic agent results—including summaries, source commits, checks, findings, risks, review outcomes, blockers, and handoff instructions—belong in the relevant `tasks.xml` Task records. Temporary agent reports or response files are transport only; no external report directory is required for recovery.
+
+In a Git-backed governed workspace, version the managed `.dogdouspec/` documents and checkpoint them at material lifecycle, review, handoff, external-blocker, and release boundaries. Ignore only `.dogdouspec/_tmp/`, which contains runtime transaction and recovery state. DogdouSpec does not stage, commit, or push files; repository writes require explicit caller authority.
+""";
+            var normalizedSkillReadme = skillReadmeContent.Replace("\r\n", "\n").Replace("\r", "\n").TrimEnd('\n') + "\n";
+            File.WriteAllText(skillReadme, normalizedSkillReadme, Utf8NoBom);
             createdFiles.Add(skillReadme);
 
             // Date for initial objects
@@ -128,7 +138,7 @@ public static class WorkspaceInitializer
 </knowledge>
 
 """;
-            File.WriteAllText(knowledgePath, knowledgeContent.Replace("\r\n", "\n"), Utf8NoBom);
+            File.WriteAllText(knowledgePath, ManagedDocumentSerializer.Normalize(knowledgeContent), Utf8NoBom);
             createdFiles.Add(knowledgePath);
 
             // Write backlog.xml
@@ -147,8 +157,56 @@ public static class WorkspaceInitializer
 </backlog>
 
 """;
-            File.WriteAllText(backlogPath, backlogContent.Replace("\r\n", "\n"), Utf8NoBom);
+            File.WriteAllText(backlogPath, ManagedDocumentSerializer.Normalize(backlogContent), Utf8NoBom);
             createdFiles.Add(backlogPath);
+
+            // Copy embedded skill files to <projectRoot>/.agents/skills/dogdouspec/
+            // Skip files that already exist — never overwrite on init (use 'skill sync' to upgrade).
+            var agentSkillDir = Path.Combine(projectRoot, ".agents", "skills", "dogdouspec");
+            var agentSkillRefDir = Path.Combine(agentSkillDir, "references");
+
+            if (!Directory.Exists(agentSkillDir))
+            {
+                Directory.CreateDirectory(agentSkillDir);
+                createdDirs.Add(agentSkillDir);
+            }
+            if (!Directory.Exists(agentSkillRefDir))
+            {
+                Directory.CreateDirectory(agentSkillRefDir);
+                createdDirs.Add(agentSkillRefDir);
+            }
+
+            foreach (var relPath in EmbeddedResources.SkillFilePaths)
+            {
+                var destPath = Path.Combine(agentSkillDir, relPath.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(destPath))
+                {
+                    var content = EmbeddedResources.GetSkillText(relPath);
+                    if (content != null)
+                    {
+                        File.WriteAllText(destPath, content, Utf8NoBom);
+                        createdFiles.Add(destPath);
+                    }
+                }
+            }
+
+            // Update .gitignore: append /.dogdouspec/_tmp/ if not already present (idempotent).
+            var gitignorePath = Path.Combine(projectRoot, ".gitignore");
+            const string GitignoreEntry = "/.dogdouspec/_tmp/";
+            if (!File.Exists(gitignorePath))
+            {
+                File.WriteAllText(gitignorePath, $"# DogdouSpec runtime temporary staging files\n{GitignoreEntry}\n", Utf8NoBom);
+                createdFiles.Add(gitignorePath);
+            }
+            else
+            {
+                var existing = File.ReadAllText(gitignorePath);
+                if (!existing.Contains(GitignoreEntry, StringComparison.Ordinal))
+                {
+                    var suffix = existing.EndsWith('\n') ? "" : "\n";
+                    File.AppendAllText(gitignorePath, $"{suffix}\n# DogdouSpec runtime temporary staging files\n{GitignoreEntry}\n", Utf8NoBom);
+                }
+            }
 
             return (true, targetDogdouDir, null);
         }

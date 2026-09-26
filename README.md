@@ -2,22 +2,70 @@
 
 DogdouSpec is an iteration-first structured XML/XPath specification and technical execution engine designed for human and AI pairing.
 
-## 1. Quick Start & Installation (WinGet)
+## Publisher and Support
 
-### Install globally on Windows:
+DogdouSpec is published by Hangzhou Xueyehu Technology Co., Ltd. The company
+hosts the project's source code and releases under its GitHub organization,
+[XueYeHuLabs](https://github.com/XueYeHuLabs). The `Vixasol` namespace in the
+WinGet package identifier `Vixasol.DogdouSpec` comes from the
+[vixasol.com](https://vixasol.com) domain; it is not a separate publisher.
+
+- Project source and releases: [XueYeHuLabs/dogdouspec](https://github.com/XueYeHuLabs/dogdouspec).
+- Support and issue reports: [GitHub Issues](https://github.com/XueYeHuLabs/dogdouspec/issues).
+- License: [MIT](LICENSE).
+
+## 1. Quick Start & Adoption Guide
+
+### Standard Global Installation (Recommended for Most Projects)
+
+For standard development environments with a global package manager:
+
+1. **Install DogdouSpec globally on Windows**:
+   ```powershell
+   winget install Vixasol.DogdouSpec
+   ```
+2. **Initialize workspace in your repository**:
+   Navigate to your project root and run:
+   ```powershell
+   dogdouspec workspace init
+   ```
+   This single command performs all mechanical initialization:
+   - Creates `.dogdouspec/` with authoritative XSD schemas, `backlog.xml`, and `knowledge.xml`.
+   - Copies the agent skill to `.agents/skills/dogdouspec/` (SKILL.md + references). Skips files that already exist.
+   - Appends `/.dogdouspec/_tmp/` to `.gitignore` (idempotent; creates the file if not present).
+3. **Read the setup guide and configure your project**:
+   ```powershell
+   dogdouspec skill guide
+   ```
+   The guide describes what to add to `AGENTS.md`, what to commit to Git, and how to tailor DogdouSpec to your project's build tools. These are **agent + owner decisions** — DogdouSpec never writes `AGENTS.md` automatically.
+4. **Checkpoint the initialized governed state in Git-backed repositories**:
+   - Managed `.dogdouspec/` documents and `.agents/skills/dogdouspec/` are authoritative project state. Review and commit them explicitly.
+   - DogdouSpec does not run `git add`, `git commit`, or `git push`. Inspect `git status --short -- .dogdouspec` and create a checkpoint only with repository-write authority.
+
+### Upgrading DogdouSpec
+
+After installing a newer version:
+
 ```powershell
-winget install Vixasol.DogdouSpec
+winget upgrade Vixasol.DogdouSpec
+
+# Read the new binary's authoritative workflow before changing the repository:
+dogdouspec skill guide --all
 ```
 
-### Initialize in any repository:
-Navigate to your project root and run:
-```powershell
-dogdouspec workspace init
-```
-This automatically sets up:
-- `.dogdouspec/` (managed XML specifications, schemas, backlog, and knowledge).
-- `.agents/skills/dogdouspec/` (agent workflow skills and query references).
-- `AGENTS.md` (agent rules and governance boundaries).
+The embedded [upgrade contract](.agents/skills/dogdouspec/references/upgrade.md)
+requires read-only workspace, Skill, schema, and Git assessment before explicit
+mechanical synchronization. The calling agent then reconciles `AGENTS.md`,
+local guidance, wrappers, CI, and other repository-specific content. DogdouSpec
+never makes those judgment-based edits, stages files, commits, or pushes.
+
+---
+
+### Air-Gapped & Source-Based Deployment (Repo-Local Vendoring)
+
+For isolated, air-gapped, or hermetic environments where global tools, PATH modifications, or external package managers are prohibited:
+
+- Follow the authoritative [Air-Gapped / Vendored Deployment Guide](docs/INSTALL_IN_OTHER_REPOSITORY.md) to compile a self-contained ~9.5 MB `dogdouspec.exe` into `<TARGET_REPO>/tools/dogdouspec/` with a root `dogdouspec.cmd` wrapper.
 
 ---
 
@@ -53,16 +101,37 @@ All commands run directly through `dogdouspec <command> [options]`:
   ```powershell
   dogdouspec workspace init [--workspace-root PATH] [--format xml|human]
   ```
-
-### 2. Skill Management
-- **Skill Sync**
+  Initialization creates authoritative managed state. In Git-backed governed work, validate and checkpoint that state explicitly; the CLI never stages or commits it.
+- **Workspace Unlock** (release stale writer locks and run startup recovery)
   ```powershell
-  dogdouspec skill sync [--output-dir PATH] [--format xml|human]
+  dogdouspec workspace unlock [--force] [--workspace-root PATH] [--format xml|human]
   ```
+
+### 2. Skill and Schema Upgrade Primitives
+- **Skill Guide** (authoritative guidance embedded in the current binary)
+  ```powershell
+  dogdouspec skill guide [--all] [--format markdown|human|xml]
+  ```
+- **Skill Status** (read-only embedded-versus-repository comparison)
+  ```powershell
+  dogdouspec skill status [--output-dir PATH] [--format xml|human]
+  ```
+  Exit code `1` means differences were reported for caller review. It is not a command failure.
+- **Skill Sync** (synchronize skill files with this CLI's embedded version; pass `--force` to overwrite upon upgrade)
+  ```powershell
+  dogdouspec skill sync [--force] [--output-dir PATH] [--format xml|human]
+  ```
+  Requires `--force` to overwrite existing files. Never reads or modifies `AGENTS.md`. Agent and owner decide how to update `AGENTS.md` based on `skill guide` output.
 - **Skill Export**
   ```powershell
   dogdouspec skill export --output-dir PATH [--format xml|human]
   ```
+- **Schema Status and Sync** (inspect or mechanically refresh optional readable XSD copies)
+  ```powershell
+  dogdouspec schema status [--version 1.0] [--workspace-root PATH] [--format xml|human]
+  dogdouspec schema sync --expected-version 1.0 [--workspace-root PATH] [--format xml|human]
+  ```
+  `schema sync` uses the workspace writer lock and crash recovery. It never migrates or edits managed XML documents.
 
 ### 3. Iteration Commands
 - **Iteration Listing**
@@ -109,13 +178,27 @@ All commands run directly through `dogdouspec <command> [options]`:
   - `task start --task <TASK_ID> [--iteration <ID>] [--summary "..."]` (Transition to `in-progress`)
   - `task verify --task <TASK_ID> [--iteration <ID>] [--covers <CRITERION>] [--summary "..."]` (Transition to `verification`)
   - `task finish --task <TASK_ID> [--iteration <ID>] [--covers <CRITERION>] [--summary "..."]` (Atomic completion to `done`)
+  - `task block --task <TASK_ID> --summary "..." [--blocker-kind <KIND>] [--blocker-owner <OWNER>] [--blocker-review-at <TIMESTAMP>] [--condition "..."] [--next-action "..."]` (Transition to `blocked` with structured finding)
+  - `task resume --task <TASK_ID> (--finding <FINDING_ID> | --all) --summary "..."` (Resolve blocker findings and resume to `in-progress`)
   - `task quick --title ... --scope ... --done-when ... --why ... [--start]` (Quick-create task)
-  - `task next [--iteration <ID>]` (Discover next ready actionable task)
+  - `task next [--iteration <ID>]` (Discover next actionable task with progression assessment facts)
+  - `task blockers [--iteration <ID>] [--task <ID>] [--owner <OWNER>] [--due-only]` (Query active blockers and recheck queue)
+  - `task context --task <TASK_ID> [--iteration <ID>] [--max-bytes <N>]` (Query bounded, traceable task recovery context)
 - **Plumbing & Governance Operations**:
   - `task update` (Raw XML state machine update), `task review` (Review gate submission), `task add`, `task revise`, `task split`
   - `requirement propose`, `change propose`, `change apply`
   - `backlog add`, `backlog list`, `backlog schedule`, `backlog complete`, `backlog cancel`
   - `append`, `transaction apply`
+
+### 6. Diagnostics & Reporting
+- **Iteration Summary** (instant progress card and task breakdown with progression assessment)
+  ```powershell
+  dogdouspec summary [--iteration ID] [--workspace-root PATH] [--format markdown|json|xml|human]
+  ```
+- **VCS Working Tree Status** (read-only inspection of managed document cleanliness and checkpoint readiness)
+  ```powershell
+  dogdouspec workspace vcs-status [--workspace-root PATH] [--format xml|human]
+  ```
 
 ---
 
@@ -136,14 +219,17 @@ All commands run directly through `dogdouspec <command> [options]`:
 
 ## 5. Documentation & References
 
-- **Installation in Other Repositories**: See [docs/INSTALL_IN_OTHER_REPOSITORY.md](docs/INSTALL_IN_OTHER_REPOSITORY.md) for source-based deployment procedures.
+- **Air-Gapped & Vendored Deployment Guide**: See [docs/INSTALL_IN_OTHER_REPOSITORY.md](docs/INSTALL_IN_OTHER_REPOSITORY.md) for self-contained, source-based repo-local deployment in isolated environments.
 - **Cross-Platform Build & Packaging**: See [docs/CROSS_PLATFORM.md](docs/CROSS_PLATFORM.md) for Linux and macOS compilation and packaging guidance.
 - **Dogfood Remediation Evidence**: See [docs/DOGDOUCLIX_DOGFOOD_REMEDIATION.md](docs/DOGDOUCLIX_DOGFOOD_REMEDIATION.md) for background analysis and remediation evidence.
 - **Agent Guidelines & Skills**: See [`AGENTS.md`](AGENTS.md) and [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md) for workflow integration rules and compact two-phase query patterns.
+- **Usability, Results, and Checkpoint Proposal**: See [`docs/DOGFOOD_USABILITY_AND_EVIDENCE_PROPOSAL.md`](docs/DOGFOOD_USABILITY_AND_EVIDENCE_PROPOSAL.md) for the merged non-normative roadmap. Proposed commands described there are not current CLI commands.
 
 ---
 
 ## 6. Architectural Boundaries & Workflow
 
 - **Repository-Local State**: Authoritative specification and task state is stored entirely within `.dogdouspec/` XML documents and validated against embedded XSD v1 schemas.
+- **Iteration-Owned Results**: Implementation summaries, commits, checks, findings, reviews, risks, blockers, and handoff instructions are persisted in `tasks.xml` records. Raw agent reports, prompts, and provider logs are transient by default; only inherently bulky raw evidence remains external when repository policy requires it.
+- **VCS Checkpoints**: An atomic DogdouSpec document commit is locally durable but is not a Git checkpoint. Git-backed Mode B work should version managed `.dogdouspec/` state at material boundaries, ignore only `_tmp/`, and never infer repository-write authority.
 - **Authority Boundaries**: Technical agents manage task lifecycles, execution records, and code changes autonomously. Product requirements, design decisions, and iteration completions require explicit human owner confirmation via `iteration confirm`.

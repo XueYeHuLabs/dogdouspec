@@ -14,6 +14,14 @@ public sealed record ReadinessTechnicalCheck(
     string? Message = null);
 
 /// <summary>
+/// Distinct readiness evaluation dimension.
+/// </summary>
+public sealed record ReadinessDimension(
+    string Name,
+    string Status, // "passed" | "failed" | "pending"
+    string Message);
+
+/// <summary>
 /// Pending product decisions summary within a readiness assessment.
 /// </summary>
 public sealed record ReadinessProductDecisions(
@@ -45,6 +53,7 @@ public sealed class IterationReadinessResult
     public bool TechnicallyReady { get; }
     public bool OwnerConfirmationRequired { get; }
     public IReadOnlyList<ReadinessTechnicalCheck> TechnicalChecks { get; }
+    public IReadOnlyList<ReadinessDimension> Dimensions { get; }
     public ReadinessProductDecisions ProductDecisions { get; }
     public ReadinessRequiredAction RequiredAction { get; }
 
@@ -57,7 +66,8 @@ public sealed class IterationReadinessResult
         bool ownerConfirmationRequired,
         IReadOnlyList<ReadinessTechnicalCheck> technicalChecks,
         ReadinessProductDecisions productDecisions,
-        ReadinessRequiredAction requiredAction)
+        ReadinessRequiredAction requiredAction,
+        IReadOnlyList<ReadinessDimension>? dimensions = null)
     {
         IterationId = iterationId ?? string.Empty;
         Phase = phase ?? string.Empty;
@@ -68,6 +78,7 @@ public sealed class IterationReadinessResult
         TechnicalChecks = technicalChecks ?? Array.Empty<ReadinessTechnicalCheck>();
         ProductDecisions = productDecisions;
         RequiredAction = requiredAction;
+        Dimensions = dimensions ?? Array.Empty<ReadinessDimension>();
     }
 
     public string ToXmlString()
@@ -108,6 +119,20 @@ public sealed class IterationReadinessResult
             }
             writer.WriteEndElement(); // </technical>
 
+            if (Dimensions.Count > 0)
+            {
+                writer.WriteStartElement("dimensions");
+                foreach (var dim in Dimensions)
+                {
+                    writer.WriteStartElement("dimension");
+                    writer.WriteAttributeString("name", dim.Name);
+                    writer.WriteAttributeString("status", dim.Status);
+                    writer.WriteAttributeString("message", dim.Message);
+                    writer.WriteEndElement();
+                }
+                writer.WriteEndElement(); // </dimensions>
+            }
+
             writer.WriteStartElement("product");
             writer.WriteAttributeString("pending_requirements", ProductDecisions.PendingRequirements.ToString(CultureInfo.InvariantCulture));
             writer.WriteAttributeString("pending_design_decisions", ProductDecisions.PendingDesignDecisions.ToString(CultureInfo.InvariantCulture));
@@ -135,6 +160,17 @@ public sealed class IterationReadinessResult
         sb.AppendLine(CultureInfo.InvariantCulture, $"Technically Ready: {(TechnicallyReady ? "true" : "false")}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"Owner Confirmation Required: {(OwnerConfirmationRequired ? "true" : "false")}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"Required Confirm Action: {RequiredAction.Action} (via '{RequiredAction.Command}')");
+
+        if (Dimensions.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Readiness Dimensions:");
+            foreach (var dim in Dimensions)
+            {
+                var prefix = dim.Status.ToUpperInvariant();
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  [{prefix,-7}] {dim.Name}: {dim.Message}");
+            }
+        }
 
         sb.AppendLine();
         sb.AppendLine("Technical Checks:");

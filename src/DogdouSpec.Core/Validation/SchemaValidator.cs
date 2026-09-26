@@ -124,9 +124,12 @@ public static class SchemaValidator
             return new ValidationResult(false, scope, documents.Count, Array.Empty<DocumentValidationResult>(), sortedEnumDiags, iterationId, relativeDocumentPath);
         }
 
-        // 1. Run XSD schema validation on target scope documents
+        // 1. Detect workspace schema drift against authoritative embedded schemas
+        var driftDiagnostics = WorkspaceSchemaDriftDetector.DetectDrift(workspaceRoot, version);
+
+        // 2. Run XSD schema validation on target scope documents
         var targetDocResults = new List<DocumentValidationResult>();
-        var targetScopeDiagnostics = new List<Diagnostic>();
+        var targetScopeDiagnostics = new List<Diagnostic>(driftDiagnostics);
 
         foreach (var doc in documents)
         {

@@ -22,7 +22,7 @@ public static class ChangeCommand
 
     private static Command BuildProposeCommand()
     {
-        var proposeCmd = new Command("propose", "Propose an in-flight requirement or task change across spec.xml and tasks.xml (mutating)");
+        var proposeCmd = new Command("propose", "Propose an in-flight requirement or task change across spec.xml and tasks.xml (mutating). Template: change.propose (inspect with 'dogdouspec template show --name change.propose')");
 
         var iterationOption = new Option<string?>("--iteration")
         {
@@ -44,12 +44,12 @@ public static class ChangeCommand
 
         var stdinOption = new Option<bool>("--stdin")
         {
-            Description = "Read change-propose XML request from standard input"
+            Description = "Read change-propose XML request from standard input (template: change.propose)"
         };
 
         var fileOption = new Option<string?>("--file")
         {
-            Description = "Path to file containing change-propose XML request"
+            Description = "Path to file containing change-propose XML request (template: change.propose)"
         };
 
         var workspaceRootOption = new Option<string?>("--workspace-root")
@@ -205,7 +205,7 @@ public static class ChangeCommand
 
     private static Command BuildApplyCommand()
     {
-        var applyCmd = new Command("apply", "Apply approved change adjustments and task dispositions during replanning (mutating)");
+        var applyCmd = new Command("apply", "Apply approved change adjustments and task dispositions during replanning (mutating). Template: change.apply (inspect with 'dogdouspec template show --name change.apply')");
 
         var iterationOption = new Option<string?>("--iteration")
         {
@@ -227,12 +227,12 @@ public static class ChangeCommand
 
         var stdinOption = new Option<bool>("--stdin")
         {
-            Description = "Read change-apply XML request from standard input"
+            Description = "Read change-apply XML request from standard input (template: change.apply)"
         };
 
         var fileOption = new Option<string?>("--file")
         {
-            Description = "Path to file containing change-apply XML request"
+            Description = "Path to file containing change-apply XML request (template: change.apply)"
         };
 
         var workspaceRootOption = new Option<string?>("--workspace-root")

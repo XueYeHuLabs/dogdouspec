@@ -76,6 +76,28 @@ public sealed class CliContractTests
     }
 
     [TestMethod]
+    public void RootHelp_DescribesIterationOwnedResultsWithoutAdvertisingProposedCommands()
+    {
+        var (exitCode, stdout, stderr) = RunCli("--help");
+
+        Assert.AreEqual(0, exitCode, $"Stderr: {stderr}");
+        Assert.IsTrue(stdout.Contains("Semantic agent results belong in tasks.xml records", StringComparison.Ordinal));
+        Assert.IsTrue(stdout.Contains("never stages or commits", StringComparison.Ordinal));
+        Assert.IsFalse(stdout.Contains("vcs-status", StringComparison.Ordinal));
+        Assert.IsFalse(stdout.Contains("checkpoint-plan", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void WorkspaceInitHelp_DescribesCallerControlledCheckpointBoundary()
+    {
+        var (exitCode, stdout, stderr) = RunCli("workspace", "init", "--help");
+
+        Assert.AreEqual(0, exitCode, $"Stderr: {stderr}");
+        Assert.IsTrue(stdout.Contains("authoritative .dogdouspec state", StringComparison.Ordinal));
+        Assert.IsTrue(stdout.Contains("version managed files", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public void WorkspaceDiscover_FromDemoSubdirectory_ReturnsXmlRootWithExitCode0()
     {
         var demoSubdir = Path.Combine(RepoRoot, "docs", "demos", "v1-core", ".dogdouspec", "20260823-xpath-core");

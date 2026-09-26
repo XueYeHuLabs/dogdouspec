@@ -5,6 +5,7 @@ using System.Xml;
 using System.Xml.Linq;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.Workspace;
@@ -46,7 +47,8 @@ public static class BacklogLifecycle
     public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Add(
         string workspaceRoot,
         int expectedRevision,
-        BacklogCreateInput input)
+        BacklogCreateInput input,
+        bool dryRun = false)
     {
         var inputDiagnostics = ValidateCommon(expectedRevision, input.Id, input.OperationId, input.Actor);
         if (inputDiagnostics.Count > 0)
@@ -99,6 +101,14 @@ public static class BacklogLifecycle
         if (!loaded || backlog == null)
         {
             return (false, null, loadDiagnostics);
+        }
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         var requestFingerprint = Fingerprint(new XElement("backlog-add",
@@ -178,20 +188,20 @@ public static class BacklogLifecycle
             new XElement("records", Receipt(input.OperationId, input.Actor, at, "add", requestFingerprint,
                 "discussion", "informational", "Backlog item created through the public lifecycle helper.", null)));
         items.Add(item);
-        return Commit(workspaceRoot, "backlog add", backlog, actualRevision);
+        return Commit(workspaceRoot, "backlog add", backlog, actualRevision, dryRun);
     }
 
     public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Schedule(
-        string workspaceRoot, int expectedRevision, BacklogTransitionInput input) =>
-        Transition(workspaceRoot, expectedRevision, input, "schedule", "scheduled");
+        string workspaceRoot, int expectedRevision, BacklogTransitionInput input, bool dryRun = false) =>
+        Transition(workspaceRoot, expectedRevision, input, "schedule", "scheduled", dryRun);
 
     public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Complete(
-        string workspaceRoot, int expectedRevision, BacklogTransitionInput input) =>
-        Transition(workspaceRoot, expectedRevision, input, "complete", "completed");
+        string workspaceRoot, int expectedRevision, BacklogTransitionInput input, bool dryRun = false) =>
+        Transition(workspaceRoot, expectedRevision, input, "complete", "completed", dryRun);
 
     public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Cancel(
-        string workspaceRoot, int expectedRevision, BacklogTransitionInput input) =>
-        Transition(workspaceRoot, expectedRevision, input, "cancel", "cancelled");
+        string workspaceRoot, int expectedRevision, BacklogTransitionInput input, bool dryRun = false) =>
+        Transition(workspaceRoot, expectedRevision, input, "cancel", "cancelled", dryRun);
 
     public static (bool Success, BacklogListResult? Result, IReadOnlyList<Diagnostic> Diagnostics) List(
         string workspaceRoot, string? status = null, string? kind = null, string? severity = null)
@@ -234,7 +244,7 @@ public static class BacklogLifecycle
     }
 
     private static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Transition(
-        string workspaceRoot, int expectedRevision, BacklogTransitionInput input, string action, string newStatus)
+        string workspaceRoot, int expectedRevision, BacklogTransitionInput input, string action, string newStatus, bool dryRun = false)
     {
         var inputDiagnostics = ValidateCommon(expectedRevision, input.Id, input.OperationId, input.Actor);
         if (inputDiagnostics.Count > 0)
@@ -245,6 +255,14 @@ public static class BacklogLifecycle
         if (!loaded || backlog == null)
         {
             return (false, null, loadDiagnostics);
+        }
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         var requestFingerprint = Fingerprint(new XElement("backlog-transition",
@@ -303,7 +321,7 @@ public static class BacklogLifecycle
         records.Add(Receipt(input.OperationId, input.Actor, at, action, requestFingerprint,
             "resolution", action is "complete" or "cancel" ? "resolved" : "informational",
             $"Backlog item {action} transition applied through the public lifecycle helper.", input.ResolvingTask));
-        return Commit(workspaceRoot, "backlog " + action, backlog, actualRevision);
+        return Commit(workspaceRoot, "backlog " + action, backlog, actualRevision, dryRun);
     }
 
     private static List<Diagnostic> ValidateCommon(int expectedRevision, string id, string operationId, string actor)
@@ -479,32 +497,16 @@ public static class BacklogLifecycle
         new(command, new[] { new MutatedDocument(BacklogDocument, revision) }, alreadyApplied: true);
 
     private static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Commit(
-        string workspaceRoot, string command, XDocument backlog, int actualRevision)
+        string workspaceRoot, string command, XDocument backlog, int actualRevision, bool dryRun = false)
     {
         backlog.Root!.SetAttributeValue("revision", actualRevision + 1);
         var content = Serialize(backlog);
         var operation = new TransactionDocumentOperation(BacklogDocument, content, actualRevision, actualRevision + 1);
-        return WorkspaceTransactionCommitter.Commit(workspaceRoot, command, new[] { operation });
+        return WorkspaceTransactionCommitter.Commit(workspaceRoot, command, new[] { operation }, dryRun: dryRun);
     }
 
-    private static string Serialize(XDocument document)
-    {
-        var settings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "  ",
-            OmitXmlDeclaration = false,
-            Encoding = new UTF8Encoding(false),
-            NewLineHandling = NewLineHandling.Replace,
-            NewLineChars = "\n"
-        };
-        using var stream = new MemoryStream();
-        using (var writer = XmlWriter.Create(stream, settings))
-        {
-            document.Save(writer);
-        }
-        return Encoding.UTF8.GetString(stream.ToArray()) + "\n";
-    }
+    private static string Serialize(XDocument document) =>
+        ManagedDocumentSerializer.Serialize(document);
 
     private static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Failure(string code, string message) =>
         (false, null, new[] { Diagnostic.Error(code, message, BacklogDocument) });

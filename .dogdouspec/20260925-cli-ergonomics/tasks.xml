@@ -1,0 +1,589 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20260925-tasks-cli-ergonomics" iteration="20260925-cli-ergonomics" schema_version="1.0" revision="41">
+  <index>
+    <summary>Tasks for iteration 20260925-cli-ergonomics.</summary>
+    <term key="iteration" value="20260925-cli-ergonomics" />
+  </index>
+  <task id="20260925-task-01-task-record" status="done" created_at="2026-09-25T02:40:01Z" updated_at="2026-09-25T02:53:05Z" started_at="2026-09-25T02:47:08Z" completed_at="2026-09-25T02:53:05Z">
+    <index>
+      <summary>Implement porcelain 'task record' command with CLI auto-escaping</summary>
+      <term key="kind" value="task" />
+      <term key="priority" value="p1" />
+      <term key="issue" value="2" />
+      <term key="issue" value="5" />
+    </index>
+    <title>Implement porcelain 'task record' command with CLI auto-escaping</title>
+    <objective>Add high-level 'dogdouspec task record' command for structured verification, finding, resolution, completion, and discussion records with automatic prose XML escaping and deterministic ID generation.</objective>
+    <rationale>Removes the largest operational burden where orchestrators had to author raw XML for all structured records (Issue 2) and eliminates prose XML parsing traps (Issue 5).</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Cli/Commands/TaskCommand.cs" />
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+        <include path="tests/DogdouSpec.Cli.Tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260925-req-porcelain-record" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260925-taskcrit-01-1" status="passed">
+        dogdouspec task record supports --kind verification|finding|resolution|completion|discussion, --covers, --resolve, and --summary with auto-escaping.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>High-level command replacing low-level XML authoring for standard task records.</summary>
+    </context>
+    <records>
+      <record id="20260925T024001Z-rec-task-01-init" kind="discussion" status="informational" created_at="2026-09-25T02:40:01Z" actor="orchestrator" operation_id="20260925T024001Z-taskadd-01">
+        <summary>Initial task creation for porcelain task record implementation.</summary>
+      </record>
+      <record id="20260925T024001Z-taskadd-01-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:40:01Z" actor="orchestrator" operation_id="20260925T024001Z-taskadd-01">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="beec9616895440d6a550e01195cf32d90d591d9e3265f1c426da5ffd2404ddbb" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260925T024708Z-record-start-475f9535976a413e984f1c512455752f" kind="start" status="informational" created_at="2026-09-25T02:47:08Z" actor="agent" operation_id="20260925T024708Z-taskstart-ce722095fb214aec8dd4444542fd65f5">
+        <summary>Start porcelain task record implementation</summary>
+      </record>
+      <record id="20260925T025301Z-record-verify-9e15f8cc0cc74335aa33a511c6194a3a" kind="verification" status="informational" created_at="2026-09-25T02:53:01Z" actor="agent" operation_id="20260925T025301Z-taskverify-2f8fc88a0c9f48b2805fdf6ca4f20494">
+        <summary>Verified porcelain task record command with CLI auto-escaping, structured record kinds, covers, resolve, and unit tests</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-01-1" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260925T025305Z-record-complete-9285ac4cb4ab4407b43ca7492284a6e9" kind="completion" status="informational" created_at="2026-09-25T02:53:05Z" actor="agent" operation_id="20260925T025305Z-taskcomplete-e4e8b51eee5c4cac96c7575ac57f8a47">
+        <summary>Completed porcelain task record command with CLI auto-escaping, deterministic IDs, and structured kinds</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-01-1" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260925-task-02-conflict-diagnostics" status="done" created_at="2026-09-25T02:40:02Z" updated_at="2026-09-25T02:59:29Z" started_at="2026-09-25T02:53:31Z" completed_at="2026-09-25T02:59:29Z">
+    <index>
+      <summary>Disambiguate document-scoped operation and record ID conflict errors</summary>
+      <term key="kind" value="task" />
+      <term key="priority" value="p1" />
+      <term key="issue" value="7" />
+    </index>
+    <title>Disambiguate document-scoped operation and record ID conflict errors</title>
+    <objective>Improve error diagnostics when operation_id or record ID is reused across tasks in the same document, explicitly naming both the existing owning task and the current target task with remediation guidance.</objective>
+    <rationale>Prevents misleading error messages that appear to indicate cross-task contamination when the true cause is document-level ID collision (Issue 7).</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Validation/ProjectSemanticIndex.cs" />
+        <include path="src/DogdouSpec.Core/Tasks/TaskUpdater.cs" />
+        <include path="tests/DogdouSpec.Core.Tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260925-req-porcelain-record" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260925-taskcrit-02-1" status="passed">
+        ID conflict error messages state both conflicting task and target task and note that request IDs are document-scoped.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>Enhance ProjectSemanticIndex and TaskUpdater conflict error messages.</summary>
+    </context>
+    <records>
+      <record id="20260925T024002Z-rec-task-02-init" kind="discussion" status="informational" created_at="2026-09-25T02:40:02Z" actor="orchestrator" operation_id="20260925T024002Z-taskadd-02">
+        <summary>Initial task creation for conflict diagnostics disambiguation.</summary>
+      </record>
+      <record id="20260925T024002Z-taskadd-02-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:40:02Z" actor="orchestrator" operation_id="20260925T024002Z-taskadd-02">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="609f5cce2d1c2aad23b56aa89024260659842c6688966775ac29bf6b3f512377" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260925T025331Z-record-start-751de99fc7f04eb08503ffae4e249719" kind="start" status="informational" created_at="2026-09-25T02:53:31Z" actor="agent" operation_id="20260925T025331Z-taskstart-6199c3125f9e4989a8e9611b342e485f">
+        <summary>Start disambiguating document-scoped operation and record ID conflict errors</summary>
+      </record>
+      <record id="20260925T025923Z-record-verify-c6ce10d4ddb94899baa8374e4c339b56" kind="verification" status="informational" created_at="2026-09-25T02:59:23Z" actor="agent" operation_id="20260925T025923Z-taskverify-55c7669973ca46e3ad17e11cd77e9dd9">
+        <summary>Verified disambiguated conflict diagnostics for document-scoped operation and record IDs across tasks</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-02-1" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260925T025929Z-record-complete-322074208cc14609a1e7d46133ac5e56" kind="completion" status="informational" created_at="2026-09-25T02:59:29Z" actor="agent" operation_id="20260925T025929Z-taskcomplete-37d2a2ccd5454c0fbdbce3f12a0e1162">
+        <summary>Completed disambiguating document-scoped operation and record ID conflict errors with conflicting and target task names and guidance</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-02-1" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260925-task-03-timestamp-monotonicity" status="done" created_at="2026-09-25T02:40:03Z" updated_at="2026-09-25T03:21:27Z" started_at="2026-09-25T02:59:53Z" completed_at="2026-09-25T03:21:27Z">
+    <index>
+      <summary>Add --occurred-at to porcelain commands and improve monotonicity diagnostics</summary>
+      <term key="kind" value="task" />
+      <term key="priority" value="p1" />
+      <term key="issue" value="1" />
+    </index>
+    <title>Add --occurred-at to porcelain commands and improve monotonicity diagnostics</title>
+    <objective>Add --occurred-at option to task start, verify, finish, block, resume, and review approve commands; improve error diagnostic to report minimal acceptable timestamp when monotonicity is violated; allow occurred_at == updated_at for record appends.</objective>
+    <rationale>Prevents porcelain commands from permanently failing on tasks whose timestamps ran ahead of wall clock (Issue 1).</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Cli/Commands/TaskCommand.cs" />
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+        <include path="tests/DogdouSpec.Cli.Tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260925-req-ergonomics-timestamp" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260925-taskcrit-03-1" status="passed">
+        Porcelain commands accept --occurred-at and monotonicity errors explicitly report the minimal acceptable timestamp.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>Unifies timestamp handling between porcelain and low-level CLI commands.</summary>
+    </context>
+    <records>
+      <record id="20260925T024003Z-rec-task-03-init" kind="discussion" status="informational" created_at="2026-09-25T02:40:03Z" actor="orchestrator" operation_id="20260925T024003Z-taskadd-03">
+        <summary>Initial task creation for timestamp monotonicity improvements.</summary>
+      </record>
+      <record id="20260925T024003Z-taskadd-03-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:40:03Z" actor="orchestrator" operation_id="20260925T024003Z-taskadd-03">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="1284e82966750aa8cd10125a22e698ddaee0d39b3145a73f5fda2d3d7f858220" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260925T025953Z-record-start-eb3e27ca469a41db8b31844e05a541f7" kind="start" status="informational" created_at="2026-09-25T02:59:53Z" actor="agent" operation_id="20260925T025953Z-taskstart-87e304afde9545fe9f7b79fb00ad7e49">
+        <summary>Start adding --occurred-at to porcelain commands and improving monotonicity diagnostics</summary>
+      </record>
+      <record id="20260925T032121Z-record-verify-22aaea2c85d64163a1113ed25e9126de" kind="verification" status="informational" created_at="2026-09-25T03:21:21Z" actor="agent" operation_id="20260925T032121Z-taskverify-af01595f80f44e1d9549376dd92555e7">
+        <summary>Verified porcelain commands accept --occurred-at, monotonicity diagnostics state minimal acceptable timestamp, and occurred_at == updated_at is allowed for record appends</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-03-1" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260925T032127Z-record-complete-98063774ca184ef9a46b7dff1a28a679" kind="completion" status="informational" created_at="2026-09-25T03:21:27Z" actor="agent" operation_id="20260925T032127Z-taskcomplete-f63e32bf8b074fa0b71c52e0ca592ae6">
+        <summary>Completed timestamp monotonicity improvements and --occurred-at porcelain options</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-03-1" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260925-task-04-coverage-failfast" status="done" created_at="2026-09-25T02:40:04Z" updated_at="2026-09-25T03:30:06Z" started_at="2026-09-25T03:21:57Z" completed_at="2026-09-25T03:30:06Z">
+    <index>
+      <summary>Validate acceptance criteria coverage fail-fast at task verify</summary>
+      <term key="kind" value="task" />
+      <term key="priority" value="p2" />
+      <term key="issue" value="3" />
+    </index>
+    <title>Validate acceptance criteria coverage fail-fast at task verify</title>
+    <objective>Enforce TASK_CRITERION_NOT_COVERED check at task verify transition, returning an error diagnostic that embeds the expected covers XML fragment.</objective>
+    <rationale>Prevents tasks from completing review gates only to fail at completion due to missing criterion covers references (Issue 3).</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks/TaskCoverageVerifier.cs" />
+        <include path="src/DogdouSpec.Core/Tasks/TaskUpdater.cs" />
+        <include path="tests/DogdouSpec.Core.Tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260925-req-coverage-failfast" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260925-task-01-task-record" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260925-taskcrit-04-1" status="passed">
+        task verify transition rejects tasks with uncovered criteria, embedding expected covers fragment in diagnostic.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>Shifts coverage validation earlier in the task state machine.</summary>
+    </context>
+    <records>
+      <record id="20260925T024004Z-rec-task-04-init" kind="discussion" status="informational" created_at="2026-09-25T02:40:04Z" actor="orchestrator" operation_id="20260925T024004Z-taskadd-04">
+        <summary>Initial task creation for fail-fast coverage validation.</summary>
+      </record>
+      <record id="20260925T024004Z-taskadd-04-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:40:04Z" actor="orchestrator" operation_id="20260925T024004Z-taskadd-04">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="2c85e1ff455109fa19717d5c288f3ac42a5b9153e78f3de7e9b77b16b0f8ebe7" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260925T032157Z-record-start-59fdcad6e2e34f6897e3e7f735cb5f48" kind="start" status="informational" created_at="2026-09-25T03:21:57Z" actor="agent" operation_id="20260925T032157Z-taskstart-4e94c2efdd6b454e8844af4ca424b57a">
+        <summary>Started task 20260925-task-04-coverage-failfast.</summary>
+      </record>
+      <record id="20260925T033000Z-record-verify-ffd23b51f0ce4174aaf61484ce5a8a06" kind="verification" status="informational" created_at="2026-09-25T03:30:00Z" actor="agent" operation_id="20260925T033000Z-taskverify-56a962e9d51a412fb563d359a298b6bc">
+        <summary>Verified criteria coverage fail-fast validation and XML fragment shape generation at task verify transition</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-04-1" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260925T033006Z-record-complete-f93980df66a345d3ad0120cc2ae87d26" kind="completion" status="informational" created_at="2026-09-25T03:30:06Z" actor="agent" operation_id="20260925T033006Z-taskcomplete-6dba08406bf044fd863430f6e5ad05e3">
+        <summary>Completed fail-fast criteria coverage verification and embedded XML fragment generation</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-04-1" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260925-task-05-template-discovery" status="done" created_at="2026-09-25T02:40:05Z" updated_at="2026-09-25T03:41:17Z" started_at="2026-09-25T03:30:37Z" completed_at="2026-09-25T03:41:17Z">
+    <index>
+      <summary>Add 'template list' command and embed expected XML shapes in diagnostics</summary>
+      <term key="kind" value="task" />
+      <term key="priority" value="p2" />
+      <term key="issue" value="4" />
+    </index>
+    <title>Add 'template list' command and embed expected XML shapes in diagnostics</title>
+    <objective>Add dogdouspec template list command listing available template names and one-line descriptions; reference template names in command help text; embed expected XML snippets in schema violation diagnostics.</objective>
+    <rationale>Resolves poor template discoverability and trial-and-error request authoring (Issue 4).</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Cli/Commands/TemplateCommand.cs" />
+        <include path="src/DogdouSpec.Core/Resources/**" />
+        <include path="tests/DogdouSpec.Cli.Tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260925-req-template-discovery" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260925-taskcrit-05-1" status="passed">
+        dogdouspec template list displays registered templates with summaries, and schema diagnostics embed expected shapes.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>Improves discoverability of request templates and self-service diagnostics.</summary>
+    </context>
+    <records>
+      <record id="20260925T024005Z-rec-task-05-init" kind="discussion" status="informational" created_at="2026-09-25T02:40:05Z" actor="orchestrator" operation_id="20260925T024005Z-taskadd-05">
+        <summary>Initial task creation for template discovery and diagnostics.</summary>
+      </record>
+      <record id="20260925T024005Z-taskadd-05-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:40:05Z" actor="orchestrator" operation_id="20260925T024005Z-taskadd-05">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="3263255b33c51624e15b6774ac38bfaf65bb27413cfc81e5626804b8dfa5a6c9" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260925T033037Z-record-start-fe8fbe494b8c40f4977221fa5c960089" kind="start" status="informational" created_at="2026-09-25T03:30:37Z" actor="agent" operation_id="20260925T033037Z-taskstart-dddf8405803a4438bcd0cc93e0265e92">
+        <summary>Started task 20260925-task-05-template-discovery.</summary>
+      </record>
+      <record id="20260925T034109Z-record-verify-ea356b80b4304e94a9aa5e7eac674787" kind="verification" status="informational" created_at="2026-09-25T03:41:09Z" actor="agent" operation_id="20260925T034109Z-taskverify-00537a241c5f4ca3aba200c1e76e9d4f">
+        <summary>Implemented template list subcommand, TemplateCatalog descriptor repository, template references in CLI command help texts, and schema diagnostics embedding expected XML shapes. Verified with 7 new unit tests in TemplateCliTests and full test suite (892 passing tests).</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-05-1" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260925T034117Z-record-complete-d785d880cb0042e0a3ce641fb5ace5f2" kind="completion" status="informational" created_at="2026-09-25T03:41:17Z" actor="agent" operation_id="20260925T034117Z-taskcomplete-9e2b0fb792b14a97ad518f3572d1d439">
+        <summary>Completed Task 05: Added 'dogdouspec template list' command with human and XML output, TemplateCatalog metadata with one-line summaries and minimal shapes, CLI help text template references, and diagnostic enrichment with expected XML shapes.</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-05-1" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260925-task-06-tasks-archival-design" status="done" created_at="2026-09-25T02:40:06Z" updated_at="2026-09-25T03:44:09Z" started_at="2026-09-25T03:41:44Z" completed_at="2026-09-25T03:44:09Z">
+    <index>
+      <summary>Design and specify tasks.xml record archival and compaction mechanism</summary>
+      <term key="kind" value="task" />
+      <term key="priority" value="p2" />
+      <term key="issue" value="6" />
+    </index>
+    <title>Design and specify tasks.xml record archival and compaction mechanism</title>
+    <objective>Author design specification and architectural prototype for archiving terminal task records into split archive files or compaction checkpoints while maintaining append-only guarantees and transparent two-phase XPath queries.</objective>
+    <rationale>Prevents unbounded document growth in long iterations (Issue 6) that leads to context degradation and validation overhead.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="docs/**" />
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260925-req-archival-strategy" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260925-taskcrit-06-1" status="passed">
+        Documented archival specification covering record separation, index contracts, and two-phase query compatibility.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>Addresses long-term scalability of tasks.xml document size.</summary>
+    </context>
+    <records>
+      <record id="20260925T024006Z-rec-task-06-init" kind="discussion" status="informational" created_at="2026-09-25T02:40:06Z" actor="orchestrator" operation_id="20260925T024006Z-taskadd-06">
+        <summary>Initial task creation for tasks.xml archival design.</summary>
+      </record>
+      <record id="20260925T024006Z-taskadd-06-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:40:06Z" actor="orchestrator" operation_id="20260925T024006Z-taskadd-06">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="f8ea111a5a2771679a9645d7789dbe9fc601d3adca14b33a73f92cccafa6e81b" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260925T034144Z-record-start-5ce129f85b6f4aa8a4c5660a9e8d157d" kind="start" status="informational" created_at="2026-09-25T03:41:44Z" actor="agent" operation_id="20260925T034144Z-taskstart-e0d74bc760224dfc93bec2234e6eeda1">
+        <summary>Starting Task 06: Designing tasks.xml record archival and compaction architecture specification.</summary>
+      </record>
+      <record id="20260925T034405Z-record-verify-f1281c1cb73346e9b68445d947edcdc3" kind="verification" status="informational" created_at="2026-09-25T03:44:05Z" actor="agent" operation_id="20260925T034405Z-taskverify-e797b573d7544921961cbdb104a41473">
+        <summary>Authored comprehensive architectural specification in docs/TASKS_RECORD_ARCHIVAL_SPEC.md covering partition layout, working-set stubs, archive document structure, two-phase XPath query compatibility, and compaction lifecycle. Implemented core model TaskArchivalContract.cs and unit test suite TaskArchivalTests.cs.</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-06-1" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260925T034409Z-record-complete-4921e3921cd9424b98443263ad3014e6" kind="completion" status="informational" created_at="2026-09-25T03:44:09Z" actor="agent" operation_id="20260925T034409Z-taskcomplete-9b84472e59c14b10bb77dde4e6dc6621">
+        <summary>Completed Task 06: Documented record archival and compaction design in docs/TASKS_RECORD_ARCHIVAL_SPEC.md and introduced foundational contract in TaskArchivalContract.cs with passing unit tests.</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-06-1" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260925-task-07-blocking-recordonly" status="done" created_at="2026-09-25T02:40:07Z" updated_at="2026-09-25T03:54:47Z" started_at="2026-09-25T03:44:39Z" completed_at="2026-09-25T03:54:47Z">
+    <index>
+      <summary>Add --record-only option to task block preserving in-progress status</summary>
+      <term key="kind" value="task" />
+      <term key="priority" value="p2" />
+      <term key="issue" value="9" />
+    </index>
+    <title>Add --record-only option to task block preserving in-progress status</title>
+    <objective>Extend dogdouspec task block with --record-only flag that appends a structured blocker finding record without transitioning the task's status away from in-progress, and ensure task blockers aggregates both standard and record-only blockers.</objective>
+    <rationale>Resolves the binary blocking limitation where operators had to choose between accurate task status and structured blocker tracking (Issue 9).</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Cli/Commands/TaskCommand.cs" />
+        <include path="src/DogdouSpec.Core/Tasks/TaskBlocker.cs" />
+        <include path="tests/DogdouSpec.Cli.Tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260925-req-blocking-recordonly" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260925-taskcrit-07-1" status="passed">
+        task block --record-only records structured blocker finding while task status remains in-progress, and task blockers surfaces both blocker kinds.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>Decouples structured blocker tracking from state machine status transitions.</summary>
+    </context>
+    <records>
+      <record id="20260925T024007Z-rec-task-07-init" kind="discussion" status="informational" created_at="2026-09-25T02:40:07Z" actor="orchestrator" operation_id="20260925T024007Z-taskadd-07">
+        <summary>Initial task creation for record-only blocker option.</summary>
+      </record>
+      <record id="20260925T024007Z-taskadd-07-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:40:07Z" actor="orchestrator" operation_id="20260925T024007Z-taskadd-07">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="ff787ab8f261141ee536b240a67c08d439a2d0ad65a1827b0feda9936632b04c" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260925T034439Z-record-start-ee31af53a5384211b3ff34f753d70fc8" kind="start" status="informational" created_at="2026-09-25T03:44:39Z" actor="agent" operation_id="20260925T034439Z-taskstart-81354755aa8648a2b308076ac811d7ec">
+        <summary>Starting Task 07: Adding --record-only option to task block and aggregating in task blockers.</summary>
+      </record>
+      <record id="20260925T035442Z-record-verify-9d10bef0cada4287abd3bb992ad6fce9" kind="verification" status="informational" created_at="2026-09-25T03:54:42Z" actor="agent" operation_id="20260925T035442Z-taskverify-b503dbb1d9f04c28b663658bcd431a37">
+        <summary>Verified --record-only flag on task block keeps task status in-progress while appending structured blocker finding, task blockers queries and aggregates both blocking and record-only modes, task resume resolves active findings on in-progress tasks, and full test suite passes with 897 tests.</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-07-1" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260925T035447Z-record-complete-a573c007ba9348cda2a337a14e329caa" kind="completion" status="informational" created_at="2026-09-25T03:54:47Z" actor="agent" operation_id="20260925T035447Z-taskcomplete-39b098c5d01845a5af4f76d4c9cd2ea7">
+        <summary>Completed Task 07: Added --record-only flag to task block, updated TaskBlockers to aggregate and optionally filter by mode (all, record-only, blocking), enhanced task resume to resolve active findings on in-progress tasks, and added automated tests in BlockerCliTests and TaskBlockerCoreTests.</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-07-1" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260925-task-08-index-summary-refresh" status="done" created_at="2026-09-25T02:40:08Z" updated_at="2026-09-25T04:04:45Z" started_at="2026-09-25T03:55:38Z" completed_at="2026-09-25T04:04:45Z">
+    <index>
+      <summary>Refresh iteration index summary automatically on lifecycle transitions</summary>
+      <term key="kind" value="task" />
+      <term key="priority" value="p3" />
+      <term key="issue" value="8" />
+    </index>
+    <title>Refresh iteration index summary automatically on lifecycle transitions</title>
+    <objective>Automatically update iteration index summary when an iteration undergoes lifecycle transitions (activation, replanning, completion) to prevent stale summary text from appearing in iteration list.</objective>
+    <rationale>Resolves contradictory reporting surfaces where iteration list displays stale bootstrap summary while actual progress has advanced (Issue 8).</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Iterations/IterationConfirmer.cs" />
+        <include path="src/DogdouSpec.Core/Iterations/IterationLister.cs" />
+        <include path="tests/DogdouSpec.Core.Tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260925-req-misc-ergonomics" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260925-taskcrit-08-1" status="passed">
+        Iteration index summary is refreshed during activation and completion, ensuring iteration list displays current state.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>Keeps iteration index metadata synchronized across lifecycle transitions.</summary>
+    </context>
+    <records>
+      <record id="20260925T024008Z-rec-task-08-init" kind="discussion" status="informational" created_at="2026-09-25T02:40:08Z" actor="orchestrator" operation_id="20260925T024008Z-taskadd-08">
+        <summary>Initial task creation for index summary refresh.</summary>
+      </record>
+      <record id="20260925T024008Z-taskadd-08-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:40:08Z" actor="orchestrator" operation_id="20260925T024008Z-taskadd-08">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="6ef0bf6c94ac4c88c83582eb5432297961a03743b215ac070beaccabf86d616b" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260925T035538Z-record-start-27c9eca449b4489aa5e3567f541374fb" kind="start" status="informational" created_at="2026-09-25T03:55:38Z" actor="agent" operation_id="20260925T035538Z-taskstart-2b519cb245a94a3fb4d7c4e1b3850875">
+        <summary>Starting Task 08: Refreshing iteration index summary automatically on lifecycle transitions.</summary>
+      </record>
+      <record id="20260925T040428Z-record-verify-302595cbc8e9475986acda4e0dff72be" kind="verification" status="informational" created_at="2026-09-25T04:04:28Z" actor="agent" operation_id="20260925T040428Z-taskverify-abd4b07822cd4c2b87bd710b49c6cf9c">
+        <summary>Verified that iteration index summary refreshes during activation, completion, and replanning, and that iteration list displays current state.</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-08-1" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260925T040445Z-record-complete-bb742c22b0e04f31af43b5f439440a24" kind="completion" status="informational" created_at="2026-09-25T04:04:45Z" actor="agent" operation_id="20260925T040445Z-taskcomplete-e833e84e0104408a809fc8db57195d4d">
+        <summary>Completed Task 08: Auto-refresh iteration index summary on lifecycle transitions.</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-08-1" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260925-task-09-filter-and-revision-optin" status="done" created_at="2026-09-25T02:40:09Z" updated_at="2026-09-25T04:21:36Z" started_at="2026-09-25T04:05:10Z" completed_at="2026-09-25T04:21:36Z">
+    <index>
+      <summary>Enhance ds:filter capabilities and add opt-in --revision latest flag</summary>
+      <term key="kind" value="task" />
+      <term key="priority" value="p3" />
+      <term key="issue" value="10" />
+    </index>
+    <title>Enhance ds:filter capabilities and add opt-in --revision latest flag</title>
+    <objective>Extend ds:filter to support common inspection idioms like name() and multi-expression evaluation; add an opt-in --revision latest flag for low-level mutating commands in single-writer workflows while preserving strict revision checking by default.</objective>
+    <rationale>Reduces round-trips for simple inventories and simplifies single-writer automation without compromising default concurrency safety (Issue 10).</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/XPath/**" />
+        <include path="src/DogdouSpec.Cli/Commands/**" />
+        <include path="tests/DogdouSpec.Core.Tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260925-req-misc-ergonomics" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20260925-taskcrit-09-1" status="passed">
+        ds:filter allows evaluation of common query idioms without syntax error, and low-level commands accept opt-in --revision latest.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>Improves XPath query flexibility and provides opt-in revision convenience.</summary>
+    </context>
+    <records>
+      <record id="20260925T024009Z-rec-task-09-init" kind="discussion" status="informational" created_at="2026-09-25T02:40:09Z" actor="orchestrator" operation_id="20260925T024009Z-taskadd-09">
+        <summary>Initial task creation for filter capabilities and revision latest opt-in.</summary>
+      </record>
+      <record id="20260925T024009Z-taskadd-09-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:40:09Z" actor="orchestrator" operation_id="20260925T024009Z-taskadd-09">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="e75f7e37e33b3c40a3a6b820c9ead5e8f996fbff7275d2e5c0b86a7e9b588df0" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260925T040510Z-record-start-9c45633249004db0862c81588186f31b" kind="start" status="informational" created_at="2026-09-25T04:05:10Z" actor="agent" operation_id="20260925T040510Z-taskstart-20b9d761b1774777a29ef195c24e32f9">
+        <summary>Starting Task 09: Enhancing ds:filter capabilities and adding opt-in --revision latest flag.</summary>
+      </record>
+      <record id="20260925T042127Z-record-verify-dff71f5dfd0b4bd29cdc34bb35f0543b" kind="verification" status="informational" created_at="2026-09-25T04:21:27Z" actor="agent" operation_id="20260925T042127Z-taskverify-95af631f36704803add22392534742be">
+        <summary>Verified ds:filter inspection idioms (name, namespace-uri, attribute predicates) and opt-in --revision latest flag across task update, add, split, and transaction apply.</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-09-1" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260925T042136Z-record-complete-60bac29485b74560887a2802397594ec" kind="completion" status="informational" created_at="2026-09-25T04:21:36Z" actor="agent" operation_id="20260925T042136Z-taskcomplete-c00cdb3c689f4a3da64454dc1a6cae7f">
+        <summary>Task 09 completed: ds:filter enhanced with name(), namespace-uri(), and member attribute predicates; opt-in --revision latest added to task update, add, split, and transaction apply.</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-09-1" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20260925-task-10-acceptance-and-docs" status="done" created_at="2026-09-25T02:40:10Z" updated_at="2026-09-25T04:26:05Z" started_at="2026-09-25T04:22:55Z" completed_at="2026-09-25T04:26:05Z">
+    <index>
+      <summary>Run full build.cmd regression verification and update skill documentation</summary>
+      <term key="kind" value="task" />
+      <term key="priority" value="p3" />
+    </index>
+    <title>Run full build.cmd regression verification and update skill documentation</title>
+    <objective>Verify all 10 fixes against existing and new test suites, ensuring .\build.cmd passes with zero errors and zero warnings; update SKILL.md and reference docs to describe porcelain records, --occurred-at, template list, --record-only, and latest revision flags.</objective>
+    <rationale>Ensures all 10 ergonomics fixes are thoroughly validated end-to-end and developer documentation is aligned with the new capabilities.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="tests/**" />
+        <include path=".agents/skills/dogdouspec/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20260925-req-misc-ergonomics" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20260925-task-01-task-record" relation="depends-on" />
+      <ref scope="document" target="20260925-task-02-conflict-diagnostics" relation="depends-on" />
+      <ref scope="document" target="20260925-task-03-timestamp-monotonicity" relation="depends-on" />
+      <ref scope="document" target="20260925-task-04-coverage-failfast" relation="depends-on" />
+      <ref scope="document" target="20260925-task-05-template-discovery" relation="depends-on" />
+      <ref scope="document" target="20260925-task-06-tasks-archival-design" relation="depends-on" />
+      <ref scope="document" target="20260925-task-07-blocking-recordonly" relation="depends-on" />
+      <ref scope="document" target="20260925-task-08-index-summary-refresh" relation="depends-on" />
+      <ref scope="document" target="20260925-task-09-filter-and-revision-optin" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20260925-taskcrit-10-1" status="passed">
+        build.cmd completes with 0 errors and 0 warnings, and SKILL.md plus references document all new porcelain options and workflow enhancements.
+      </criterion>
+    </acceptance>
+    <context>
+      <summary>Final integration verification and documentation synchronization.</summary>
+    </context>
+    <records>
+      <record id="20260925T024010Z-rec-task-10-init" kind="discussion" status="informational" created_at="2026-09-25T02:40:10Z" actor="orchestrator" operation_id="20260925T024010Z-taskadd-10">
+        <summary>Initial task creation for regression verification and documentation.</summary>
+      </record>
+      <record id="20260925T024010Z-taskadd-10-receipt" kind="discussion" status="informational" created_at="2026-09-25T02:40:10Z" actor="orchestrator" operation_id="20260925T024010Z-taskadd-10">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="17482d4fa939a7a5186b9d844c06373d64010456e88e71eecb65d76bd8c6874d" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20260925T042255Z-record-start-b477773a2be044889cddf394a3984bdc" kind="start" status="informational" created_at="2026-09-25T04:22:55Z" actor="agent" operation_id="20260925T042255Z-taskstart-497c6e78574c4c0b8d54682ef322fda4">
+        <summary>Started task 20260925-task-10-acceptance-and-docs.</summary>
+      </record>
+      <record id="20260925T042556Z-record-verify-4b51d0f5464247d790d32cbcae7219b5" kind="verification" status="informational" created_at="2026-09-25T04:25:56Z" actor="agent" operation_id="20260925T042556Z-taskverify-bd02290ad341499f803c16f0c3ced1ac">
+        <summary>Verified .\build.cmd passes with 0 warnings and 0 errors across all 903 test cases. Verified .agents/skills/dogdouspec/ documentation updated with porcelain records, --occurred-at, template list, --record-only, and latest revision flags.</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-10-1" relation="covers" />
+        </covers>
+      </record>
+      <record id="20260925T042605Z-record-complete-39ead032319d43babd61ec2b8b5dc8fa" kind="completion" status="informational" created_at="2026-09-25T04:26:05Z" actor="agent" operation_id="20260925T042605Z-taskcomplete-39d44282edbc4f82aa2d2ebb0bf54715">
+        <summary>Task 10 completed: .\build.cmd passes cleanly with 0 warnings and 0 errors across 903 tests; skill documentation updated in SKILL.md, references/mutations.md, and references/xpath.md.</summary>
+        <covers>
+          <ref scope="document" target="20260925-taskcrit-10-1" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+</tasks>

@@ -9,6 +9,7 @@ using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -29,7 +30,8 @@ public static class ChangeApplier
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         if (string.IsNullOrWhiteSpace(workspaceRoot))
         {
@@ -70,6 +72,15 @@ public static class ChangeApplier
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         var normSpecDocPath = $"{normIterId}/spec.xml";
@@ -336,7 +347,7 @@ public static class ChangeApplier
             }
             if (DateTimeOffset.TryParse(targetTask.Attribute("updated_at")?.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var taskUpdatedAt) && reqOccurredAt < taskUpdatedAt)
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-apply @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-apply @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'. Minimal acceptable timestamp is '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
             }
 
             var targetRecord = targetTask.Element("records")?.Elements("record").FirstOrDefault(r => string.Equals((string?)r.Attribute("id"), targetRecordId, StringComparison.Ordinal));
@@ -368,7 +379,7 @@ public static class ChangeApplier
             }
             if (DateTimeOffset.TryParse(targetTask.Attribute("updated_at")?.Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var taskUpdatedAt) && reqOccurredAt < taskUpdatedAt)
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-apply @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"change-apply @occurred_at '{occurredAt}' cannot be earlier than task '{targetTaskId}' updated_at '{targetTask.Attribute("updated_at")?.Value}'. Minimal acceptable timestamp is '{targetTask.Attribute("updated_at")?.Value}'.", normTasksDocPath) });
             }
 
             var currentStatus = targetTask.Attribute("status")?.Value ?? "pending";
@@ -486,23 +497,7 @@ public static class ChangeApplier
         tasksRoot.SetAttributeValue("revision", newTasksRevision.ToString(CultureInfo.InvariantCulture));
 
         // 6. Serialize and Commit
-        var writerSettings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "  ",
-            OmitXmlDeclaration = false,
-            Encoding = Utf8NoBom,
-            NewLineHandling = NewLineHandling.Replace,
-            NewLineChars = "\n"
-        };
-
-        using var tasksMs = new MemoryStream();
-        using (var writer = XmlWriter.Create(tasksMs, writerSettings))
-        {
-            tasksDoc.Save(writer);
-        }
-        var tasksReplacementContent = Encoding.UTF8.GetString(tasksMs.ToArray());
-        if (!tasksReplacementContent.EndsWith('\n')) tasksReplacementContent += "\n";
+        var tasksReplacementContent = ManagedDocumentSerializer.Serialize(tasksDoc);
 
         var operations = new[]
         {
@@ -517,7 +512,8 @@ public static class ChangeApplier
             faultInjector,
             version,
             correlationId: applyId,
-            readPreconditions: new[] { new TransactionReadPrecondition(normSpecDocPath, actualSpecRevision) });
+            readPreconditions: new[] { new TransactionReadPrecondition(normSpecDocPath, actualSpecRevision) },
+            dryRun: dryRun);
     }
 
     private static bool IsValidUtcTimestamp(string? value, out DateTimeOffset dto)

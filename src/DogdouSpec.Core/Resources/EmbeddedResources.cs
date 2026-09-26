@@ -49,6 +49,7 @@ public static class EmbeddedResources
     public static readonly IReadOnlyList<string> SkillFilePaths = new[]
     {
         "SKILL.md",
+        "references/upgrade.md",
         "references/authority.md",
         "references/mutations.md",
         "references/xpath.md"
@@ -150,11 +151,20 @@ public static class EmbeddedResources
 
     public static string? GetSkillText(string relativePath)
     {
+        var bytes = GetSkillBytes(relativePath);
+        return bytes == null ? null : Encoding.UTF8.GetString(bytes);
+    }
+
+    public static byte[]? GetSkillBytes(string relativePath)
+    {
         using var stream = GetSkillStream(relativePath);
-        if (stream == null) return null;
+        if (stream == null)
+        {
+            return null;
+        }
         using var ms = new MemoryStream();
         stream.CopyTo(ms);
-        return Encoding.UTF8.GetString(ms.ToArray());
+        return ms.ToArray();
     }
 
     public static string? GetAgentsTemplateText()

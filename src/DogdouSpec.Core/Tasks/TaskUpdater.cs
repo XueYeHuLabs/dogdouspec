@@ -7,6 +7,7 @@ using DogdouSpec.Core.Append;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
@@ -30,7 +31,8 @@ public static class TaskUpdater
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false)
     {
         clock ??= SystemClock.Instance;
 
@@ -71,6 +73,15 @@ public static class TaskUpdater
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
         }
 
         // 3. Validate relative document path for tasks.xml
@@ -332,12 +343,12 @@ public static class TaskUpdater
         {
             if (!string.Equals(occ.Doc.RelativePath, normDocPath, StringComparison.Ordinal))
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Operation ID '{updateId}' already exists in document '{occ.Doc.RelativePath}'.", normDocPath) });
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Operation ID '{updateId}' already exists in document '{occ.Doc.RelativePath}'. Target task is '{taskId}'. Request IDs are document-scoped; generate a unique operation ID for target task '{taskId}'.", normDocPath) });
             }
 
             if (!string.Equals(occ.ContainingTaskId, taskId, StringComparison.Ordinal))
             {
-                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Operation ID '{updateId}' already exists under task '{occ.ContainingTaskId}' in '{normDocPath}'.", normDocPath) });
+                return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Operation ID '{updateId}' already exists under conflicting task '{occ.ContainingTaskId}' in '{normDocPath}'. Target task is '{taskId}'. Request IDs are document-scoped; generate a unique operation ID for target task '{taskId}' or do not reuse an ID from another task.", normDocPath) });
             }
 
             if (!string.Equals(occ.Element.Name.LocalName, "record", StringComparison.Ordinal) ||
@@ -489,9 +500,20 @@ public static class TaskUpdater
                     using var fs = File.OpenRead(doc.FullPath);
                     using var r = SecureXmlReaderFactory.CreateReader(fs);
                     var xDoc = XDocument.Load(r);
-                    if (xDoc.Descendants().Any(e => string.Equals((string?)e.Attribute("id"), reqRecId, StringComparison.Ordinal)))
+                    var conflictingElem = xDoc.Descendants().FirstOrDefault(e => string.Equals((string?)e.Attribute("id"), reqRecId, StringComparison.Ordinal));
+                    if (conflictingElem != null)
                     {
-                        return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Element with ID '{reqRecId}' already exists in document '{doc.RelativePath}'.", normDocPath) });
+                        var conflictingTaskId = conflictingElem.Ancestors("task").FirstOrDefault()?.Attribute("id")?.Value
+                            ?? (string.Equals(conflictingElem.Name.LocalName, "task", StringComparison.Ordinal) ? (string?)conflictingElem.Attribute("id") : null);
+
+                        if (!string.IsNullOrEmpty(conflictingTaskId))
+                        {
+                            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Record ID '{reqRecId}' already exists under conflicting task '{conflictingTaskId}' in '{doc.RelativePath}'. Target task is '{taskId}'. Request IDs are document-scoped; generate a unique record ID for target task '{taskId}' or do not reuse an ID from another task.", normDocPath) });
+                        }
+                        else
+                        {
+                            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Element with ID '{reqRecId}' already exists in document '{doc.RelativePath}'. Target task is '{taskId}'. Request IDs are document-scoped; generate a unique ID for target task '{taskId}'.", normDocPath) });
+                        }
                     }
                 }
                 catch { }
@@ -515,7 +537,7 @@ public static class TaskUpdater
             DateTimeOffset.TryParse(taskCreatedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var taskCreatedAt) &&
             reqOccurredAt < taskCreatedAt)
         {
-            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"task-update @occurred_at '{occurredAt}' cannot be earlier than task created_at '{taskCreatedAtStr}'.", normDocPath) });
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"task-update @occurred_at '{occurredAt}' cannot be earlier than task created_at '{taskCreatedAtStr}'. Minimal acceptable timestamp is '{taskCreatedAtStr}'.", normDocPath) });
         }
 
         var taskUpdatedAtStr = targetTask.Attribute("updated_at")?.Value;
@@ -523,7 +545,7 @@ public static class TaskUpdater
             DateTimeOffset.TryParse(taskUpdatedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var taskUpdatedAt) &&
             reqOccurredAt < taskUpdatedAt)
         {
-            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"task-update @occurred_at '{occurredAt}' cannot be earlier than current task updated_at '{taskUpdatedAtStr}'.", normDocPath) });
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"task-update @occurred_at '{occurredAt}' cannot be earlier than current task updated_at '{taskUpdatedAtStr}'. Minimal acceptable timestamp is '{taskUpdatedAtStr}'.", normDocPath) });
         }
 
         // 9. Validate Transition and Immutability
@@ -675,6 +697,45 @@ public static class TaskUpdater
             catch (Exception ex)
             {
                 return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Unable to read iteration spec document '{normIterId}/spec.xml' while checking approved task origins: {ex.Message}", $"{normIterId}/spec.xml") });
+            }
+        }
+
+        if (string.Equals(transition, "resume", StringComparison.Ordinal))
+        {
+            var resolvingRecordIds = reqResolve?.Elements("record")
+                .Select(r => r.Attribute("target")?.Value)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Select(id => id!)
+                .ToHashSet(StringComparer.Ordinal) ?? new HashSet<string>(StringComparer.Ordinal);
+
+            var existingActiveFindings = targetTask.Element("records")?.Elements("record")
+                .Where(r => string.Equals(r.Attribute("kind")?.Value, "finding", StringComparison.Ordinal) &&
+                            string.Equals(r.Attribute("status")?.Value, "active", StringComparison.Ordinal))
+                .ToList() ?? new List<XElement>();
+
+            var remainingActiveFindings = existingActiveFindings
+                .Where(r => !resolvingRecordIds.Contains(r.Attribute("id")?.Value ?? string.Empty))
+                .ToList();
+
+            if (remainingActiveFindings.Count > 0)
+            {
+                var firstRemainingId = remainingActiveFindings[0].Attribute("id")?.Value ?? "unknown";
+                return (false, null, new[] { Diagnostic.Error(
+                    DiagnosticCodes.TaskTransitionConflict,
+                    $"Cannot resume task '{taskId}': {remainingActiveFindings.Count} active finding(s) remain unresolved (e.g. '{firstRemainingId}').",
+                    normDocPath) });
+            }
+        }
+
+        if (string.Equals(transition, "verify", StringComparison.Ordinal))
+        {
+            var (covSuccess, covDiag) = TaskCoverageVerifier.ValidateVerifyTransitionCoverage(
+                targetTask,
+                requestedRecords,
+                normDocPath);
+            if (!covSuccess && covDiag != null)
+            {
+                return (false, null, new[] { covDiag });
             }
         }
 
@@ -838,27 +899,7 @@ public static class TaskUpdater
         tasksRoot.SetAttributeValue("revision", newRevision.ToString(CultureInfo.InvariantCulture));
 
         // 15. Serialize and Commit
-        var writerSettings = new XmlWriterSettings
-        {
-            Indent = true,
-            IndentChars = "  ",
-            OmitXmlDeclaration = false,
-            Encoding = Utf8NoBom,
-            NewLineHandling = NewLineHandling.Replace,
-            NewLineChars = "\n"
-        };
-
-        using var memoryStream = new MemoryStream();
-        using (var writer = XmlWriter.Create(memoryStream, writerSettings))
-        {
-            targetDoc.Save(writer);
-        }
-
-        var replacementContent = Encoding.UTF8.GetString(memoryStream.ToArray());
-        if (!replacementContent.EndsWith('\n'))
-        {
-            replacementContent += "\n";
-        }
+        var replacementContent = ManagedDocumentSerializer.Serialize(targetDoc);
 
         var operation = new TransactionDocumentOperation(
             normDocPath,
@@ -873,7 +914,8 @@ public static class TaskUpdater
             clock,
             faultInjector,
             version,
-            readPreconditions: extraReadPreconditions);
+            readPreconditions: extraReadPreconditions,
+            dryRun: dryRun);
     }
 
     private static bool IsValidUtcTimestamp(string? value, out DateTimeOffset dto)

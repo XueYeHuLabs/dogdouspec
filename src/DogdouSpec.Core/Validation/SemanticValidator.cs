@@ -73,11 +73,21 @@ public static class SemanticValidator
         {
             if (instances.Count > 1)
             {
+                var distinctTaskIds = instances
+                    .Select(i => i.ContainingTaskId)
+                    .Where(t => !string.IsNullOrEmpty(t))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+
+                string taskContextMsg = distinctTaskIds.Count > 1
+                    ? $" Conflicting tasks: '{string.Join("', '", distinctTaskIds)}'. Note that IDs are document-scoped; ensure each task and record has a unique ID."
+                    : string.Empty;
+
                 foreach (var inst in instances)
                 {
                     diagnostics.Add(Diagnostic.Error(
                         DiagnosticCodes.DuplicateId,
-                        $"Duplicate identifier '{id}' found. Identifier is declared {instances.Count} times across the project.",
+                        $"Duplicate identifier '{id}' found. Identifier is declared {instances.Count} times across the project.{taskContextMsg}",
                         inst.Document.RelativePath,
                         inst.LineNumber,
                         inst.LinePosition));
@@ -187,7 +197,7 @@ public static class SemanticValidator
                     receipt.LinePosition));
             }
 
-            // 2. Must only be used on a receipt record owned by a Task or Backlog item.
+            // 2. Must only be used on a receipt record owned by a Task, Backlog item, or Knowledge entry.
             var isTaskOwnedRecord = string.Equals(receipt.ElementName, "record", StringComparison.Ordinal) &&
                                     string.Equals(receipt.ParentElementName, "records", StringComparison.Ordinal) &&
                                     !string.IsNullOrEmpty(receipt.ContainingTaskId) &&
@@ -197,12 +207,17 @@ public static class SemanticValidator
                                        string.Equals(receipt.ParentElementName, "records", StringComparison.Ordinal) &&
                                        !string.IsNullOrEmpty(backlogItemId) &&
                                        string.Equals(receipt.Document.RelativePath, "backlog.xml", StringComparison.OrdinalIgnoreCase);
+            var knowledgeEntryId = receipt.Element.Ancestors("entry").FirstOrDefault()?.Attribute("id")?.Value;
+            var isKnowledgeOwnedRecord = string.Equals(receipt.ElementName, "record", StringComparison.Ordinal) &&
+                                         string.Equals(receipt.ParentElementName, "records", StringComparison.Ordinal) &&
+                                         !string.IsNullOrEmpty(knowledgeEntryId) &&
+                                         string.Equals(receipt.Document.RelativePath, "knowledge.xml", StringComparison.OrdinalIgnoreCase);
 
-            if (!isTaskOwnedRecord && !isBacklogOwnedRecord)
+            if (!isTaskOwnedRecord && !isBacklogOwnedRecord && !isKnowledgeOwnedRecord)
             {
                 diagnostics.Add(Diagnostic.Error(
                     DiagnosticCodes.InvalidReferenceTargetType,
-                    $"Operation ID '{receipt.OperationId}' is used on <{receipt.ElementName}> in '{receipt.Document.RelativePath}'. Operation IDs are only permitted on Task- or Backlog-item-owned records.",
+                    $"Operation ID '{receipt.OperationId}' is used on <{receipt.ElementName}> in '{receipt.Document.RelativePath}'. Operation IDs are only permitted on Task-, Backlog-item-, or Knowledge-entry-owned records.",
                     receipt.Document.RelativePath,
                     receipt.LineNumber,
                     receipt.LinePosition));
@@ -227,7 +242,8 @@ public static class SemanticValidator
                 .Select(r =>
                 {
                     var backlogItemId = r.Element.Ancestors("item").FirstOrDefault()?.Attribute("id")?.Value;
-                    return (Doc: r.Document.RelativePath, Owner: r.ContainingTaskId ?? backlogItemId ?? string.Empty);
+                    var knowledgeEntryId = r.Element.Ancestors("entry").FirstOrDefault()?.Attribute("id")?.Value;
+                    return (Doc: r.Document.RelativePath, Owner: r.ContainingTaskId ?? backlogItemId ?? knowledgeEntryId ?? string.Empty);
                 })
                 .Distinct()
                 .ToList();
@@ -238,7 +254,7 @@ public static class SemanticValidator
                 {
                     diagnostics.Add(Diagnostic.Error(
                         DiagnosticCodes.AmbiguousReference,
-                        $"Operation ID '{opId}' is spread across multiple Task or Backlog-item owners ({string.Join(", ", distinctOwners.Select(d => $"{d.Doc}:{d.Owner}"))}).",
+                        $"Operation ID '{opId}' is spread across multiple Task, Backlog-item, or Knowledge-entry owners ({string.Join(", ", distinctOwners.Select(d => $"{d.Doc}:{d.Owner}"))}).",
                         r.Document.RelativePath,
                         r.LineNumber,
                         r.LinePosition));
@@ -388,11 +404,23 @@ public static class SemanticValidator
                         r.LinePosition));
                 }
             }
-            // Record covers: must target a criterion
+            // Record covers: must target a criterion (or a record if relation is 'resolves')
             else if (string.Equals(r.Relation, "covers", StringComparison.Ordinal) ||
                      (r.Element.Parent?.Name.LocalName == "covers"))
             {
-                if (!string.Equals(targetObj.ElementName, "criterion", StringComparison.Ordinal))
+                if (string.Equals(r.Relation, "resolves", StringComparison.Ordinal))
+                {
+                    if (!string.Equals(targetObj.ElementName, "record", StringComparison.Ordinal))
+                    {
+                        diagnostics.Add(Diagnostic.Error(
+                            DiagnosticCodes.InvalidReferenceTargetType,
+                            $"Record resolves reference must target a record, but targets '{r.Target}' which is a <{targetObj.ElementName}>.",
+                            r.Document.RelativePath,
+                            r.LineNumber,
+                            r.LinePosition));
+                    }
+                }
+                else if (!string.Equals(targetObj.ElementName, "criterion", StringComparison.Ordinal))
                 {
                     diagnostics.Add(Diagnostic.Error(
                         DiagnosticCodes.InvalidReferenceTargetType,
@@ -1045,9 +1073,10 @@ public static class SemanticValidator
 
                     if (!isCovered)
                     {
+                        var expectedCovers = TaskCoverageVerifier.BuildExpectedCoversFragment(new[] { crit.Id });
                         diagnostics.Add(Diagnostic.Error(
                             DiagnosticCodes.TaskCriterionNotCovered,
-                            $"Task '{task.Id}' has status 'done' but acceptance criterion '{crit.Id}' is not covered by any task-local verification or completion record.",
+                            $"Task '{task.Id}' has status 'done' but acceptance criterion '{crit.Id}' is not covered by any task-local verification or completion record. Expected covers fragment:\n{expectedCovers}",
                             task.Document.RelativePath,
                             crit.LineNumber ?? task.LineNumber,
                             crit.LinePosition ?? task.LinePosition));

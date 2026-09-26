@@ -31,7 +31,7 @@ public sealed class HighLevelSemanticCommandTests
     public void IterationCreate_WithActivate_CreatesActiveIterationImmediately()
     {
         var iterId = "20260827-test-active-create";
-        var exitCode = Program.Main(new[] { "iteration", "create", "--id", iterId, "--kind", "feature", "--activate", "--workspace-root", _tempDir });
+        var exitCode = Program.Main(new[] { "iteration", "create", "--id", iterId, "--kind", "feature", "--activate", "--criterion", "Active create criteria defined.", "--workspace-root", _tempDir });
         Assert.AreEqual(0, exitCode);
 
         var specPath = Path.Combine(_tempDir, ".dogdouspec", iterId, "spec.xml");
@@ -67,7 +67,7 @@ public sealed class HighLevelSemanticCommandTests
     public void IterationActivate_AutoApprove_ActivatesDraftIteration()
     {
         var iterId = "20260827-test-draft-activate";
-        var createExit = Program.Main(new[] { "iteration", "create", "--id", iterId, "--kind", "feature", "--workspace-root", _tempDir });
+        var createExit = Program.Main(new[] { "iteration", "create", "--id", iterId, "--kind", "feature", "--criterion", "Draft activate criteria defined.", "--workspace-root", _tempDir });
         Assert.AreEqual(0, createExit);
 
         var specPath = Path.Combine(_tempDir, ".dogdouspec", iterId, "spec.xml");
@@ -88,7 +88,7 @@ public sealed class HighLevelSemanticCommandTests
     public void TaskStart_Verify_Finish_Progression()
     {
         var iterId = "20260827-test-task-progression";
-        Program.Main(new[] { "iteration", "create", "--id", iterId, "--kind", "feature", "--activate", "--workspace-root", _tempDir });
+        Program.Main(new[] { "iteration", "create", "--id", iterId, "--kind", "feature", "--activate", "--criterion", "Task progression criteria defined.", "--workspace-root", _tempDir });
 
         var quickExit = Program.Main(new[] {
             "task", "quick",
@@ -130,7 +130,7 @@ public sealed class HighLevelSemanticCommandTests
     public void TaskFinish_FromPending_DirectlyCompletesAndMarksCriteriaPassed()
     {
         var iterId = "20260827-test-task-direct-finish";
-        Program.Main(new[] { "iteration", "create", "--id", iterId, "--kind", "feature", "--activate", "--workspace-root", _tempDir });
+        Program.Main(new[] { "iteration", "create", "--id", iterId, "--kind", "feature", "--activate", "--criterion", "Direct finish criteria defined.", "--workspace-root", _tempDir });
 
         Program.Main(new[] {
             "task", "quick",

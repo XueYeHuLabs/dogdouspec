@@ -468,4 +468,42 @@ public sealed class TransactionCliTests
 
         Assert.AreEqual(0, valExitCode, $"Validate after multi-doc failed. Stderr: {valStderr}");
     }
+
+    [TestMethod]
+    public void TransactionApply_RevisionLatest_Succeeds()
+    {
+        var workspace = CreateWorkspaceCopy();
+
+        // Transaction specifying expected_revision="999" (wrong revision) but overridden by --revision latest
+        var txXml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <transaction operation_id="20260823T140000Z-tx-latest-test">
+              <document path="backlog.xml" expected_revision="999">
+                <append-child select="/backlog/items" expect="1">
+                  <item id="20260823T140000Z-backlog-latest-test" status="open" created_at="2026-08-23T14:00:00Z">
+                    <index><summary>Item added via revision latest.</summary></index>
+                    <statement>Statement.</statement>
+                    <rationale>Rationale.</rationale>
+                    <impact>Impact.</impact>
+                    <source><ref scope="project" target="20260823-task-xpath-projection" relation="derived-from"/></source>
+                    <review_condition>Review condition.</review_condition>
+                  </item>
+                </append-child>
+              </document>
+            </transaction>
+            """;
+
+        var txFile = Path.Combine(_tempDir, "tx_latest.xml");
+        File.WriteAllText(txFile, txXml);
+
+        var (txExitCode, txStdout, txStderr) = RunCli(
+            "transaction", "apply",
+            "--workspace-root", workspace,
+            "--file", txFile,
+            "--revision", "latest",
+            "--format", "xml");
+
+        Assert.AreEqual(0, txExitCode, $"Transaction apply with --revision latest failed. Stderr: {txStderr}");
+        Assert.IsTrue(txStdout.Contains("command=\"transaction apply\"", StringComparison.Ordinal));
+    }
 }

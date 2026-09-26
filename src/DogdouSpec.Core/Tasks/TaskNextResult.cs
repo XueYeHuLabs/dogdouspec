@@ -3,6 +3,7 @@ using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 using DogdouSpec.Core.Formatting;
+using DogdouSpec.Core.Progression;
 using DogdouSpec.Core.Validation;
 
 namespace DogdouSpec.Core.Tasks;
@@ -17,17 +18,38 @@ public sealed class TaskNextResult
     public bool HasTask => Task != null;
     public ParsedTask? Task { get; }
     public string Reason { get; }
+    public string? ActionCategory { get; }
+    public string? ReasonCode { get; }
+    public IReadOnlyList<ProgressionTaskCandidate> Candidates { get; }
+    public ProgressionAssessmentResult? Progression { get; }
 
     public TaskNextResult(
         string iterationId,
         int tasksRevision,
         ParsedTask? task,
         string reason)
+        : this(iterationId, tasksRevision, task, reason, null, null, Array.Empty<ProgressionTaskCandidate>(), null)
+    {
+    }
+
+    public TaskNextResult(
+        string iterationId,
+        int tasksRevision,
+        ParsedTask? task,
+        string reason,
+        string? actionCategory,
+        string? reasonCode,
+        IReadOnlyList<ProgressionTaskCandidate>? candidates = null,
+        ProgressionAssessmentResult? progression = null)
     {
         IterationId = iterationId ?? string.Empty;
         TasksRevision = tasksRevision;
         Task = task;
         Reason = reason ?? string.Empty;
+        ActionCategory = actionCategory;
+        ReasonCode = reasonCode;
+        Candidates = candidates ?? Array.Empty<ProgressionTaskCandidate>();
+        Progression = progression;
     }
 
     public string ToXmlString()
@@ -50,6 +72,14 @@ public sealed class TaskNextResult
             writer.WriteAttributeString("iteration", IterationId);
             writer.WriteAttributeString("tasks_revision", TasksRevision.ToString(CultureInfo.InvariantCulture));
             writer.WriteAttributeString("found", HasTask ? "true" : "false");
+            if (!string.IsNullOrEmpty(ActionCategory))
+            {
+                writer.WriteAttributeString("action_category", ActionCategory);
+            }
+            if (!string.IsNullOrEmpty(ReasonCode))
+            {
+                writer.WriteAttributeString("reason_code", ReasonCode);
+            }
 
             if (Task != null)
             {
@@ -82,6 +112,27 @@ public sealed class TaskNextResult
                 }
 
                 writer.WriteEndElement(); // </task>
+
+                if (Candidates.Count > 1)
+                {
+                    writer.WriteStartElement("candidates");
+                    writer.WriteAttributeString("count", Candidates.Count.ToString(CultureInfo.InvariantCulture));
+                    foreach (var c in Candidates)
+                    {
+                        writer.WriteStartElement("candidate");
+                        writer.WriteAttributeString("id", c.TaskId);
+                        writer.WriteAttributeString("status", c.Status);
+                        if (!string.IsNullOrEmpty(c.Agent))
+                        {
+                            writer.WriteAttributeString("agent", c.Agent);
+                        }
+                        writer.WriteAttributeString("action_category", c.ActionCategory);
+                        writer.WriteAttributeString("reason_code", c.ReasonCode);
+                        writer.WriteElementString("title", c.Title);
+                        writer.WriteEndElement();
+                    }
+                    writer.WriteEndElement(); // </candidates>
+                }
             }
             else
             {
@@ -106,6 +157,12 @@ public sealed class TaskNextResult
             var agentSuffix = !string.IsNullOrEmpty(agentStr) ? $", Agent: {agentStr}" : string.Empty;
             sb.AppendLine(CultureInfo.InvariantCulture, $"Selected Task: {Task.Id} (Status: {Task.Status}{agentSuffix})");
 
+            if (!string.IsNullOrEmpty(ActionCategory))
+            {
+                var reasonSuffix = !string.IsNullOrEmpty(ReasonCode) ? $" ({ReasonCode})" : string.Empty;
+                sb.AppendLine(CultureInfo.InvariantCulture, $"Action: {ActionCategory}{reasonSuffix}");
+            }
+
             var title = Task.Element.Element("title")?.Value;
             if (!string.IsNullOrEmpty(title))
             {
@@ -122,6 +179,16 @@ public sealed class TaskNextResult
             if (!string.IsNullOrEmpty(summary))
             {
                 sb.AppendLine(CultureInfo.InvariantCulture, $"Summary: {summary}");
+            }
+
+            if (Candidates.Count > 1)
+            {
+                sb.AppendLine(CultureInfo.InvariantCulture, $"Other Actionable Candidates ({Candidates.Count - 1}):");
+                foreach (var c in Candidates.Skip(1))
+                {
+                    var cAgent = !string.IsNullOrEmpty(c.Agent) ? $", Agent: {c.Agent}" : string.Empty;
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"  - {c.TaskId} (Status: {c.Status}{cAgent}): {c.Title}");
+                }
             }
         }
         else

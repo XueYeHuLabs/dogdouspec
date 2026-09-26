@@ -9,6 +9,8 @@ using DogdouSpec.Core.Append;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
+using DogdouSpec.Core.Revisions;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.Workspace;
@@ -36,7 +38,9 @@ public static class TransactionApplier
         string requestXml,
         IClock? clock = null,
         IFaultInjector? faultInjector = null,
-        string version = "1.0")
+        string version = "1.0",
+        bool dryRun = false,
+        bool revisionLatest = false)
     {
         clock ??= SystemClock.Instance;
 
@@ -56,6 +60,59 @@ public static class TransactionApplier
         if (!isWsSafe || wsErr != null)
         {
             return (false, null, new[] { wsErr ?? Diagnostic.Error(DiagnosticCodes.PathEscapeDetected, "Workspace directory security verification failed.") });
+        }
+
+        if (dryRun)
+        {
+            var dryRunBlocker = WorkspaceTransactionCommitter.GetDryRunBlocker(workspaceRoot);
+            if (dryRunBlocker != null)
+            {
+                return (false, null, new[] { dryRunBlocker });
+            }
+        }
+
+        // Pre-resolve latest revisions if requested
+        if (revisionLatest || requestXml.Contains("latest", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var srPre = new StringReader(requestXml);
+                using var readerPre = SecureXmlReaderFactory.CreateReader(srPre);
+                var preDoc = XDocument.Load(readerPre);
+                var changed = false;
+
+                foreach (var docElem in preDoc.Root?.Elements("document") ?? Enumerable.Empty<XElement>())
+                {
+                    var expRevStr = docElem.Attribute("expected_revision")?.Value;
+                    if (revisionLatest || string.Equals(expRevStr, "latest", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var rawPath = docElem.Attribute("path")?.Value;
+                        if (!string.IsNullOrWhiteSpace(rawPath))
+                        {
+                            var (isRelValid, normPath, relErr) = PathSecurity.ValidateRelativeDocumentPath(rawPath);
+                            if (isRelValid && relErr == null)
+                            {
+                                var (revOk, revVal, revErr) = DocumentRevisionResolver.ReadDocumentRevision(workspaceRoot, normPath);
+                                if (!revOk || revErr != null)
+                                {
+                                    return (false, null, new[] { revErr ?? Diagnostic.Error(DiagnosticCodes.XmlParseError, $"Could not resolve latest revision for '{normPath}'.", normPath) });
+                                }
+                                docElem.SetAttributeValue("expected_revision", revVal.ToString(CultureInfo.InvariantCulture));
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+
+                if (changed)
+                {
+                    requestXml = preDoc.ToString(SaveOptions.DisableFormatting);
+                }
+            }
+            catch
+            {
+                // Let normal parsing diagnose malformed XML
+            }
         }
 
         // 3. Secure parse and validate against requests.xsd
@@ -602,27 +659,7 @@ public static class TransactionApplier
                     item.WorkingDoc.Root!.SetAttributeValue("updated_at", clock.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture));
                 }
 
-                var writerSettings = new XmlWriterSettings
-                {
-                    Indent = true,
-                    IndentChars = "  ",
-                    OmitXmlDeclaration = false,
-                    Encoding = Utf8NoBom,
-                    NewLineHandling = NewLineHandling.Replace,
-                    NewLineChars = "\n"
-                };
-
-                using var memoryStream = new MemoryStream();
-                using (var writer = XmlWriter.Create(memoryStream, writerSettings))
-                {
-                    item.WorkingDoc.Save(writer);
-                }
-
-                var replacementContent = Encoding.UTF8.GetString(memoryStream.ToArray());
-                if (!replacementContent.EndsWith('\n'))
-                {
-                    replacementContent += "\n";
-                }
+                var replacementContent = ManagedDocumentSerializer.Serialize(item.WorkingDoc);
 
                 changedOps.Add(new TransactionDocumentOperation(
                     item.NormPath,
@@ -675,7 +712,8 @@ public static class TransactionApplier
             clock,
             faultInjector,
             version,
-            correlationId: operationId);
+            correlationId: operationId,
+            dryRun: dryRun);
     }
 
     private static bool ToEffectiveBooleanValue(object? evalResult)
