@@ -15,6 +15,7 @@ organization.
 
 - Project source and releases: [XueYeHuLabs/dogdouspec](https://github.com/XueYeHuLabs/dogdouspec).
 - Support and issue reports: [GitHub Issues](https://github.com/XueYeHuLabs/dogdouspec/issues).
+- Privacy: [DogdouSpec Privacy Policy](https://vixasol.com/privacy/dogdouspec/).
 - License: [MIT](LICENSE).
 
 ## 1. Quick Start & Adoption Guide
