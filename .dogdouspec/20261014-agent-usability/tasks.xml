@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20261014-tasks-agent-usability" iteration="20261014-agent-usability" schema_version="1.0" revision="17">
+  <index>
+    <summary>Tasks for iteration 20261014-agent-usability.</summary>
+    <term key="iteration" value="20261014-agent-usability" />
+  </index>
+  <task id="20261014T032903Z-task-deduplicate-records-and-refine-c" status="done" created_at="2026-10-14T03:29:03Z" updated_at="2026-10-14T03:34:36Z" started_at="2026-10-14T03:30:24Z" completed_at="2026-10-14T03:34:36Z">
+    <index>
+      <summary>Deduplicate records and refine count semantics in task recovery context</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Deduplicate records and refine count semantics in task recovery context</title>
+    <objective>Records in latest-status-records are excluded from supplemental history, and record counts accurately reflect essential and supplemental candidates</objective>
+    <rationale>Prevent duplicate serialization and clarify record-count semantics per USAB-002</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261014-req-agent-usability" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261014T032903Z-task-deduplicate-records-and-refine-c-done" status="passed">Records in latest-status-records are excluded from supplemental history, and record counts accurately reflect essential and supplemental candidates</criterion>
+    </acceptance>
+    <context>
+      <summary>Prevent duplicate serialization and clarify record-count semantics per USAB-002</summary>
+    </context>
+    <records>
+      <record id="20261014T032903Z-quick-deduplicate-records-and-refine-c-receipt" kind="discussion" status="informational" created_at="2026-10-14T03:29:03Z" actor="quick-task" operation_id="20261014T032903Z-quick-deduplicate-records-and-refine-c">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="f8b1e1f4ca65ba7e8ada783ec919d9b2ab4bfde3e6b5225c40199da78e536947" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261014T033024Z-record-start-7581e6b4a3534024b441601804fb6909" kind="start" status="informational" created_at="2026-10-14T03:30:24Z" actor="agent" operation_id="20261014T033024Z-taskstart-894571e4cb0542d6a383a9579873a3fd">
+        <summary>Started task 20261014T032903Z-task-deduplicate-records-and-refine-c.</summary>
+      </record>
+      <record id="20261014T033417Z-record-verify-1f9c58f0ee1e42d5b00f57d80f23f11d" kind="verification" status="informational" created_at="2026-10-14T03:34:17Z" actor="agent" operation_id="20261014T033417Z-taskverify-8999dd31136b45479da82ecd7e48cc1b">
+        <summary>Verified latest status records are excluded from supplemental history candidates, and record counts are accurately tracked.</summary>
+        <covers>
+          <ref scope="document" target="20261014T032903Z-task-deduplicate-records-and-refine-c-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261014T033436Z-record-complete-e6515f10808d480eb72fbe15df036543" kind="completion" status="informational" created_at="2026-10-14T03:34:36Z" actor="agent" operation_id="20261014T033436Z-taskcomplete-d5f5dd8616f6478e9bb9524f747863a2">
+        <summary>Completed record deduplication and record count semantics for task recovery context.</summary>
+        <covers>
+          <ref scope="document" target="20261014T032903Z-task-deduplicate-records-and-refine-c-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261014T032924Z-task-report-section-size-breakdown-on" status="done" created_at="2026-10-14T03:29:24Z" updated_at="2026-10-14T03:37:40Z" started_at="2026-10-14T03:35:08Z" completed_at="2026-10-14T03:37:40Z">
+    <index>
+      <summary>Report section size breakdown on essential context limit overflow</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Report section size breakdown on essential context limit overflow</title>
+    <objective>Essential context limit error diagnostics include detailed section size breakdown of contributing elements</objective>
+    <rationale>Provide actionable diagnostics identifying oversized sections when byte budget is exceeded per USAB-002 and USAB-005</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261014-req-agent-usability" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20261014T032903Z-task-deduplicate-records-and-refine-c" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20261014T032924Z-task-report-section-size-breakdown-on-done" status="passed">Essential context limit error diagnostics include detailed section size breakdown of contributing elements</criterion>
+    </acceptance>
+    <context>
+      <summary>Provide actionable diagnostics identifying oversized sections when byte budget is exceeded per USAB-002 and USAB-005</summary>
+    </context>
+    <records>
+      <record id="20261014T032924Z-quick-report-section-size-breakdown-on-receipt" kind="discussion" status="informational" created_at="2026-10-14T03:29:24Z" actor="quick-task" operation_id="20261014T032924Z-quick-report-section-size-breakdown-on">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="71cba1c14b7f870f9d7f9655d6e1516fe4f26901cd344c7ca72072c763596f1e" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261014T033508Z-record-start-ca1c2151b9534634b101af95ba0cc915" kind="start" status="informational" created_at="2026-10-14T03:35:08Z" actor="agent" operation_id="20261014T033508Z-taskstart-2ade1a232f314056b9eb0ced7241b573">
+        <summary>Started task 20261014T032924Z-task-report-section-size-breakdown-on.</summary>
+      </record>
+      <record id="20261014T033732Z-record-verify-744602d85362426a92214b93df02abab" kind="verification" status="informational" created_at="2026-10-14T03:37:32Z" actor="agent" operation_id="20261014T033732Z-taskverify-597e71f70241491da883bbdadeb5c9cb">
+        <summary>Verified essential context limit error diagnostics include detailed section size breakdown of contributing elements.</summary>
+        <covers>
+          <ref scope="document" target="20261014T032924Z-task-report-section-size-breakdown-on-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261014T033740Z-record-complete-5bbd08510c4a471aa02059e4690a9275" kind="completion" status="informational" created_at="2026-10-14T03:37:40Z" actor="agent" operation_id="20261014T033740Z-taskcomplete-b1b01f410b0e4cafb42aad1fdbee0d2d">
+        <summary>Completed reporting section size breakdown on essential context limit overflow.</summary>
+        <covers>
+          <ref scope="document" target="20261014T032924Z-task-report-section-size-breakdown-on-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261014T032935Z-task-add-compact-recovery-mode-with-n" status="done" created_at="2026-10-14T03:29:35Z" updated_at="2026-10-14T03:38:40Z" started_at="2026-10-14T03:37:59Z" completed_at="2026-10-14T03:38:40Z">
+    <index>
+      <summary>Add compact recovery mode with no-history option</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Add compact recovery mode with no-history option</title>
+    <objective>Task context query supports --no-history to omit supplemental history and focus strictly on essential facts</objective>
+    <rationale>Enable compact recovery without loading historical records when caller only needs active facts per USAB-002</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks/**" />
+        <include path="src/DogdouSpec.Cli/Commands/TaskCommand.cs" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261014-req-agent-usability" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20261014T032924Z-task-report-section-size-breakdown-on" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20261014T032935Z-task-add-compact-recovery-mode-with-n-done" status="passed">Task context query supports --no-history to omit supplemental history and focus strictly on essential facts</criterion>
+    </acceptance>
+    <context>
+      <summary>Enable compact recovery without loading historical records when caller only needs active facts per USAB-002</summary>
+    </context>
+    <records>
+      <record id="20261014T032935Z-quick-add-compact-recovery-mode-with-n-receipt" kind="discussion" status="informational" created_at="2026-10-14T03:29:35Z" actor="quick-task" operation_id="20261014T032935Z-quick-add-compact-recovery-mode-with-n">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="e19b1a8b00f857f0e2f8b2b058e8d6c99fc4011941ceb49fe5f13e561af0ac16" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261014T033759Z-record-start-0e3d9fcfb60b4464a70fd786a31dd1f6" kind="start" status="informational" created_at="2026-10-14T03:37:59Z" actor="agent" operation_id="20261014T033759Z-taskstart-7defabbe0c2d42fc8281ac7c560c2233">
+        <summary>Started task 20261014T032935Z-task-add-compact-recovery-mode-with-n.</summary>
+      </record>
+      <record id="20261014T033822Z-record-verify-bccac6e2b57d4350809cee9c8f34d2ba" kind="verification" status="informational" created_at="2026-10-14T03:38:22Z" actor="agent" operation_id="20261014T033822Z-taskverify-0cff37b614ba4c399db4ef3f52f9fe29">
+        <summary>Verified Task context query supports --no-history to omit supplemental history and focus on essential facts.</summary>
+        <covers>
+          <ref scope="document" target="20261014T032935Z-task-add-compact-recovery-mode-with-n-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261014T033840Z-record-complete-62b18bb18cbf42deb76a6f4acc6a8644" kind="completion" status="informational" created_at="2026-10-14T03:38:40Z" actor="agent" operation_id="20261014T033840Z-taskcomplete-315549d44ddc49218b59d8410e19f9be">
+        <summary>Completed adding compact recovery mode with no-history option.</summary>
+        <covers>
+          <ref scope="document" target="20261014T032935Z-task-add-compact-recovery-mode-with-n-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261014T032951Z-task-add-unit-and-regression-tests-fo" status="done" created_at="2026-10-14T03:29:51Z" updated_at="2026-10-14T03:45:27Z" started_at="2026-10-14T03:38:56Z" completed_at="2026-10-14T03:45:27Z">
+    <index>
+      <summary>Add unit and regression tests for context deduplication, breakdown diagnostics, and compact mode</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Add unit and regression tests for context deduplication, breakdown diagnostics, and compact mode</title>
+    <objective>Unit and regression tests verify deduplication, size breakdown diagnostics, and compact mode, with build.cmd passing</objective>
+    <rationale>Ensure complete regression test coverage and verify acceptance criteria coverage per USAB-002</rationale>
+    <scope>
+      <repository path=".">
+        <include path="tests/DogdouSpec.Core.Tests/**" />
+        <include path="tests/DogdouSpec.Cli.Tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261014-req-agent-usability" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20261014T032935Z-task-add-compact-recovery-mode-with-n" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20261014T032951Z-task-add-unit-and-regression-tests-fo-done" status="passed">Unit and regression tests verify deduplication, size breakdown diagnostics, and compact mode, with build.cmd passing</criterion>
+    </acceptance>
+    <context>
+      <summary>Ensure complete regression test coverage and verify acceptance criteria coverage per USAB-002</summary>
+    </context>
+    <records>
+      <record id="20261014T032951Z-quick-add-unit-and-regression-tests-fo-receipt" kind="discussion" status="informational" created_at="2026-10-14T03:29:51Z" actor="quick-task" operation_id="20261014T032951Z-quick-add-unit-and-regression-tests-fo">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="c39b60a23cbc75203e9ae95d4517243d4e0d3193c34681d5922f2b06bbb1dd64" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261014T033856Z-record-start-5b8dcbf14f3f4d2d9be4e138ea0db1a3" kind="start" status="informational" created_at="2026-10-14T03:38:56Z" actor="agent" operation_id="20261014T033856Z-taskstart-1837e404df8f47e79b669ecf960b9366">
+        <summary>Started task 20261014T032951Z-task-add-unit-and-regression-tests-fo.</summary>
+      </record>
+      <record id="20261014T034516Z-record-verify-8f549feeadc14934a8c90a8ad931b418" kind="verification" status="informational" created_at="2026-10-14T03:45:16Z" actor="agent" operation_id="20261014T034516Z-taskverify-fd2522345587481a9c190e8ab79c2f24">
+        <summary>Verified deduplication, overflow section size breakdowns, and no-history compact mode via unit and CLI regression suites with build.cmd passing.</summary>
+        <covers>
+          <ref scope="document" target="20261014T032951Z-task-add-unit-and-regression-tests-fo-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261014T034527Z-record-complete-da84380f51554f019be7c3adc61a63ba" kind="completion" status="informational" created_at="2026-10-14T03:45:27Z" actor="agent" operation_id="20261014T034527Z-taskcomplete-392485a6d3f34c9a89652ec7f775403f">
+        <summary>Completed unit and regression tests for context deduplication, breakdown diagnostics, and compact mode.</summary>
+        <covers>
+          <ref scope="document" target="20261014T032951Z-task-add-unit-and-regression-tests-fo-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+</tasks>
