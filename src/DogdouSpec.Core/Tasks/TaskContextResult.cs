@@ -53,7 +53,10 @@ public sealed class TaskContextResult
 
     public IReadOnlyList<TaskContextDependency> Dependencies { get; init; } = Array.Empty<TaskContextDependency>();
 
-    public int TotalSupplementalRecords { get; init; }
+    public int TotalRecords { get; set; }
+    public int EssentialRecordsCount => LatestStatusRecords.Count;
+    public int SupplementalCandidatesCount { get; set; }
+    public int TotalSupplementalRecords { get; set; }
     public IReadOnlyList<XElement> IncludedSupplementalRecords { get; set; } = Array.Empty<XElement>();
 
     public IReadOnlyList<(string Path, int Revision)> SourceDocuments { get; init; } = Array.Empty<(string, int)>();
@@ -258,7 +261,9 @@ public sealed class TaskContextResult
             // Supplemental
             writer.WriteStartElement("supplemental");
             writer.WriteAttributeString("truncated", Truncated ? "true" : "false");
-            writer.WriteAttributeString("total_records", TotalSupplementalRecords.ToString(CultureInfo.InvariantCulture));
+            writer.WriteAttributeString("total_records", TotalRecords.ToString(CultureInfo.InvariantCulture));
+            writer.WriteAttributeString("essential_records", EssentialRecordsCount.ToString(CultureInfo.InvariantCulture));
+            writer.WriteAttributeString("supplemental_candidates", SupplementalCandidatesCount.ToString(CultureInfo.InvariantCulture));
             writer.WriteAttributeString("included_records", IncludedSupplementalRecords.Count.ToString(CultureInfo.InvariantCulture));
             writer.WriteAttributeString("omitted_records", OmittedRecords.ToString(CultureInfo.InvariantCulture));
             if (!string.IsNullOrEmpty(QueryLocator))
@@ -477,7 +482,7 @@ public sealed class TaskContextResult
         }
 
         sb.AppendLine("=== Supplemental History ===");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"({IncludedSupplementalRecords.Count} records included, {OmittedRecords} omitted)");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"({IncludedSupplementalRecords.Count} records included, {OmittedRecords} omitted of {SupplementalCandidatesCount} candidates, {EssentialRecordsCount} essential, {TotalRecords} total task records)");
         if (!string.IsNullOrEmpty(QueryLocator))
         {
             sb.AppendLine("Query locator for full history:");

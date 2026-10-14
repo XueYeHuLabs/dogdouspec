@@ -42,9 +42,16 @@ Blockers are stored within the owning `<task>` under `<records>` as an active fi
 ## Bounded Task Recovery Context (`task context`)
 
 `task context` provides a structured, fail-closed view for newly spawned coding sessions to resume work without loading transient external reports:
+- **Command Syntax**:
+  ```powershell
+  dogdouspec task context --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--max-bytes 32768] [--no-history] --format xml|human
+  ```
 - **Essential Context (Unconditionally Preserved)**: Title, objective, rationale, scope, constraints, origin requirements, acceptance criteria, active blockers, latest status records, and progression facts (action category, reason code, recommended action, permitted actions, prohibited actions, and authority boundaries).
-- **Fail-Closed Size Enforcement**: If Essential Context alone exceeds `--max-bytes` (default: 32 KB), the query fails closed with `LIMIT_EXCEEDED` (exit code `7`).
-- **Greedy Supplemental Budgeting**: Historical records are budgeted into the remaining byte allocation; omitted records produce `truncated="true"`, `omitted_records="<N>"`, and a query locator.
+- **Fail-Closed Size Enforcement**: If Essential Context alone exceeds `--max-bytes` (default: 32 KB), the query fails closed with `LIMIT_EXCEEDED` (exit code `7`). The diagnostic response includes an element-level `section_size_breakdown` (metadata, objective, rationale, scope, origin requirements, acceptance criteria, constraints, blockers, and essential status records) detailing byte consumption across sections to guide surgical task refinement.
+- **Supplemental Record Deduplication**: Supplemental candidate history automatically excludes records already selected as latest status records in Essential Context, eliminating duplicate serialization.
+- **Record Count Accounting**: Context output reports precise metrics: `total_records` (total records on the task), `essential_records` (unconditionally preserved), `supplemental_candidates` (`total_records - essential_records`), `included_records` (`essential_records + supplemental_included`), and `omitted_records` (candidates omitted due to byte limits or `--no-history`).
+- **Compact Recovery Mode (`--no-history`)**: When `--no-history` is specified, supplemental candidate budgeting is bypassed entirely (`supplemental_candidates=0`). Only the essential task context and latest status records are included, eliminating historical churn and maximizing token savings for fast-path resumption.
+- **Greedy Supplemental Budgeting**: In full mode (without `--no-history`), eligible historical records are budgeted into the remaining byte allocation; omitted records produce `truncated="true"`, `omitted_records="<N>"`, and a query locator.
 - **Traceability**: Output reports exact `tasks_revision`, `spec_revision`, and all source document paths.
 
 ## Replanning Execution Freeze

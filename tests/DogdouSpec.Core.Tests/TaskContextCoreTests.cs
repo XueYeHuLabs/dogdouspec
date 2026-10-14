@@ -339,4 +339,152 @@ public sealed class TaskContextCoreTests
         Assert.AreEqual("wait-external", result.ActionCategory);
         Assert.AreEqual("TASKS_BLOCKED", result.ReasonCode);
     }
+
+    [TestMethod]
+    public void TaskContext_RecordDeduplication_ExcludesLatestStatusRecordsFromSupplementalHistory()
+    {
+        var iterId = "20260824-ctx-dedup";
+        InitWorkspaceWithFeatureIteration(iterId);
+        var taskId = AddTaskWithHistory(iterId, "20260824-task-dedup");
+
+        // Add start and verification records to ensure status records exist
+        var tasksPath = Path.Combine(_workspace, iterId, "tasks.xml");
+        var xdoc = XDocument.Load(tasksPath);
+        var rev = int.Parse(xdoc.Root!.Attribute("revision")!.Value, CultureInfo.InvariantCulture);
+
+        var statusXml = """
+<?xml version="1.0" encoding="utf-8"?>
+<task-update id="20260824T093000Z-status-op" actor="codex" occurred_at="2026-08-24T09:30:00Z">
+  <records>
+    <record id="20260824T093000Z-start-rec" kind="start" status="informational" created_at="2026-08-24T09:30:00Z" actor="codex">
+      <summary>Starting work</summary>
+    </record>
+    <record id="20260824T093500Z-verify-rec" kind="verification" status="informational" created_at="2026-08-24T09:35:00Z" actor="codex">
+      <summary>Verifying work</summary>
+    </record>
+  </records>
+</task-update>
+""";
+        var (sOk, _, sDiags) = TaskUpdater.Update(_workspace, iterId, taskId, rev, statusXml);
+        Assert.IsTrue(sOk, string.Join("; ", sDiags.Select(d => d.Message)));
+
+        var (ok, result, diags) = TaskContextQuery.Query(_workspace, taskId, iterId, maxBytes: 65536);
+        Assert.IsTrue(ok, string.Join(", ", diags.Select(d => d.Message)));
+        Assert.IsNotNull(result);
+
+        // Essential status records must exist
+        Assert.IsTrue(result.LatestStatusRecords.Count > 0);
+        var statusRecordIds = result.LatestStatusRecords
+            .Select(r => (string?)r.Attribute("id"))
+            .Where(id => !string.IsNullOrEmpty(id))
+            .ToHashSet(StringComparer.Ordinal);
+
+        // Deduplication: No supplemental record should have an ID present in LatestStatusRecords
+        foreach (var rec in result.IncludedSupplementalRecords)
+        {
+            var id = (string?)rec.Attribute("id");
+            Assert.IsFalse(statusRecordIds.Contains(id!), $"Record '{id}' in supplemental history was also selected in latest status records (duplicate serialization).");
+        }
+
+        // Count consistency
+        Assert.AreEqual(result.TotalRecords, result.EssentialRecordsCount + result.SupplementalCandidatesCount);
+        Assert.AreEqual(result.IncludedSupplementalRecords.Count + result.OmittedRecords, result.SupplementalCandidatesCount);
+    }
+
+    [TestMethod]
+    public void TaskContext_OverflowDiagnostics_ProvidesDetailedSectionSizeBreakdown()
+    {
+        _workspace = CreateWorkspaceCopy();
+        var iterId = "20260823-xpath-core";
+        var taskId = "20260823-task-xpath-projection";
+
+        // Extremely low byte bound (e.g. 200 bytes) which cannot fit essential context
+        var (ok, result, diags) = TaskContextQuery.Query(_workspace, taskId, iterId, maxBytes: 200);
+        Assert.IsFalse(ok);
+        Assert.IsNull(result);
+
+        var limitDiag = diags.FirstOrDefault(d => d.Code == DiagnosticCodes.LimitExceeded);
+        Assert.IsNotNull(limitDiag);
+        StringAssert.Contains(limitDiag.Message, "Section size breakdown: [");
+        StringAssert.Contains(limitDiag.Message, "core-metadata:");
+        StringAssert.Contains(limitDiag.Message, "progression-facts:");
+    }
+
+    [TestMethod]
+    public void TaskContext_CompactMode_OmitsSupplementalHistoryWhenNoHistorySpecified()
+    {
+        var iterId = "20260824-ctx-compact";
+        InitWorkspaceWithFeatureIteration(iterId);
+        var taskId = AddTaskWithHistory(iterId, "20260824-task-compact");
+
+        var (ok, result, diags) = TaskContextQuery.Query(_workspace, taskId, iterId, maxBytes: 65536, noHistory: true);
+        Assert.IsTrue(ok, string.Join(", ", diags.Select(d => d.Message)));
+        Assert.IsNotNull(result);
+
+        // Compact mode: supplemental records must be omitted completely
+        Assert.AreEqual(0, result.IncludedSupplementalRecords.Count);
+        Assert.IsTrue(result.SupplementalCandidatesCount > 0);
+        Assert.AreEqual(result.SupplementalCandidatesCount, result.OmittedRecords);
+        Assert.IsTrue(result.Truncated);
+
+        // Essential context remains 100% complete
+        Assert.IsFalse(string.IsNullOrWhiteSpace(result.Title));
+        Assert.IsFalse(string.IsNullOrWhiteSpace(result.Objective));
+    }
+
+    [TestMethod]
+    public void TaskContext_CompactMode_BudgetOverflow_FailsClosedWithLimitExceeded()
+    {
+        var iterId = "20260824-ctx-compact-overflow";
+        InitWorkspaceWithFeatureIteration(iterId);
+        var taskId = AddTaskWithHistory(iterId, "20260824-task-compact-overflow");
+
+        // Measure full baseline size first with noHistory
+        var (fullOk, fullResult, _) = TaskContextQuery.Query(_workspace, taskId, iterId, maxBytes: 65536, noHistory: true);
+        Assert.IsTrue(fullOk);
+        Assert.IsNotNull(fullResult);
+        var baselineBytes = fullResult.TotalBytes;
+
+        // Query with max-bytes well below baseline
+        var (ok, result, diags) = TaskContextQuery.Query(_workspace, taskId, iterId, maxBytes: baselineBytes - 100, noHistory: true);
+        Assert.IsFalse(ok);
+        Assert.IsNull(result);
+        var limitDiag = diags.FirstOrDefault(d => d.Code == DiagnosticCodes.LimitExceeded);
+        Assert.IsNotNull(limitDiag);
+        StringAssert.Contains(limitDiag.Message, "Section size breakdown: [");
+    }
+
+    [TestMethod]
+    public void TaskContext_OverflowDiagnostics_MeasuresFullSerializedBlockersWithConditions()
+    {
+        _workspace = CreateWorkspaceCopy();
+        var iterId = "20260823-xpath-core";
+        var taskId = "20260823-task-xpath-projection";
+
+        var longCondition = new string('C', 2000);
+        var (blockOk, _, blockDiags) = TaskBlock.Block(
+            _workspace,
+            taskId,
+            iterId,
+            actor: "tester",
+            summary: "Large blocker",
+            condition: longCondition,
+            nextAction: "Notify devops team");
+        Assert.IsTrue(blockOk, string.Join(", ", blockDiags.Select(d => d.Message)));
+
+        // Query with low budget to trigger overflow diagnostic
+        var (ok, result, diags) = TaskContextQuery.Query(_workspace, taskId, iterId, maxBytes: 1000);
+        Assert.IsFalse(ok);
+        Assert.IsNull(result);
+
+        var limitDiag = diags.FirstOrDefault(d => d.Code == DiagnosticCodes.LimitExceeded);
+        Assert.IsNotNull(limitDiag);
+        StringAssert.Contains(limitDiag.Message, "blockers:");
+
+        // Verify that blockers size reflects the 2000+ byte condition rather than minimal skeleton
+        var match = System.Text.RegularExpressions.Regex.Match(limitDiag.Message, @"blockers:\s+(\d+)\s+bytes");
+        Assert.IsTrue(match.Success);
+        var blockerBytes = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+        Assert.IsTrue(blockerBytes >= 2000, $"Expected blockers bytes to be >= 2000, but got {blockerBytes}");
+    }
 }

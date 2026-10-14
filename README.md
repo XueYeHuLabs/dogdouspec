@@ -187,7 +187,7 @@ All commands run directly through `dogdouspec <command> [options]`:
   - `task quick --title ... --scope ... --done-when ... --why ... [--start]` (Quick-create task)
   - `task next [--iteration <ID>]` (Discover next actionable task with progression assessment facts)
   - `task blockers [--iteration <ID>] [--task <ID>] [--owner <OWNER>] [--due-only]` (Query active blockers and recheck queue)
-  - `task context --task <TASK_ID> [--iteration <ID>] [--max-bytes <N>]` (Query bounded, traceable task recovery context)
+  - `task context --task <TASK_ID> [--iteration <ID>] [--max-bytes <N>] [--no-history]` (Query bounded, traceable task recovery context)
 - **Plumbing & Governance Operations**:
   - `task update` (Raw XML state machine update), `task review` (Review gate submission), `task add`, `task revise`, `task split`
   - `requirement propose`, `change propose`, `change apply`

@@ -2476,11 +2476,12 @@ public static class TaskCommand
         var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID to query recovery context for" };
         var iterOption = new Option<string?>("--iteration") { Description = "Iteration ID (optional, auto-detects active iteration)" };
         var maxBytesOption = new Option<int?>("--max-bytes") { Description = "Maximum output size bound in bytes (default: 32768)" };
+        var noHistoryOption = new Option<bool>("--no-history") { Description = "Omit supplemental history records for compact context presentation" };
         var workspaceOption = new Option<string?>("--workspace-root") { Description = "Workspace root directory (optional)" };
         var formatOption = new Option<string?>("--format") { Description = "Output format (xml or human)" };
         formatOption.AcceptOnlyFromAmong("xml", "human");
 
-        foreach (var opt in new Option[] { taskOption, iterOption, maxBytesOption, workspaceOption, formatOption })
+        foreach (var opt in new Option[] { taskOption, iterOption, maxBytesOption, noHistoryOption, workspaceOption, formatOption })
             cmd.Add(opt);
 
         cmd.SetAction(parse =>
@@ -2497,7 +2498,8 @@ public static class TaskCommand
                 root,
                 parse.GetValue(taskOption)!,
                 iterationId: parse.GetValue(iterOption),
-                maxBytes: parse.GetValue(maxBytesOption) ?? 32768);
+                maxBytes: parse.GetValue(maxBytesOption) ?? 32768,
+                noHistory: parse.GetValue(noHistoryOption));
 
             if (!success || diagnostics.Count > 0 || result == null)
             {
