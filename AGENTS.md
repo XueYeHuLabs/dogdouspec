@@ -54,7 +54,7 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
      ```
      Or query bounded recovery context directly:
      ```powershell
-     dogdouspec task context --task "<TASK_ID>" --format xml
+     dogdouspec task context --task "<TASK_ID>" [--no-history] --format xml
      ```
    - Phase 1b (If no task is in-progress, select first ready pending task):
      ```powershell
