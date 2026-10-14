@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security;
 using System.Text;
 using System.Xml.Linq;
 using DogdouSpec.Core.Diagnostics;
@@ -20,6 +21,7 @@ public static class TaskContextQuery
         string taskId,
         string? iterationId = null,
         int maxBytes = DefaultMaxBytes,
+        bool noHistory = false,
         IClock? clock = null)
     {
         clock ??= SystemClock.Instance;
@@ -398,6 +400,17 @@ public static class TaskContextQuery
 
         var queryLocator = $"dogdouspec query --document \"{resolvedIterId}/tasks.xml\" --xpath \"/tasks/task[@id='{taskId}']/records\" --format xml";
 
+        // Greedily include supplemental records in reverse chronological order, excluding essential records
+        var essentialRecordIds = new HashSet<string>(
+            latestStatusRecords
+                .Select(r => (string?)r.Attribute("id"))
+                .Where(id => !string.IsNullOrEmpty(id))!,
+            StringComparer.Ordinal);
+
+        var supplementalCandidates = allTaskRecords
+            .Where(r => !essentialRecordIds.Contains((string?)r.Attribute("id") ?? string.Empty))
+            .ToList();
+
         // Build result container without supplemental records first to test Essential Context size
         var result = new TaskContextResult
         {
@@ -429,27 +442,34 @@ public static class TaskContextQuery
 
             Dependencies = dependenciesList,
 
-            TotalSupplementalRecords = allTaskRecords.Count,
+            TotalRecords = allTaskRecords.Count,
+            SupplementalCandidatesCount = supplementalCandidates.Count,
+            TotalSupplementalRecords = supplementalCandidates.Count,
             IncludedSupplementalRecords = Array.Empty<XElement>(),
+            OmittedRecords = supplementalCandidates.Count,
+            Truncated = supplementalCandidates.Count > 0,
             SourceDocuments = sourceDocs
         };
 
-        var essentialXml = result.ToXmlString();
-        var essentialBytes = Encoding.UTF8.GetByteCount(essentialXml);
+        FinalizeTotalBytes(result);
 
-        if (essentialBytes > maxBytes)
+        if (result.TotalBytes > maxBytes)
         {
+            var breakdown = ComputeSectionSizeBreakdown(result);
             return (false, null, new[]
             {
                 Diagnostic.Error(
                     DiagnosticCodes.LimitExceeded,
-                    $"Essential task context ({essentialBytes} bytes) exceeds the byte limit of {maxBytes} bytes. Increase --max-bytes or refine task scope.",
+                    $"Essential task context ({result.TotalBytes} bytes) exceeds the byte limit of {maxBytes} bytes. Section size breakdown: [{breakdown}]. Increase --max-bytes or refine task scope.",
                     $"{resolvedIterId}/tasks.xml")
             });
         }
 
-        // Greedily include supplemental records in reverse chronological order
-        var supplementalCandidates = allTaskRecords.ToList();
+        if (noHistory)
+        {
+            return (true, result, Array.Empty<Diagnostic>());
+        }
+
         var includedRecords = new List<XElement>();
 
         for (int i = 0; i < supplementalCandidates.Count; i++)
@@ -458,8 +478,10 @@ public static class TaskContextQuery
             includedRecords.Add(candidate);
 
             result.IncludedSupplementalRecords = includedRecords;
-            var testBytes = Encoding.UTF8.GetByteCount(result.ToXmlString());
-            if (testBytes > maxBytes)
+            result.OmittedRecords = supplementalCandidates.Count - includedRecords.Count;
+            result.Truncated = result.OmittedRecords > 0;
+            FinalizeTotalBytes(result);
+            if (result.TotalBytes > maxBytes)
             {
                 // Exceeded limit: remove this candidate and stop
                 includedRecords.RemoveAt(includedRecords.Count - 1);
@@ -471,8 +493,73 @@ public static class TaskContextQuery
         var omitted = supplementalCandidates.Count - includedRecords.Count;
         result.Truncated = omitted > 0;
         result.OmittedRecords = omitted;
-        result.TotalBytes = Encoding.UTF8.GetByteCount(result.ToXmlString());
+        FinalizeTotalBytes(result);
 
         return (true, result, Array.Empty<Diagnostic>());
+    }
+
+    private static void FinalizeTotalBytes(TaskContextResult result)
+    {
+        var xml = result.ToXmlString();
+        var bytes = Encoding.UTF8.GetByteCount(xml);
+        while (result.TotalBytes != bytes)
+        {
+            result.TotalBytes = bytes;
+            xml = result.ToXmlString();
+            bytes = Encoding.UTF8.GetByteCount(xml);
+        }
+    }
+
+    private static string ComputeSectionSizeBreakdown(TaskContextResult result)
+    {
+        var sections = new List<(string Name, int Bytes)>();
+        try
+        {
+            var xml = result.ToXmlString();
+            var doc = XDocument.Parse(xml);
+            var root = doc.Root;
+            if (root != null)
+            {
+                var essential = root.Element("essential");
+                if (essential != null)
+                {
+                    int metaBytes = 0;
+                    foreach (var metaName in new[] { "title", "objective", "rationale" })
+                    {
+                        var el = essential.Element(metaName);
+                        if (el != null)
+                        {
+                            metaBytes += Encoding.UTF8.GetByteCount(el.ToString(SaveOptions.DisableFormatting));
+                        }
+                    }
+                    if (metaBytes > 0)
+                    {
+                        sections.Add(("core-metadata", metaBytes));
+                    }
+
+                    foreach (var sectionName in new[] { "scope", "constraints", "origin-requirements", "acceptance", "blockers", "latest-status-records", "progression-facts" })
+                    {
+                        var el = essential.Element(sectionName);
+                        if (el != null)
+                        {
+                            sections.Add((sectionName, Encoding.UTF8.GetByteCount(el.ToString(SaveOptions.DisableFormatting))));
+                        }
+                    }
+                }
+
+                var deps = root.Element("dependencies");
+                if (deps != null)
+                {
+                    sections.Add(("dependencies", Encoding.UTF8.GetByteCount(deps.ToString(SaveOptions.DisableFormatting))));
+                }
+            }
+        }
+        catch
+        {
+            // Defensive fallback
+        }
+
+        var ordered = sections.OrderByDescending(s => s.Bytes).ToList();
+        return string.Join(", ", ordered.Select(s => $"{s.Name}: {s.Bytes} bytes"));
     }
 }

@@ -165,10 +165,10 @@ dogdouspec query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id=
 Or when recovering or resuming in a new session, query bounded recovery context directly:
 
 ```powershell
-dogdouspec task context --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--max-bytes 32768] --format xml
+dogdouspec task context --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--max-bytes 32768] [--no-history] --format xml
 ```
 
-Identify objectives, scope includes/excludes, origin requirement, acceptance criteria, constraints, and previous records before modifying code.
+Use `--no-history` when resuming execution where supplemental status history is not needed, minimizing token footprint. Identify objectives, scope includes/excludes, origin requirement, acceptance criteria, constraints, and previous records before modifying code.
 
 ### 4. Technical Execution & State Transitions
 

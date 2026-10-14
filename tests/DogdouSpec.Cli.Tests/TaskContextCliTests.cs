@@ -204,4 +204,25 @@ public sealed class TaskContextCliTests
         Assert.AreEqual(2, exitCode);
         StringAssert.Contains(stdout + stderr, "RESOURCE_NOT_FOUND");
     }
+
+    [TestMethod]
+    public void TaskContextCli_NoHistory_OmitsSupplementalRecords()
+    {
+        var workspace = CreateWorkspaceCopy();
+        var iterId = "20260823-xpath-core";
+        var taskId = "20260823-task-xpath-projection";
+
+        var (exitCode, stdout, stderr) = RunCli(
+            "task", "context",
+            "--task", taskId,
+            "--iteration", iterId,
+            "--no-history",
+            "--workspace-root", workspace,
+            "--format", "xml");
+
+        Assert.AreEqual(0, exitCode, $"Stderr: {stderr}");
+        StringAssert.Contains(stdout, "included_records=\"0\"");
+        StringAssert.Contains(stdout, "essential_records=\"");
+        StringAssert.Contains(stdout, "total_records=\"");
+    }
 }

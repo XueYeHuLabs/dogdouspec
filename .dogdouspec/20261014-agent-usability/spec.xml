@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20261014-agent-usability" schema_version="1.0" revision="3" kind="feature" status="completed" created_at="2026-10-14T03:27:45Z" updated_at="2026-10-14T03:46:06Z" completed_at="2026-10-14T03:46:06Z">
+  <index>
+    <summary>[Completed] Owner completed iteration 20261014-agent-usability. Context deduplication, breakdown diagnostics, and compact mode verified and passed.</summary>
+    <term key="kind" value="feature" />
+    <term key="iteration" value="20261014-agent-usability" />
+    <term key="status" value="completed" />
+  </index>
+  <product>
+    <objective>Objective pending definition for 20261014-agent-usability.</objective>
+    <deliverables>
+      <deliverable id="20261014-deliv-agent-usability">
+        <index>
+          <summary>Initial deliverable placeholder for 20261014-agent-usability.</summary>
+          <term key="kind" value="deliverable" />
+        </index>
+        <description>Deliverable pending definition.</description>
+      </deliverable>
+    </deliverables>
+    <scope>
+      <included />
+      <excluded />
+    </scope>
+    <requirements>
+      <requirement id="20261014-req-agent-usability" status="approved">
+        <index>
+          <summary>Initial proposed requirement for 20261014-agent-usability.</summary>
+          <term key="kind" value="requirement" />
+        </index>
+        <statement>Requirement statement pending definition.</statement>
+        <rationale>Rationale pending definition.</rationale>
+      </requirement>
+    </requirements>
+    <acceptance>
+      <criterion id="20261014-crit-agent-usability-1" decision="accepted">Record deduplication ensures latest status records are excluded from supplemental history in task recovery context.</criterion>
+      <criterion id="20261014-crit-agent-usability-2" decision="accepted">Essential context overflow diagnostics report detailed section size breakdowns to identify oversized components.</criterion>
+      <criterion id="20261014-crit-agent-usability-3" decision="accepted">Task context query supports compact mode with --no-history to omit supplemental history on demand.</criterion>
+      <criterion id="20261014-crit-agent-usability-4" decision="accepted">Record-count attributes accurately reflect essential, supplemental, and omitted counts.</criterion>
+      <criterion id="20261014-crit-agent-usability-5" decision="accepted">All automated test suites and build.cmd pass with zero errors and zero warnings.</criterion>
+    </acceptance>
+  </product>
+  <confirmations>
+    <confirmation id="20261014T032827Z-confirm-activate" action="activate" decision="accepted" actor="owner" decided_at="2026-10-14T03:28:27Z">
+      <summary>Owner activation of 20261014-agent-usability iteration for agent usability improvements</summary>
+      <requirements>
+        <requirement target="20261014-req-agent-usability" decision="approved" />
+      </requirements>
+    </confirmation>
+    <confirmation id="20261014T034606Z-confirm-complete" action="complete" decision="accepted" actor="owner" decided_at="2026-10-14T03:46:06Z">
+      <summary>Owner completed iteration 20261014-agent-usability. Context deduplication, breakdown diagnostics, and compact mode verified and passed.</summary>
+      <acceptance>
+        <criterion target="20261014-crit-agent-usability-1" decision="accepted" />
+        <criterion target="20261014-crit-agent-usability-2" decision="accepted" />
+        <criterion target="20261014-crit-agent-usability-3" decision="accepted" />
+        <criterion target="20261014-crit-agent-usability-4" decision="accepted" />
+        <criterion target="20261014-crit-agent-usability-5" decision="accepted" />
+      </acceptance>
+    </confirmation>
+  </confirmations>
+</iteration>
