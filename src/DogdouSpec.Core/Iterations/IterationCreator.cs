@@ -34,7 +34,8 @@ public static class IterationCreator
         string version = "1.0",
         bool activate = false,
         IEnumerable<string>? criteria = null,
-        IEnumerable<string>? constraints = null)
+        IEnumerable<string>? constraints = null,
+        string? contentXml = null)
     {
         clock ??= SystemClock.Instance;
 
@@ -54,7 +55,7 @@ public static class IterationCreator
 
         var criteriaList = criteria != null ? criteria.ToList() : null;
         var constraintsList = constraints != null ? constraints.ToList() : null;
-        if (activate && (criteriaList == null || criteriaList.Count == 0))
+        if (activate && contentXml == null && (criteriaList == null || criteriaList.Count == 0))
         {
             return (false, null, new[] { Diagnostic.Error(
                 DiagnosticCodes.CriterionUndefined,
@@ -138,6 +139,12 @@ public static class IterationCreator
                 specContent = GenerateResearchSpecXml(normalizedId, timePrefix, slug, isoTime, activate, criteriaList, constraintsList);
             }
 
+            if (contentXml != null)
+            {
+                var (contentDocument, contentError) = IterationContentInput.Apply(specContent, contentXml, kind, activate, criteriaList is { Count: > 0 });
+                if (contentDocument == null || contentError != null) return (false, null, new[] { contentError! });
+                specContent = ManagedDocumentSerializer.Serialize(contentDocument);
+            }
             var tasksContent = GenerateTasksXml(normalizedId, timePrefix, slug);
 
             specContent = ManagedDocumentSerializer.Normalize(specContent);
@@ -320,7 +327,7 @@ public static class IterationCreator
         var confirmationsElement = activate
             ? $"""
   <confirmations>
-    <confirmation id="{confirmIdPrefix}-confirm-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="{isoTime}">
+    <confirmation id="{confirmIdPrefix}-confirm-{slug}-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="{isoTime}">
       <summary>Initial iteration activation.</summary>
       <requirements>
         <requirement target="{date}-req-{slug}" decision="approved"/>
@@ -391,7 +398,7 @@ public static class IterationCreator
         var confirmationsElement = activate
             ? $"""
   <confirmations>
-    <confirmation id="{confirmIdPrefix}-confirm-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="{isoTime}">
+    <confirmation id="{confirmIdPrefix}-confirm-{slug}-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="{isoTime}">
       <summary>Initial iteration activation.</summary>
     </confirmation>
   </confirmations>

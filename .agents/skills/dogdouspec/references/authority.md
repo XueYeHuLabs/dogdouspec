@@ -58,6 +58,13 @@ When the product owner instructs `dogdouspec iteration confirm` with `action="co
 
 ## Iteration Readiness (`iteration readiness`)
 
+Discovery and authoring helpers do not add authority. `task records` is a derived
+read view; structured `checks` are reported evidence and never automatic review
+approval or owner acceptance. `iteration create --file` accepts only undecided
+intent; `--activate` still requires explicit current-interaction owner direction.
+Product suggestions recorded as research backlog remain undecided until research
+and an owner decision establish their scope and acceptance.
+
 `dogdouspec iteration readiness` is a deterministic, **read-only** assessment tool:
 
 ```powershell

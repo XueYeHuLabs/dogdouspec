@@ -25,7 +25,7 @@ public static class TransactionCommand
     {
         var applyCmd = new Command(
             "apply",
-            "Apply a low-level XML transaction to managed documents (mutating). " +
+            "Apply a low-level XML transaction to managed documents (mutating unless --dry-run). " +
             "Accepts a <transaction> XML request with assert, append-child, replace-node, set-attribute, and remove-node operations. " +
             "All changed documents use one recovery-backed commit. " +
             "Protected product decisions (iteration lifecycle, confirmations, requirement/question/decision status, etc.) " +
@@ -57,12 +57,14 @@ public static class TransactionCommand
             Description = "Output format (xml or human)"
         };
         formatOption.AcceptOnlyFromAmong("xml", "human");
+        var dryRunOption = new Option<bool>("--dry-run") { Description = "Validate the full prospective transaction and authority guards without writing" };
 
         applyCmd.Add(stdinOption);
         applyCmd.Add(fileOption);
         applyCmd.Add(revisionOption);
         applyCmd.Add(workspaceRootOption);
         applyCmd.Add(formatOption);
+        applyCmd.Add(dryRunOption);
 
         applyCmd.SetAction(parseResult =>
         {
@@ -136,6 +138,7 @@ public static class TransactionCommand
             var (success, mutationEnvelope, diagnostics) = TransactionApplier.Apply(
                 discoveredRoot,
                 requestXml,
+                dryRun: parseResult.GetValue(dryRunOption),
                 revisionLatest: isRevisionLatest);
 
             if (!success || diagnostics.Count > 0)

@@ -638,6 +638,17 @@ resumed Task executes, so both iteration and Task constraints are read.
 Refreshing Skill and schema files alone does not update that execution entry
 point; raw Task queries and `task show` do not include iteration constraints.
 
+Also reconcile local command examples with bounded history (`task records`),
+structured check authoring (`task record --check-*`), `query/search --xpath-file`,
+opt-in `query --warn-empty`, `transaction apply --dry-run`, backlog identity
+defaults/replay receipts, and `iteration create --file` (template
+`iteration.create`). Help and templates are embedded in the chosen binary;
+fresh initialization installs its current Skill, while an existing installation
+needs the reviewed Skill sync above. These entries add no managed XML schema
+migration. Preserve raw request contracts, exact revisions and owner/review
+gates. Describe `task finish` as sequential with explicit partial-progress
+receipts, since earlier transitions remain if a later step fails.
+
 ### 8.2. Vendored Installation
 
 Use the source, clean-tree, exact-commit, staging, build, and candidate

@@ -24,6 +24,23 @@ DogdouSpec enforces single-source-of-truth document integrity through structured
 | **Transaction Apply** | `dogdouspec transaction apply` | Low-level multi-document escape hatch, structural replacements, batch initialization. Supports `--revision latest` opt-in. | Multi-document staged publish with crash recovery. Correlated by `operation_id`. Non-durable (no separate business receipt container); stale retry conflicts if revision advanced. |
 | **Iteration Confirm** | `dogdouspec iteration confirm` | Owner-gated product decisions: iteration activation, design change acceptance, replanning, continuation, completion, cancellation, or supersession. | Protected single-document write to `spec.xml`. Reads `tasks.xml` for consistency/readiness verification without modifying it. Requires current-interaction human owner instruction. |
 
+## Authoring and Preview Entry Points
+
+- `iteration create --file PATH` accepts `<iteration-content>` intent (template `iteration.create`), one matching `product`/`research` body and optional `index`, `constraints`, `design`. It generates lifecycle metadata and validates the complete prospective workspace before publishing. Input cannot import confirmations, operation receipts or already-decided criteria/requirements/design. Acceptance comes from either the file or `--criterion`. `--activate` retains the explicit owner-authorization requirement and never accepts product criteria.
+- `task revise --add-scope PATH` appends deduplicated includes to repository `.` while preserving all existing repositories and exclusions. `--add-dependency ID` resolves a unique target and emits document-local or project scope. Its revision guard protects the read/merge/write snapshot. Raw `<task-revise><scope>` keeps its existing whole-scope replacement semantics.
+- `transaction apply --dry-run` runs prospective validation without publishing changes. Preview envelopes expose `dry_run="true"`; human output says `DRY RUN, nothing written`. `task quick --dry-run --format xml` emits a comment-labeled canonical task-add request, still directly consumable by `task add`.
+- `task finish` runs missing start/verify/complete transitions sequentially, advancing one revision per transition. It reports the overall previous/final revision and ordered `<transition>` entries. A later failure returns a nonzero exit, diagnostics on stderr and a `partial="true"` receipt on stdout for earlier committed transitions; it does not roll them back or bypass review. A failure before any transition returns diagnostics only.
+- `backlog add` may omit `--id`, `--operation-id`, `--actor`, `--occurred-at`. Transitions still require the target `--id`. Defaults use UTC and unique operations, actor `DOGDOUSPEC_ACTOR` or `agent`; `<backlog-identity>` returns actual values for replay. An explicit operation ID with no time must begin with a valid `yyyyMMddTHHmmssZ` timestamp. Reuse returned identity, payload and revision to retry. Raw XML identity rules remain unchanged. Backlog `kind` is an open token, including project-specific values.
+
+## Structured Check Evidence
+
+```powershell
+dogdouspec task record --task "<TASK_ID>" --iteration "<ITERATION_ID>" --kind verification --summary "Regression verification." --check-command "dotnet test" --check-result passed --check-exit-code 0 --check-summary "All selected tests passed." --covers "<CRITERION_ID>" --expected-revision <REV> --format xml
+dogdouspec task records --task "<TASK_ID>" --last 5 --kind verification --fields id,created_at,summary,checks,covers --format xml
+```
+
+The flags populate existing `<checks><check kind="command" result="passed|failed|skipped" command="..." exit_code="..."><summary>...</summary></check></checks>`. `--check-kind` overrides the default kind; check summary defaults to the record summary. Any check field requires `--check-result`; exit code requires a command. `--covers` links criteria but does not change their status. Read-only history projection is described in [XPath reference](xpath.md#bounded-task-history).
+
 ## Terminal Task Immutability
 
 Tasks in `done`, `transferred`, `superseded`, or `cancelled` statuses represent historical facts:
@@ -83,6 +100,8 @@ Generated operation receipts store a canonical-XML `request-sha256` value and re
 
 The task/change/requirement helper requests are rejected before parsing when their UTF-8 payload exceeds the configured XML document limit; any managed document they read is checked against the same bound before it is opened. A write request cannot backdate a modified task or document: `occurred_at` must be at least its current `updated_at` and `created_at`. When backdating is attempted, the engine rejects the request with an `INVALID_ARGUMENT` diagnostic clearly reporting the minimal acceptable timestamp. New tasks are pending except `task quick --start`, which atomically creates a normal in-progress task with `created_at=updated_at=started_at` and a start record.
 
+Task add/update/revise/review also reject new execution timestamps more than five minutes ahead of the current UTC clock. Default task start/revise/review timestamps clamp to the latest committed created/update time, preserving monotonicity. For legacy tasks already dated farther ahead, continuation may reuse that committed time but cannot advance it further into the future. A verified replay retains its original identity and time. Finish uses the same effective timestamp for its sequential steps instead of adding synthetic future seconds. Generic transaction input is still governed by its existing schema/semantic checks; it is not a clock-repair API.
+
 ## Document Revisions
 
 Every managed document root contains an authoritative `revision="N"` attribute owned by the engine.
@@ -116,6 +135,7 @@ Use `dogdouspec template list` to discover all available built-in request templa
 - `change.apply`: Replanned change apply request template.
 - `transaction.apply`: Multi-document transaction request template.
 - `iteration.confirmation`: Iteration confirmation request template.
+- `iteration.create`: Complete iteration creation intent for `iteration create --file`; not a mutation request for `transaction apply`.
 - `record.discussion`: Discussion record template for task records.
 - `record.finding`: Finding record template for task records.
 - `record.verification`: Verification record template for task records.

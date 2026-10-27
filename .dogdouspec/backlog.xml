@@ -1,11 +1,170 @@
 <?xml version="1.0" encoding="utf-8"?>
-<backlog
-  id="20260823-backlog"
-  schema_version="1.0"
-  revision="1">
+<backlog id="20260823-backlog" schema_version="1.0" revision="8">
   <index>
     <summary>Project obligations not owned by an active Iteration.</summary>
-    <term key="scope" value="project"/>
+    <term key="scope" value="project" />
   </index>
-  <items/>
+  <items>
+    <item id="20261027-backlog-release-container" status="open" created_at="2026-10-27T08:06:39Z" updated_at="2026-10-27T08:06:39Z">
+      <index>
+        <summary>Research long-lived release planning and safe draft undo</summary>
+        <term key="kind" value="research" />
+      </index>
+      <statement>Compare finite release iterations, project aggregation and aliases before considering undated or never-ending iterations. Assess guarded deletion/rename of an uncommitted empty draft with reference, VCS and recovery checks.</statement>
+      <rationale>Long-lived release work is real, but changing canonical IDs or lifecycle would affect schemas, paths, references, readiness and upgrades.</rationale>
+      <impact>Deferred pending research and owner decision; excluded from this repair iteration.</impact>
+      <source>
+        <ref scope="project" target="20261027-usage-report-repairs" relation="deferred-from" />
+      </source>
+      <review_condition>Research alternatives, compatibility and acceptance boundaries, then obtain an owner decision before implementation.</review_condition>
+      <records>
+        <record id="20261027T080639Z-backlog-release-container-98c03a58-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:39Z" actor="codex" operation_id="20261027T080639Z-backlog-release-container-98c03a58">
+          <index>
+            <summary>Backlog add receipt.</summary>
+            <term key="action" value="add" />
+            <term key="request-sha256" value="3e693ce1af657095271066b9389275c19320f86879fde3911baf9f7b97d569d7" />
+          </index>
+          <summary>Backlog item created through the public lifecycle helper.</summary>
+        </record>
+      </records>
+    </item>
+    <item id="20261027-backlog-criterion-handoff" status="open" created_at="2026-10-27T08:06:40Z" updated_at="2026-10-27T08:06:40Z">
+      <index>
+        <summary>Research criterion hand-off and staged owner acceptance</summary>
+        <term key="kind" value="research" />
+      </index>
+      <statement>Design cross-iteration criterion provenance, per-criterion waiver rationale and an explicit owner-only decision entry that does not complete the iteration.</statement>
+      <rationale>Avoid prose-only transfers and forced completion while preserving owner authority, acceptance coverage and auditable source disposition.</rationale>
+      <impact>Deferred pending research and owner decision; excluded from this repair iteration.</impact>
+      <source>
+        <ref scope="project" target="20261027-usage-report-repairs" relation="deferred-from" />
+      </source>
+      <review_condition>Research alternatives, compatibility and acceptance boundaries, then obtain an owner decision before implementation.</review_condition>
+      <records>
+        <record id="20261027T080640Z-backlog-criterion-handoff-6112c327-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:40Z" actor="codex" operation_id="20261027T080640Z-backlog-criterion-handoff-6112c327">
+          <index>
+            <summary>Backlog add receipt.</summary>
+            <term key="action" value="add" />
+            <term key="request-sha256" value="e78d1e29ef750ceb82e67651efac351f57a9c4d73d483f5717bd736c6dc86da6" />
+          </index>
+          <summary>Backlog item created through the public lifecycle helper.</summary>
+        </record>
+      </records>
+    </item>
+    <item id="20261027-backlog-review-experience" status="open" created_at="2026-10-27T08:06:41Z" updated_at="2026-10-27T08:06:41Z">
+      <index>
+        <summary>Research review-gate diagnostics without relaxing provenance</summary>
+        <term key="kind" value="research" />
+      </index>
+      <statement>Evaluate clearer preflight and recording guidance for gated and ungated tasks; do not make approval a silent no-op or accept review prose as a structured independent approval.</statement>
+      <rationale>Poor gate diagnostics can be improved without masking configuration errors or weakening implementer/reviewer separation.</rationale>
+      <impact>Deferred pending research and owner decision; excluded from this repair iteration.</impact>
+      <source>
+        <ref scope="project" target="20261027-usage-report-repairs" relation="deferred-from" />
+      </source>
+      <review_condition>Research alternatives, compatibility and acceptance boundaries, then obtain an owner decision before implementation.</review_condition>
+      <records>
+        <record id="20261027T080641Z-backlog-review-experience-48fcd884-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:41Z" actor="codex" operation_id="20261027T080641Z-backlog-review-experience-48fcd884">
+          <index>
+            <summary>Backlog add receipt.</summary>
+            <term key="action" value="add" />
+            <term key="request-sha256" value="ecce4025de0fce8495aa7c534636720b8eeb450e971bba3a8df603e5301b66fb" />
+          </index>
+          <summary>Backlog item created through the public lifecycle helper.</summary>
+        </record>
+      </records>
+    </item>
+    <item id="20261027-backlog-knowledge-adoption" status="open" created_at="2026-10-27T08:06:42Z" updated_at="2026-10-27T08:06:42Z">
+      <index>
+        <summary>Research relevant knowledge delivery to task context</summary>
+        <term key="kind" value="research" />
+      </index>
+      <statement>Measure why knowledge is unused and prototype indexed or explicitly linked discovery under the context budget. Decide its role after evidence rather than removing it or loading all knowledge.</statement>
+      <rationale>Automatic agent memory convenience does not establish that the durable project knowledge model should be deleted.</rationale>
+      <impact>Deferred pending research and owner decision; excluded from this repair iteration.</impact>
+      <source>
+        <ref scope="project" target="20261027-usage-report-repairs" relation="deferred-from" />
+      </source>
+      <review_condition>Research alternatives, compatibility and acceptance boundaries, then obtain an owner decision before implementation.</review_condition>
+      <records>
+        <record id="20261027T080642Z-backlog-knowledge-adoption-f27c22e0-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:42Z" actor="codex" operation_id="20261027T080642Z-backlog-knowledge-adoption-f27c22e0">
+          <index>
+            <summary>Backlog add receipt.</summary>
+            <term key="action" value="add" />
+            <term key="request-sha256" value="fc55ab8a8738283640e8e9a0f69144c63f9128624ee5623629cde43d5d8b29a0" />
+          </index>
+          <summary>Backlog item created through the public lifecycle helper.</summary>
+        </record>
+      </records>
+    </item>
+    <item id="20261027-backlog-external-evidence" status="open" created_at="2026-10-27T08:06:42Z" updated_at="2026-10-27T08:06:42Z">
+      <index>
+        <summary>Research typed commit run and artifact evidence</summary>
+        <term key="kind" value="research" />
+      </index>
+      <statement>Extend existing checks and covers only after defining typed repository/commit, run and artifact locator/digest semantics and criterion-evidence queries. Do not add a separate authoritative evidence ledger by default.</statement>
+      <rationale>Existing command/result/exit-code checks will be exposed now; new evidence types require schema and compatibility design.</rationale>
+      <impact>Deferred pending research and owner decision; excluded from this repair iteration.</impact>
+      <source>
+        <ref scope="project" target="20261027-usage-report-repairs" relation="deferred-from" />
+      </source>
+      <review_condition>Research alternatives, compatibility and acceptance boundaries, then obtain an owner decision before implementation.</review_condition>
+      <records>
+        <record id="20261027T080642Z-backlog-external-evidence-52987782-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:42Z" actor="codex" operation_id="20261027T080642Z-backlog-external-evidence-52987782">
+          <index>
+            <summary>Backlog add receipt.</summary>
+            <term key="action" value="add" />
+            <term key="request-sha256" value="0547380c288c460609862693e384d56391c60e7a97d6788dfa9a940303a97240" />
+          </index>
+          <summary>Backlog item created through the public lifecycle helper.</summary>
+        </record>
+      </records>
+    </item>
+    <item id="20261027-backlog-backlog-notes" status="open" created_at="2026-10-27T08:06:43Z" updated_at="2026-10-27T08:06:43Z">
+      <index>
+        <summary>Research backlog progress annotations and closure evidence</summary>
+        <term key="kind" value="research" />
+      </index>
+      <statement>Design append-only backlog notes and completion summary/evidence inputs, including partial progress, links to resolving tasks and replay behavior.</statement>
+      <rationale>The existing lifecycle lacks a comfortable note/closure explanation entry; changes to the durable model should follow a focused design.</rationale>
+      <impact>Deferred pending research and owner decision; excluded from this repair iteration.</impact>
+      <source>
+        <ref scope="project" target="20261027-usage-report-repairs" relation="deferred-from" />
+      </source>
+      <review_condition>Research alternatives, compatibility and acceptance boundaries, then obtain an owner decision before implementation.</review_condition>
+      <records>
+        <record id="20261027T080643Z-backlog-backlog-notes-86275823-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:43Z" actor="codex" operation_id="20261027T080643Z-backlog-backlog-notes-86275823">
+          <index>
+            <summary>Backlog add receipt.</summary>
+            <term key="action" value="add" />
+            <term key="request-sha256" value="5a7efeaf519dcbd4b30803a416b6c596b4701f33cd2658a179faf7f202f1f95d" />
+          </index>
+          <summary>Backlog item created through the public lifecycle helper.</summary>
+        </record>
+      </records>
+    </item>
+    <item id="20261027-backlog-request-targeting" status="open" created_at="2026-10-27T08:48:59Z" updated_at="2026-10-27T08:48:59Z">
+      <index>
+        <summary>Research consistent request targeting and revision discovery</summary>
+        <term key="kind" value="research" />
+      </index>
+      <statement>Compare a shared target/revision authoring entry with the existing raw request schemas. Preserve exact revisions and explicit file/CLI mismatch rejection; avoid changing replay identities or silently accepting competing targets.</statement>
+      <rationale>The report identifies inconsistent placement of target and revision metadata. Unifying durable request shapes needs compatibility research rather than a breaking repair.</rationale>
+      <impact>Deferred pending research and owner decision; raw schemas stay unchanged in this iteration.</impact>
+      <source>
+        <ref scope="project" target="20261027-usage-report-repairs" relation="deferred-from" />
+      </source>
+      <review_condition>Research authoring alternatives and migration compatibility, then obtain an owner decision before implementation.</review_condition>
+      <records>
+        <record id="20261027T084859Z-backlog-request-targeting-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:48:59Z" actor="codex" operation_id="20261027T084859Z-backlog-request-targeting">
+          <index>
+            <summary>Backlog add receipt.</summary>
+            <term key="action" value="add" />
+            <term key="request-sha256" value="be3aa20de5ca40ec17d410b4b506d775d86d3a631bfbe9aa08053779939102a1" />
+          </index>
+          <summary>Backlog item created through the public lifecycle helper.</summary>
+        </record>
+      </records>
+    </item>
+  </items>
 </backlog>

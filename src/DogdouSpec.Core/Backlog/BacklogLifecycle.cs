@@ -131,7 +131,7 @@ public static class BacklogLifecycle
         if (replay.Handled)
         {
             return replay.Success
-                ? (true, ReplayEnvelope("backlog add", actualRevision), Array.Empty<Diagnostic>())
+                ? (true, ReplayEnvelope("backlog add", actualRevision, dryRun), Array.Empty<Diagnostic>())
                 : (false, null, replay.Diagnostics);
         }
 
@@ -276,7 +276,7 @@ public static class BacklogLifecycle
         if (replay.Handled)
         {
             return replay.Success
-                ? (true, ReplayEnvelope("backlog " + action, actualRevision), Array.Empty<Diagnostic>())
+                ? (true, ReplayEnvelope("backlog " + action, actualRevision, dryRun), Array.Empty<Diagnostic>())
                 : (false, null, replay.Diagnostics);
         }
         if (expectedRevision != actualRevision)
@@ -493,8 +493,8 @@ public static class BacklogLifecycle
     private static string FormatTime(DateTimeOffset value) =>
         value.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
 
-    private static MutationEnvelope ReplayEnvelope(string command, int revision) =>
-        new(command, new[] { new MutatedDocument(BacklogDocument, revision) }, alreadyApplied: true);
+    private static MutationEnvelope ReplayEnvelope(string command, int revision, bool dryRun) =>
+        new(command, new[] { new MutatedDocument(BacklogDocument, revision) }, alreadyApplied: true, dryRun: dryRun);
 
     private static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Commit(
         string workspaceRoot, string command, XDocument backlog, int actualRevision, bool dryRun = false)

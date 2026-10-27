@@ -33,6 +33,7 @@ public static class EmbeddedResources
         "change.apply",
         "change.propose",
         "iteration.confirmation",
+        "iteration.create",
         "knowledge.entry",
         "record.discussion",
         "record.finding",

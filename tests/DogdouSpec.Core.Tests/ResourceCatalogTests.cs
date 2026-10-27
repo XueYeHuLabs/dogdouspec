@@ -36,6 +36,8 @@ public sealed class ResourceCatalogTests
     [DataRow("backlog.item.xml")]
     [DataRow("iteration.confirmation")]
     [DataRow("iteration.confirmation.xml")]
+    [DataRow("iteration.create")]
+    [DataRow("iteration.create.xml")]
     [DataRow("knowledge.entry")]
     [DataRow("knowledge.entry.xml")]
     [DataRow("record.discussion")]

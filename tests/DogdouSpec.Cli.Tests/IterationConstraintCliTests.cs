@@ -286,6 +286,21 @@ public sealed class IterationConstraintCliTests
         StringAssert.Contains(installedGuide, "task context --task");
         StringAssert.Contains(installedGuide, "scope=\"iteration\"");
         StringAssert.Contains(installedGuide, "scope=\"task\"");
+        StringAssert.Contains(installedGuide, "task records --task");
+        StringAssert.Contains(installedGuide, "--check-command");
+        StringAssert.Contains(installedGuide, "iteration create --id");
+        StringAssert.Contains(installedGuide, "iteration-content.xml");
+        var xpathGuide = File.ReadAllText(Path.Combine(skillDir, "references", "xpath.md"));
+        AssertXPathExecutionGuidance(xpathGuide);
+        var exportedGuide = RunCli("skill", "guide", "--all");
+        Assert.AreEqual(0, exportedGuide.ExitCode, exportedGuide.Stderr);
+        AssertXPathExecutionGuidance(exportedGuide.Stdout);
+        StringAssert.Contains(xpathGuide, "--xpath-file");
+        StringAssert.Contains(xpathGuide, "/backlog/items/item");
+        var mutationGuide = File.ReadAllText(Path.Combine(skillDir, "references", "mutations.md"));
+        StringAssert.Contains(mutationGuide, "transaction apply --dry-run");
+        StringAssert.Contains(mutationGuide, "partial=\"true\"");
+        StringAssert.Contains(mutationGuide, "backlog-identity");
         StringAssert.Contains(EmbeddedResources.GetAgentsTemplateText()!, "task context --task");
         Assert.AreEqual("# Repository-owned agent rules\n", File.ReadAllText(agentsPath));
 
@@ -305,6 +320,22 @@ public sealed class IterationConstraintCliTests
         var rawTask = XDocument.Parse(Execute("task", "show", "--iteration", iterationId, "--task", taskId));
         Assert.IsFalse(rawTask.Descendants("constraint").Any(c => c.Value == constraints[0].Value),
             "Raw Task reads must retain their Task-local semantics.");
+    }
+
+    private static void AssertXPathExecutionGuidance(string guide)
+    {
+        var referenceStart = guide.IndexOf("# XPath Query & Projection Reference", StringComparison.Ordinal);
+        Assert.IsGreaterThanOrEqualTo(0, referenceStart, "The XPath reference must be included in the distributed guide.");
+        var reference = guide[referenceStart..];
+        StringAssert.Contains(reference, "dogdouspec task next --iteration");
+        StringAssert.Contains(reference, "dogdouspec task context --iteration");
+        StringAssert.Contains(reference, "--no-history --format xml");
+        StringAssert.Contains(reference, "scope=\"iteration\"");
+        StringAssert.Contains(reference, "scope=\"task\"");
+        Assert.IsFalse(reference.Contains("@status='pending' and not(dependencies", StringComparison.Ordinal),
+            "A document-local XPath cannot select ready work across iterations.");
+        Assert.IsFalse(reference.Contains("Phase 2: Full Document Loading", StringComparison.Ordinal),
+            "Raw tasks.xml reads cannot substitute for effective execution context.");
     }
 
     private static void WritePreviousConstraintSchemas(string workspace)

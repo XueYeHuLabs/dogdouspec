@@ -8,6 +8,8 @@ using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Revisions;
 using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Tasks;
+using DogdouSpec.Core.Time;
+using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.Workspace;
 
@@ -21,6 +23,7 @@ public static class TaskCommand
 
         taskCmd.Add(BuildListCommand());
         taskCmd.Add(BuildShowCommand());
+        taskCmd.Add(TaskRecordsCommand.BuildCommand());
         taskCmd.Add(BuildSummaryCommand());
         taskCmd.Add(BuildUpdateCommand());
         taskCmd.Add(BuildAddCommand());
@@ -81,7 +84,7 @@ public static class TaskCommand
 
     private static Command BuildShowCommand()
     {
-        var cmd = new Command("show", "Show detailed information about a task (read-only)");
+        var cmd = new Command("show", "Show raw task details; use task context before execution and task records for bounded history (read-only)");
         var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID" };
         var iterOption = new Option<string?>("--iteration") { Description = "Iteration ID (optional)" };
         var workspaceOption = new Option<string?>("--workspace-root") { Description = "Workspace root or project directory" };
@@ -188,9 +191,9 @@ public static class TaskCommand
             if (input.DryRun && result != null)
             {
                 if (format == OutputFormat.Human)
-                    Console.Out.WriteLine($"Quick task preview: iteration={result.IterationId}, expected_revision={result.ExpectedRevision}, task={result.Task.Attribute("id")?.Value}, status={result.Task.Attribute("status")?.Value}. Use --format xml to view the canonical request.");
+                    Console.Out.WriteLine($"Quick task preview (DRY RUN, nothing written): iteration={result.IterationId}, expected_revision={result.ExpectedRevision}, task={result.Task.Attribute("id")?.Value}, status={result.Task.Attribute("status")?.Value}. Use --format xml to view the canonical request.");
                 else
-                    Console.Out.Write(result.RequestXml);
+                    Console.Out.Write(result.RequestXml.Replace("?>", "?>\n<!-- DRY RUN: nothing written. Canonical request follows. -->", StringComparison.Ordinal));
                 return 0;
             }
             if (envelope != null) Console.Out.Write(envelope.Format(format));
@@ -610,7 +613,33 @@ public static class TaskCommand
                     return 2;
                 }
 
-                var nowUtc = DateTimeOffset.UtcNow;
+                var (snapshotOk, snapshot, snapshotDiagnostics) = ProjectSemanticIndex.LoadConsistent(discoveredRoot);
+                if (!snapshotOk || snapshot == null)
+                {
+                    var envelope = new DiagnosticsEnvelope("task revise", snapshotDiagnostics);
+                    Console.Error.Write(envelope.Format(format));
+                    return envelope.GetExitCode();
+                }
+                var taskDocument = snapshot.TasksDocuments.FirstOrDefault(d => d.Document.IterationId == iterId);
+                var taskElement = taskDocument?.Element.Elements("task").FirstOrDefault(t => (string?)t.Attribute("id") == taskId);
+                if (taskElement == null)
+                {
+                    var envelope = new DiagnosticsEnvelope("task revise", Diagnostic.Error(DiagnosticCodes.ResourceNotFound, $"Task '{taskId}' was not found."));
+                    Console.Error.Write(envelope.Format(format));
+                    return envelope.GetExitCode();
+                }
+                var snapshotRevision = int.Parse(taskDocument!.Element.Attribute("revision")!.Value, CultureInfo.InvariantCulture);
+                expectedRevision ??= snapshotRevision;
+                if (expectedRevision != snapshotRevision)
+                {
+                    var envelope = new DiagnosticsEnvelope("task revise", new Diagnostic(DiagnosticCodes.RevisionConflict, "error",
+                        $"Expected revision {expectedRevision} does not match actual revision {snapshotRevision}.",
+                        taskDocument.Document.RelativePath, ExpectedRevision: expectedRevision, ActualRevision: snapshotRevision));
+                    Console.Error.Write(envelope.Format(format));
+                    return envelope.GetExitCode();
+                }
+
+                var nowUtc = TaskTimestampPolicy.Automatic(taskElement, DateTimeOffset.UtcNow);
                 var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
                 var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-taskrev-{Guid.NewGuid():N}";
                 var recId = $"{nowUtc:yyyyMMddTHHmmssZ}-record-revise-{Guid.NewGuid():N}";
@@ -619,25 +648,41 @@ public static class TaskCommand
                 var scopeSb = new StringBuilder();
                 if (addScopes is { Length: > 0 })
                 {
-                    scopeSb.AppendLine("  <scope>");
-                    scopeSb.AppendLine("    <repository path=\".\">");
-                    foreach (var s in addScopes)
+                    var scope = taskElement.Element("scope") is { } existingScope ? new XElement(existingScope) : new XElement("scope");
+                    var repository = scope.Elements("repository").FirstOrDefault(r => (string?)r.Attribute("path") == ".");
+                    if (repository == null)
                     {
-                        scopeSb.AppendLine(CultureInfo.InvariantCulture, $"      <include path=\"{SecurityElement.Escape(s)}\"/>");
+                        repository = new XElement("repository", new XAttribute("path", "."));
+                        scope.Add(repository);
                     }
-                    scopeSb.AppendLine("    </repository>");
-                    scopeSb.AppendLine("  </scope>");
+                    foreach (var path in addScopes.Distinct(StringComparer.Ordinal))
+                    {
+                        if (repository.Elements("include").Any(i => (string?)i.Attribute("path") == path)) continue;
+                        var include = new XElement("include", new XAttribute("path", path));
+                        if (repository.Element("exclude") is { } exclude) exclude.AddBeforeSelf(include);
+                        else repository.Add(include);
+                    }
+                    scopeSb.AppendLine(scope.ToString(SaveOptions.DisableFormatting));
                 }
 
                 var depsSb = new StringBuilder();
                 if (addDeps is { Length: > 0 })
                 {
-                    depsSb.AppendLine("  <add_dependencies>");
-                    foreach (var d in addDeps)
+                    var newDependencies = new XElement("add_dependencies");
+                    foreach (var d in addDeps.Distinct(StringComparer.Ordinal))
                     {
-                        depsSb.AppendLine(CultureInfo.InvariantCulture, $"    <ref target=\"{SecurityElement.Escape(d)}\" relation=\"depends-on\"/>");
+                        if (taskElement.Element("dependencies")?.Elements("ref").Any(r => (string?)r.Attribute("target") == d) == true) continue;
+                        if (!snapshot.ObjectsById.TryGetValue(d, out var matches) || matches.Count != 1 || matches[0].ElementName != "task")
+                        {
+                            var envelope = new DiagnosticsEnvelope("task revise", Diagnostic.Error(DiagnosticCodes.InvalidReferenceTargetType,
+                                $"Dependency '{d}' must resolve to exactly one task in this workspace."));
+                            Console.Error.Write(envelope.Format(format));
+                            return envelope.GetExitCode();
+                        }
+                        var dependencyScope = matches[0].Document.RelativePath == taskDocument.Document.RelativePath ? "document" : "project";
+                        newDependencies.Add(new XElement("ref", new XAttribute("scope", dependencyScope), new XAttribute("target", d), new XAttribute("relation", "depends-on")));
                     }
-                    depsSb.AppendLine("  </add_dependencies>");
+                    if (newDependencies.HasElements) depsSb.AppendLine(newDependencies.ToString(SaveOptions.DisableFormatting));
                 }
 
                 var constraintsSb = new StringBuilder();
@@ -674,7 +719,6 @@ public static class TaskCommand
                 requestXml = $"""
 <?xml version="1.0" encoding="utf-8"?>
 <task-revise id="{opId}" actor="{actor}" occurred_at="{isoTime}">
-  <rationale>{SecurityElement.Escape(revSummary)}</rationale>
 {scopeSb}{depsSb}{constraintsSb}{criteriaSb}{recordsSb}</task-revise>
 """;
             }
@@ -1623,7 +1667,15 @@ public static class TaskCommand
             }
             else
             {
-                nowUtc = DateTimeOffset.UtcNow;
+                var (snapshotOk, snapshot, snapshotDiagnostics) = ProjectSemanticIndex.LoadConsistent(root);
+                if (!snapshotOk || snapshot == null)
+                {
+                    var failure = new DiagnosticsEnvelope("task review approve", snapshotDiagnostics);
+                    Console.Error.Write(failure.Format(format));
+                    return failure.GetExitCode();
+                }
+                var currentTask = snapshot.AllTasks.FirstOrDefault(t => t.Id == taskId && t.Document.IterationId == iterId);
+                nowUtc = currentTask == null ? DateTimeOffset.UtcNow : TaskTimestampPolicy.Automatic(currentTask.Element, DateTimeOffset.UtcNow);
             }
             var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
             var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-taskrev-{Guid.NewGuid():N}";
@@ -1710,7 +1762,15 @@ public static class TaskCommand
             }
             else
             {
-                nowUtc = DateTimeOffset.UtcNow;
+                var (snapshotOk, snapshot, snapshotDiagnostics) = ProjectSemanticIndex.LoadConsistent(root);
+                if (!snapshotOk || snapshot == null)
+                {
+                    var failure = new DiagnosticsEnvelope("task review request-changes", snapshotDiagnostics);
+                    Console.Error.Write(failure.Format(format));
+                    return failure.GetExitCode();
+                }
+                var currentTask = snapshot.AllTasks.FirstOrDefault(t => t.Id == taskId && t.Document.IterationId == iterId);
+                nowUtc = currentTask == null ? DateTimeOffset.UtcNow : TaskTimestampPolicy.Automatic(currentTask.Element, DateTimeOffset.UtcNow);
             }
             var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
             var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-taskrev-{Guid.NewGuid():N}";
@@ -1821,12 +1881,7 @@ public static class TaskCommand
             }
             else
             {
-                nowUtc = DateTimeOffset.UtcNow;
-                var taskCreatedAtStr = (string?)taskElem?.Attribute("created_at");
-                if (!string.IsNullOrWhiteSpace(taskCreatedAtStr) && DateTimeOffset.TryParse(taskCreatedAtStr, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var parsedCreated) && nowUtc < parsedCreated)
-                {
-                    nowUtc = parsedCreated;
-                }
+                nowUtc = TaskTimestampPolicy.Automatic(taskElem ?? new XElement("task"), DateTimeOffset.UtcNow);
             }
             var isoTime = nowUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
             var opId = $"{nowUtc:yyyyMMddTHHmmssZ}-taskstart-{Guid.NewGuid():N}";
@@ -2034,7 +2089,7 @@ public static class TaskCommand
 
     private static Command BuildFinishCommand()
     {
-        var cmd = new Command("finish", "Conveniently complete a task from any active state and mark criteria passed (mutating)");
+        var cmd = new Command("finish", "Run missing transitions sequentially to done and mark criteria passed; report all revisions or partial progress, preserving review gates (mutating)");
         var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID" };
         var iterationOption = new Option<string?>("--iteration") { Description = "Iteration ID (omitted auto-resolves if single iteration)" };
         var coversOption = new Option<string[]>("--covers") { AllowMultipleArgumentsPerToken = true, Description = "Repeatable criterion target ID covered by completion" };
@@ -2095,6 +2150,14 @@ public static class TaskCommand
                 return 2;
             }
             var curRev = resolvedRev;
+            var initialRevision = curRev;
+            var transitions = new List<MutationTransition>();
+            void WritePartial()
+            {
+                if (transitions.Count == 0) return;
+                Console.Out.Write(new MutationEnvelope("task finish", new[] { new MutatedDocument($"{iterId}/tasks.xml", curRev, initialRevision) },
+                    transitions: transitions, partial: true).Format(format));
+            }
 
             var taskElem = tasksDoc.Descendants("task").FirstOrDefault(t => string.Equals((string?)t.Attribute("id"), taskId, StringComparison.Ordinal));
             if (taskElem == null)
@@ -2174,13 +2237,15 @@ public static class TaskCommand
                 var (startSuccess, _, startDiags) = TaskUpdater.Update(root, iterId, taskId, curRev, startReqXml);
                 if (!startSuccess || startDiags.Count > 0)
                 {
+                    WritePartial();
                     var d = new DiagnosticsEnvelope("task finish", startDiags);
                     Console.Error.Write(d.Format(format));
                     return d.GetExitCode();
                 }
+                transitions.Add(new MutationTransition("start", currentStatus, "in-progress", $"{iterId}/tasks.xml", curRev, curRev + 1));
                 curRev++;
                 currentStatus = "in-progress";
-                if (string.IsNullOrWhiteSpace(occurredAt)) nowUtc = nowUtc.AddSeconds(1);
+
             }
 
             // Step 2: If in-progress, transition to verification (verify)
@@ -2225,13 +2290,15 @@ public static class TaskCommand
                 var (verifySuccess, _, verifyDiags) = TaskUpdater.Update(root, iterId, taskId, curRev, verifyReqXml);
                 if (!verifySuccess || verifyDiags.Count > 0)
                 {
+                    WritePartial();
                     var d = new DiagnosticsEnvelope("task finish", verifyDiags);
                     Console.Error.Write(d.Format(format));
                     return d.GetExitCode();
                 }
+                transitions.Add(new MutationTransition("verify", currentStatus, "verification", $"{iterId}/tasks.xml", curRev, curRev + 1));
                 curRev++;
                 currentStatus = "verification";
-                if (string.IsNullOrWhiteSpace(occurredAt)) nowUtc = nowUtc.AddSeconds(1);
+
             }
 
             // Step 3: Transition verification to done (complete)
@@ -2293,12 +2360,16 @@ public static class TaskCommand
 
                 if (!success || diagnostics.Count > 0 || envelope == null)
                 {
+                    WritePartial();
                     var d = new DiagnosticsEnvelope("task finish", diagnostics);
                     Console.Error.Write(d.Format(format));
                     return d.GetExitCode();
                 }
 
-                Console.Out.Write(envelope.Format(format));
+                var finalRevision = envelope.Documents[0].Revision;
+                transitions.Add(new MutationTransition("complete", currentStatus, "done", $"{iterId}/tasks.xml", curRev, finalRevision));
+                Console.Out.Write(new MutationEnvelope("task finish", new[] { new MutatedDocument($"{iterId}/tasks.xml", finalRevision, initialRevision) },
+                    transitions: transitions).Format(format));
                 return 0;
             }
         });
@@ -2536,13 +2607,27 @@ public static class TaskCommand
         var workspaceOption = new Option<string?>("--workspace-root") { Description = "Workspace root directory (optional)" };
         var formatOption = new Option<string?>("--format") { Description = "Output format (xml or human)" };
         formatOption.AcceptOnlyFromAmong("xml", "human");
+        var checkCommand = new Option<string?>("--check-command") { Description = "Command recorded as an existing structured check; requires --check-result" };
+        var checkResult = new Option<string?>("--check-result") { Description = "Structured check result" };
+        checkResult.AcceptOnlyFromAmong("passed", "failed", "skipped");
+        var checkExit = new Option<int?>("--check-exit-code") { Description = "Structured command exit code" };
+        var checkKind = new Option<string?>("--check-kind") { Description = "Structured check kind (default command)" };
+        var checkSummary = new Option<string?>("--check-summary") { Description = "Structured check summary (default record summary)" };
 
-        foreach (var opt in new Option[] { taskOption, kindOption, summaryOption, iterOption, statusOption, coversOption, resolveOption, actorOption, revOption, contextOption, impactOption, outcomeOption, occurredAtOption, workspaceOption, formatOption })
+        foreach (var opt in new Option[] { taskOption, kindOption, summaryOption, iterOption, statusOption, coversOption, resolveOption, actorOption, revOption, contextOption, impactOption, outcomeOption, occurredAtOption, workspaceOption, formatOption,
+                     checkCommand, checkResult, checkExit, checkKind, checkSummary })
             cmd.Add(opt);
 
         cmd.SetAction(parse =>
         {
             var format = WorkspaceCommand.ResolveFormat(parse.GetValue(formatOption));
+            var hasCheck = parse.GetValue(checkCommand) != null || parse.GetValue(checkResult) != null || parse.GetValue(checkExit).HasValue || parse.GetValue(checkKind) != null || parse.GetValue(checkSummary) != null;
+            if (hasCheck && (parse.GetValue(checkResult) == null || (parse.GetValue(checkExit).HasValue && parse.GetValue(checkCommand) == null)))
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("task record", Diagnostic.Error(DiagnosticCodes.InvalidArgument,
+                    "A structured check requires --check-result; --check-exit-code also requires --check-command.")).Format(format));
+                return 2;
+            }
             var (found, root, err) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
             if (!found || err != null)
             {
@@ -2564,7 +2649,9 @@ public static class TaskCommand
                 context: parse.GetValue(contextOption),
                 impact: parse.GetValue(impactOption),
                 outcome: parse.GetValue(outcomeOption),
-                occurredAt: parse.GetValue(occurredAtOption));
+                occurredAt: parse.GetValue(occurredAtOption),
+                checks: hasCheck ? new[] { new TaskRecordCheck(parse.GetValue(checkKind) ?? "command", parse.GetValue(checkResult)!,
+                    parse.GetValue(checkSummary) ?? parse.GetValue(summaryOption)!, parse.GetValue(checkCommand), parse.GetValue(checkExit)) } : null);
 
             if (!success || diagnostics.Count > 0 || envelope == null)
             {

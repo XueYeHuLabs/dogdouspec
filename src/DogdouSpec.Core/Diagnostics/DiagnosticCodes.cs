@@ -22,6 +22,7 @@ public static class DiagnosticCodes
     public const string SchemaNotFound = "SCHEMA_NOT_FOUND";
     public const string UnknownDocumentType = "UNKNOWN_DOCUMENT_TYPE";
     public const string LimitExceeded = "LIMIT_EXCEEDED";
+    public const string EmptyQueryResult = "EMPTY_QUERY_RESULT";
     public const string InitializationFailed = "INITIALIZATION_FAILED";
 
     // Semantic validation diagnostic codes

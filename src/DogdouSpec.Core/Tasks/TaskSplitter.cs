@@ -400,7 +400,7 @@ public static class TaskSplitter
             var alreadyAppliedEnv = new MutationEnvelope(
                 "task split",
                 new[] { new MutatedDocument(normTasksDocPath, actualRevision) },
-                alreadyApplied: true);
+                alreadyApplied: true, dryRun: dryRun);
             return (true, alreadyAppliedEnv, Array.Empty<Diagnostic>());
         }
 

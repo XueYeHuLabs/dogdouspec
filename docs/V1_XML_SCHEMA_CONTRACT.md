@@ -404,6 +404,15 @@ Validation is read-only and returns all safely discoverable diagnostics.
 
 ## 14. Deterministic serialization
 
+Public authoring and read helpers may expose existing v1 structures without
+extending these managed schemas. `task record --check-*` writes the existing
+`checks/check` children, and `task records` returns a derived projection, not a
+managed document. `iteration create --file` consumes an `iteration-content`
+intent wrapper and generates a fully validated `iteration`; the wrapper is
+not a new persistent schema or a `transaction apply` payload. Backlog defaults
+generate the same required durable identities and return exact replay values.
+Raw task/change/confirmation request shapes and owner authority remain intact.
+
 The CLI owns writes to managed documents. It preserves untouched text and
 subtrees where possible and serializes changed structures using:
 

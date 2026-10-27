@@ -184,7 +184,7 @@ public sealed class TaskChangeWorkflowCliTests
         Assert.AreEqual("1", XDocument.Load(tasksPath).Root!.Attribute("revision")!.Value);
         var (humanDryCode, humanDryOut, humanDryErr) = RunCli("task", "quick", "--title", "Preview quick", "--scope", "src/**", "--done-when", "preview works", "--why", "test preview", "--iteration", iterId, "--dry-run", "--id", "20260824-task-cli-quick-preview", "--operation-id", "20260824T121000Z-quick-preview", "--workspace-root", _tempDir, "--format", "human");
         Assert.AreEqual(0, humanDryCode, humanDryErr);
-        Assert.IsTrue(humanDryOut.StartsWith("Quick task preview:", StringComparison.Ordinal));
+        StringAssert.Contains(humanDryOut, "DRY RUN, nothing written");
         Assert.IsFalse(humanDryOut.Contains("<task-add", StringComparison.Ordinal));
         var (invalidIterationCode, _, invalidIterationErr) = RunCli("task", "quick", "--title", "Bad iteration", "--scope", "src/**", "--done-when", "no", "--why", "no", "--iteration", "invalid-iteration-id", "--dry-run", "--workspace-root", _tempDir, "--format", "xml");
         Assert.AreEqual(2, invalidIterationCode);

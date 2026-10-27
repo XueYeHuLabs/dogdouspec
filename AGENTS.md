@@ -73,6 +73,8 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
    - Pass exact expected revisions (`--expected-revision <N>`).
    - After each write, run `dogdouspec validate --format xml` and re-query.
    - Persist semantic agent results—implementation summary, source commits, checks, findings, risks, review outcome, blockers, and handoff instructions—in the relevant `tasks.xml` Task records. Do not rely on `.agents/work-results/` or another report folder for recovery.
+   - Discover recent history with `task records --task "<TASK_ID>" --last 5 --kind verification --fields id,created_at,summary,checks`. Use `task record --check-command "..." --check-result passed --check-exit-code 0` for structured check evidence. These entries supplement required execution context and preserve review/owner gates.
+   - For complete new iteration intent, inspect `template show --name iteration.create` and use `iteration create --file`; preview low-level batch edits with `transaction apply --dry-run`. For complex shell expressions, `query/search --xpath-file` avoids argument rewriting.
 7. **Respect Product Authority Gates**:
    - Technical agents cannot auto-complete requirements, design decisions, or iterations.
    - Run `dogdouspec iteration readiness` to check gating status.

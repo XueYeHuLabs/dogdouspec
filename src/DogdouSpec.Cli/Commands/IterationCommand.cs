@@ -131,6 +131,7 @@ public static class IterationCommand
             Description = "Iteration-wide constraint (repeatable); recognizes 'kind: text' or '[kind] text' with any valid token kind",
             AllowMultipleArgumentsPerToken = false
         };
+        var contentFileOption = new Option<string?>("--file") { Description = "Create from <iteration-content> intent in one validated operation (template: iteration.create); product decisions must be pending/proposed" };
 
         var workspaceRootOption = new Option<string?>("--workspace-root")
         {
@@ -148,6 +149,7 @@ public static class IterationCommand
         createCmd.Add(activateOption);
         createCmd.Add(criterionOption);
         createCmd.Add(constraintOption);
+        createCmd.Add(contentFileOption);
         createCmd.Add(workspaceRootOption);
         createCmd.Add(formatOption);
 
@@ -158,6 +160,7 @@ public static class IterationCommand
             var activate = parseResult.GetValue(activateOption);
             var criteria = parseResult.GetValue(criterionOption);
             var constraints = parseResult.GetValue(constraintOption);
+            var contentFile = parseResult.GetValue(contentFileOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
@@ -190,7 +193,7 @@ public static class IterationCommand
 
             if (activate)
             {
-                if (criteria == null || criteria.Length == 0)
+                if (contentFile == null && (criteria == null || criteria.Length == 0))
                 {
                     var envelope = new DiagnosticsEnvelope("iteration create", Diagnostic.Error(
                         DiagnosticCodes.CriterionUndefined,
@@ -199,9 +202,9 @@ public static class IterationCommand
                     return 5;
                 }
 
-                for (var i = 0; i < criteria.Length; i++)
+                for (var i = 0; i < (criteria?.Length ?? 0); i++)
                 {
-                    var (isValid, reason) = IterationCriterionPolicy.Validate(criteria[i], $"index-{i + 1}");
+                    var (isValid, reason) = IterationCriterionPolicy.Validate(criteria![i], $"index-{i + 1}");
                     if (!isValid)
                     {
                         var envelope = new DiagnosticsEnvelope("iteration create", Diagnostic.Error(
@@ -224,13 +227,32 @@ public static class IterationCommand
                 return 2;
             }
 
+            string? contentXml = null;
+            if (contentFile != null)
+            {
+                try
+                {
+                    if (new FileInfo(contentFile).Length > Core.XPath.XPathQueryLimits.MaxDocumentBytes)
+                    {
+                        Console.Error.Write(new DiagnosticsEnvelope("iteration create", Diagnostic.Error(DiagnosticCodes.LimitExceeded, "Iteration content file exceeds 16 MiB.")).Format(format));
+                        return 7;
+                    }
+                    contentXml = File.ReadAllText(contentFile);
+                }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+                {
+                    Console.Error.Write(new DiagnosticsEnvelope("iteration create", Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Cannot read iteration content file: {error.Message}")).Format(format));
+                    return 2;
+                }
+            }
             var (success, envelopeResult, diagnostics) = IterationCreator.Create(
                 discoveredRoot,
                 id,
                 kind,
                 activate: activate,
                 criteria: criteria,
-                constraints: constraints);
+                constraints: constraints,
+                contentXml: contentXml);
 
             if (!success || diagnostics.Count > 0)
             {

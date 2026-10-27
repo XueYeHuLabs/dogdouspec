@@ -526,7 +526,7 @@ public static class IterationConfirmer
                 var alreadyAppliedEnvelope = new MutationEnvelope(
                     "iteration confirm",
                     new[] { new MutatedDocument(normSpecDocPath, actualSpecRev, actualSpecRev) },
-                    alreadyApplied: true);
+                    alreadyApplied: true, dryRun: dryRun);
 
                 return (true, alreadyAppliedEnvelope, Array.Empty<Diagnostic>());
             }

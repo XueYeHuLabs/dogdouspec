@@ -82,6 +82,16 @@ and Task constraints; raw Task queries and `task show` alone do not. Neither
 These edits are ordinary repository work. They are not performed by
 `schema sync` or `skill sync`.
 
+After an upgrade that adds discovery helpers, reconcile local examples with
+`task records`, `task record --check-*`, `query/search --xpath-file`,
+`query --warn-empty`, `transaction apply --dry-run`, backlog default identity
+receipts and `iteration create --file` / `template show --name iteration.create`.
+Use `task next` for pending selection, and describe finish as sequential with
+possible partial progress. The creation input and derived history output do not
+change managed XML schemas; existing raw request/replay contracts remain valid.
+Templates and help come from the selected binary; Skill files require reviewed
+synchronization in existing installations. Preserve project customizations.
+
 ## Verification and Recovery
 
 Run the repository's normal build and test commands, then complete the upgrade

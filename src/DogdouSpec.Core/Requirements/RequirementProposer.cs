@@ -289,7 +289,7 @@ public static class RequirementProposer
                 var alreadyAppliedEnv = new MutationEnvelope(
                     "requirement propose",
                     new[] { new MutatedDocument(normSpecDocPath, actualRevision) },
-                    alreadyApplied: true);
+                    alreadyApplied: true, dryRun: dryRun);
                 return (true, alreadyAppliedEnv, Array.Empty<Diagnostic>());
             }
 
