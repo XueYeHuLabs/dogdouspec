@@ -236,8 +236,9 @@ A feature `spec.xml` contains, in order:
 
 1. Work index.
 2. `product`: objective, deliverables, scope, requirements, and acceptance.
-3. `design`: overview, boundaries, and decisions.
-4. Product confirmations.
+3. Optional `constraints`: iteration-wide technical, environment, or configuration rules.
+4. Optional `design`: overview, boundaries, and decisions.
+5. Product confirmations.
 
 Requirement lifecycle:
 
@@ -255,6 +256,35 @@ Product acceptance decisions are `pending`, `accepted`, `rejected`, or
 Design decision states are `proposed`, `accepted`, `rejected`, and
 `superseded`.
 
+### 8.1 Iteration and Task constraints
+
+`ConstraintType` and `ConstraintsType` are shared types in `common.xsd`, used
+by both `spec.xml` and `tasks.xml`. Each `constraint` has a required time-first
+`id`, narrative text, and an optional `kind` of `TokenKeyType`
+(`[a-z][a-z0-9-]*`). Kinds are open project-defined tokens; `environment`,
+`configuration`, `toolchain`, and `policy` are examples, not an enum.
+
+```xml
+<constraints>
+  <constraint id="20260823-constraint-runtime" kind="environment">.NET 10 is required.</constraint>
+</constraints>
+```
+
+Iteration constraints apply to every Task alongside each Task's local
+constraints. Neither scope overrides or deduplicates the other. Conflicting
+rules require resolution before execution. `task context` projects both into
+essential context with `scope="iteration"` or `scope="task"`, retaining their
+IDs, text, and optional kinds. Scope is output metadata, not a persisted
+`constraint` attribute. A raw Task query or `task show` does not inherit the
+iteration constraints.
+
+In `spec.xml`, the optional `constraints` element follows `product` or
+`research` and precedes optional `design` and required `confirmations`.
+Iteration constraint authoring changes the spec revision, not a tasks
+revision. Existing documents without this element and untyped Task constraints
+remain valid under schema v1. Synchronizing readable schemas does not migrate
+or rewrite those documents.
+
 ## 9. Research specification
 
 Research uses the same Work directory and Task execution model. Its
@@ -269,6 +299,10 @@ Research uses the same Work directory and Task execution model. Its
 
 XSD validates the structural choice. Semantic validation requires `product`
 for `kind="feature"` and `research` for `kind="research"`.
+
+The root order remains `index`, `research`, optional `constraints`, optional
+`design`, then `confirmations`; iteration constraints have the same semantics
+as in feature iterations.
 
 Research completion does not automatically approve a proposed product design.
 Its answers become records, knowledge proposals, Tasks, or a product decision
@@ -291,9 +325,12 @@ There is no persisted global current or next Task pointer. The Skill queries
 current state and selects in document order.
 
 Each Task contains its own objective, rationale, scope, necessary origin and
-dependency references, constraints, technical acceptance, focused context, key
+dependency references, local constraints, technical acceptance, focused context, key
 points, and records. It must not require repeated loading of other Tasks merely
 to understand its own work.
+
+The selected Task's effective constraints additionally include the owning
+iteration's constraints; use `task context` before execution to read both.
 
 Task acceptance states are `pending`, `passed`, `failed`, and
 `not-applicable`. These are technical states and may be updated by Agent

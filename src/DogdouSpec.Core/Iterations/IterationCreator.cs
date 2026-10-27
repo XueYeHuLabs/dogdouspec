@@ -22,6 +22,8 @@ namespace DogdouSpec.Core.Iterations;
 public static class IterationCreator
 {
     private static readonly UTF8Encoding Utf8NoBom = new(false);
+    private static readonly System.Text.RegularExpressions.Regex AutoDetectKindRegex =
+        new(@"^(?:\[([a-z][a-z0-9-]*)\]|([a-z][a-z0-9-]*):)\s*(.+)$", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Create(
         string workspaceRoot,
@@ -31,7 +33,8 @@ public static class IterationCreator
         IFaultInjector? faultInjector = null,
         string version = "1.0",
         bool activate = false,
-        IEnumerable<string>? criteria = null)
+        IEnumerable<string>? criteria = null,
+        IEnumerable<string>? constraints = null)
     {
         clock ??= SystemClock.Instance;
 
@@ -50,6 +53,7 @@ public static class IterationCreator
         }
 
         var criteriaList = criteria != null ? criteria.ToList() : null;
+        var constraintsList = constraints != null ? constraints.ToList() : null;
         if (activate && (criteriaList == null || criteriaList.Count == 0))
         {
             return (false, null, new[] { Diagnostic.Error(
@@ -67,6 +71,27 @@ public static class IterationCreator
                     return (false, null, new[] { Diagnostic.Error(
                         DiagnosticCodes.CriterionUndefined,
                         reason ?? "Acceptance criterion text is undefined.") });
+                }
+            }
+        }
+
+        if (constraintsList != null)
+        {
+            for (var i = 0; i < constraintsList.Count; i++)
+            {
+                var item = constraintsList[i];
+                if (string.IsNullOrWhiteSpace(item))
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Constraint at index {i + 1} cannot be null or empty.") });
+                }
+                var (k, text) = ParseConstraintInput(item);
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Constraint text at index {i + 1} cannot be empty.") });
+                }
+                if (text.Length > 4096)
+                {
+                    return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Constraint text at index {i + 1} exceeds maximum length of 4096 characters.") });
                 }
             }
         }
@@ -106,11 +131,11 @@ public static class IterationCreator
             string specContent;
             if (string.Equals(kind, "feature", StringComparison.Ordinal))
             {
-                specContent = GenerateFeatureSpecXml(normalizedId, timePrefix, slug, isoTime, activate, criteriaList);
+                specContent = GenerateFeatureSpecXml(normalizedId, timePrefix, slug, isoTime, activate, criteriaList, constraintsList);
             }
             else
             {
-                specContent = GenerateResearchSpecXml(normalizedId, timePrefix, slug, isoTime, activate, criteriaList);
+                specContent = GenerateResearchSpecXml(normalizedId, timePrefix, slug, isoTime, activate, criteriaList, constraintsList);
             }
 
             var tasksContent = GenerateTasksXml(normalizedId, timePrefix, slug);
@@ -232,6 +257,40 @@ public static class IterationCreator
         fs.Flush(true);
     }
 
+    private static (string? Kind, string Text) ParseConstraintInput(string input)
+    {
+        var trimmed = input.Trim();
+        var match = AutoDetectKindRegex.Match(trimmed);
+        if (match.Success)
+        {
+            var kind = !string.IsNullOrEmpty(match.Groups[1].Value) ? match.Groups[1].Value : match.Groups[2].Value;
+            var text = match.Groups[3].Value.Trim();
+            return (kind.ToLowerInvariant(), text);
+        }
+        return (null, trimmed);
+    }
+
+    private static string GenerateConstraintsXml(string date, string slug, IReadOnlyList<string>? constraintsList)
+    {
+        if (constraintsList == null || constraintsList.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine("  <constraints>");
+        for (var i = 0; i < constraintsList.Count; i++)
+        {
+            var id = constraintsList.Count == 1 ? $"{date}-constraint-{slug}" : string.Create(CultureInfo.InvariantCulture, $"{date}-constraint-{slug}-{i + 1}");
+            var (kind, text) = ParseConstraintInput(constraintsList[i]);
+            var escapedText = SecurityElement.Escape(text);
+            var kindAttr = !string.IsNullOrEmpty(kind) ? $" kind=\"{kind}\"" : string.Empty;
+            sb.AppendLine(CultureInfo.InvariantCulture, $"    <constraint id=\"{id}\"{kindAttr}>{escapedText}</constraint>");
+        }
+        sb.Append("  </constraints>");
+        return sb.ToString();
+    }
+
     private static string GenerateCriteriaXml(string date, string slug, IReadOnlyList<string>? criteriaList, string defaultPlaceholder)
     {
         if (criteriaList == null || criteriaList.Count == 0)
@@ -253,7 +312,7 @@ public static class IterationCreator
         return sb.ToString();
     }
 
-    private static string GenerateFeatureSpecXml(string id, string date, string slug, string isoTime, bool activate, IReadOnlyList<string>? criteriaList)
+    private static string GenerateFeatureSpecXml(string id, string date, string slug, string isoTime, bool activate, IReadOnlyList<string>? criteriaList, IReadOnlyList<string>? constraintsList)
     {
         var status = activate ? "active" : "draft";
         var reqStatus = activate ? "approved" : "proposed";
@@ -270,6 +329,9 @@ public static class IterationCreator
   </confirmations>
 """
             : "  <confirmations/>";
+
+        var constraintsXml = GenerateConstraintsXml(date, slug, constraintsList);
+        var constraintsBlock = string.IsNullOrEmpty(constraintsXml) ? string.Empty : "\n" + constraintsXml;
 
         return $"""
 <?xml version="1.0" encoding="utf-8"?>
@@ -315,14 +377,14 @@ public static class IterationCreator
     <acceptance>
 {GenerateCriteriaXml(date, slug, criteriaList, "Product criterion pending definition.")}
     </acceptance>
-  </product>
+  </product>{constraintsBlock}
 {confirmationsElement}
 </iteration>
 
 """.Replace("\r\n", "\n");
     }
 
-    private static string GenerateResearchSpecXml(string id, string date, string slug, string isoTime, bool activate, IReadOnlyList<string>? criteriaList)
+    private static string GenerateResearchSpecXml(string id, string date, string slug, string isoTime, bool activate, IReadOnlyList<string>? criteriaList, IReadOnlyList<string>? constraintsList)
     {
         var status = activate ? "active" : "draft";
         var confirmIdPrefix = date.Contains('T', StringComparison.Ordinal) ? date : $"{date}T000000Z";
@@ -335,6 +397,9 @@ public static class IterationCreator
   </confirmations>
 """
             : "  <confirmations/>";
+
+        var constraintsXml = GenerateConstraintsXml(date, slug, constraintsList);
+        var constraintsBlock = string.IsNullOrEmpty(constraintsXml) ? string.Empty : "\n" + constraintsXml;
 
         return $"""
 <?xml version="1.0" encoding="utf-8"?>
@@ -370,7 +435,7 @@ public static class IterationCreator
     <acceptance>
 {GenerateCriteriaXml(date, slug, criteriaList, "Research criterion pending definition.")}
     </acceptance>
-  </research>
+  </research>{constraintsBlock}
 {confirmationsElement}
 </iteration>
 

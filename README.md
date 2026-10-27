@@ -144,8 +144,15 @@ All commands run directly through `dogdouspec <command> [options]`:
   ```
 - **Iteration Creation** (supports `--activate` for immediate active state)
   ```powershell
-  dogdouspec iteration create --id YYYYMMDD-name --kind feature|research [--activate] [--workspace-root PATH] [--format xml|human]
+  dogdouspec iteration create --id YYYYMMDD-name --kind feature|research [--constraint "kind: text" ...] [--activate --criterion "..."] [--workspace-root PATH] [--format xml|human]
   ```
+- **Iteration Constraints** (apply to every Task in the iteration)
+  ```powershell
+  dogdouspec iteration constraint add --iteration ID --text "..." [--kind TOKEN] [--constraint-id ID] [--expected-spec-revision N] [--format xml|human]
+  dogdouspec iteration constraint list [--iteration ID] [--format xml|human]
+  dogdouspec iteration constraint remove --iteration ID --constraint-id ID [--expected-spec-revision N] [--format xml|human]
+  ```
+  Constraints are stored in `spec.xml`. Add/remove use its revision through `--expected-spec-revision`; the CLI resolves the current revision when omitted. Creation accepts repeatable `--constraint`. Its text, and add's text when `--kind` is omitted, recognize `kind: text` or `[kind] text` and remove that prefix. Constraint kinds are open tokens (`[a-z][a-z0-9-]*`), such as `environment`, `configuration`, or a project-specific kind. Explicit add `--kind` preserves the supplied text apart from outer whitespace. See the [CLI contract](docs/V1_CLI_CONTRACT.md#44-iteration-constraints) for the full behavior and authority boundaries.
 - **Iteration Activation** (Porcelain command)
   ```powershell
   dogdouspec iteration activate [--iteration ID] [--auto-approve] [--summary "..."] [--format xml|human]
@@ -187,7 +194,10 @@ All commands run directly through `dogdouspec <command> [options]`:
   - `task quick --title ... --scope ... --done-when ... --why ... [--start]` (Quick-create task)
   - `task next [--iteration <ID>]` (Discover next actionable task with progression assessment facts)
   - `task blockers [--iteration <ID>] [--task <ID>] [--owner <OWNER>] [--due-only]` (Query active blockers and recheck queue)
-  - `task context --task <TASK_ID> [--iteration <ID>] [--max-bytes <N>] [--no-history]` (Query bounded, traceable task recovery context)
+  - `task context --task <TASK_ID> [--iteration <ID>] [--max-bytes <N>] [--no-history]` (Read bounded context with effective iteration and Task constraints)
+
+  Before starting or resuming a selected Task, read `task context --no-history`. Its essential constraints retain both `scope="iteration"` and `scope="task"`, including optional `kind`; both scopes apply. Raw Task queries and `task show` do not include iteration constraints. Re-read context after a constraint change, and resolve conflicts before execution.
+
 - **Plumbing & Governance Operations**:
   - `task update` (Raw XML state machine update), `task review` (Review gate submission), `task add`, `task revise`, `task split`
   - `requirement propose`, `change propose`, `change apply`

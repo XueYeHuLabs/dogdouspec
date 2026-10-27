@@ -2472,11 +2472,11 @@ public static class TaskCommand
 
     private static Command BuildContextCommand()
     {
-        var cmd = new Command("context", "Query bounded task recovery context for resumption (read-only)");
-        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID to query recovery context for" };
+        var cmd = new Command("context", "Read bounded task context, including iteration and task constraints, before execution or resumption (read-only)");
+        var taskOption = new Option<string>("--task") { Required = true, Description = "Task ID to query context for" };
         var iterOption = new Option<string?>("--iteration") { Description = "Iteration ID (optional, auto-detects active iteration)" };
         var maxBytesOption = new Option<int?>("--max-bytes") { Description = "Maximum output size bound in bytes (default: 32768)" };
-        var noHistoryOption = new Option<bool>("--no-history") { Description = "Omit supplemental history records for compact context presentation" };
+        var noHistoryOption = new Option<bool>("--no-history") { Description = "Omit supplemental history; retain essential iteration and task constraints" };
         var workspaceOption = new Option<string?>("--workspace-root") { Description = "Workspace root directory (optional)" };
         var formatOption = new Option<string?>("--format") { Description = "Output format (xml or human)" };
         formatOption.AcceptOnlyFromAmong("xml", "human");

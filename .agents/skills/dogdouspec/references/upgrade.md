@@ -73,6 +73,12 @@ After mechanical synchronization, the agent decides whether to update:
 - local policy text that intentionally extends the shipped Skill;
 - version pins and package-manager configuration.
 
+In particular, reconcile repository or shared ancestor `AGENTS.md` execution
+steps so every selected or resumed Task reads `task context --no-history`
+before execution. That view includes both iteration constraints from `spec.xml`
+and Task constraints; raw Task queries and `task show` alone do not. Neither
+`skill sync` nor `schema sync` updates this bootstrap guidance automatically.
+
 These edits are ordinary repository work. They are not performed by
 `schema sync` or `skill sync`.
 

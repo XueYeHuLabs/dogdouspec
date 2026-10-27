@@ -448,6 +448,13 @@ The `skill guide` output (§0 of SKILL.md) explains:
 - How to tailor build/verification commands to the target project's tech stack.
 - What files to commit to Git.
 
+The merged repository or shared ancestor `AGENTS.md` must require
+`task context --task <TASK_ID> --iteration <ITERATION_ID> --no-history`
+before starting or resuming Task execution. Agents must read both iteration
+constraints from `spec.xml` and Task constraints. A raw Task query or
+`task show` alone omits iteration constraints. Neither Skill installation nor
+`skill sync`/`schema sync` changes `AGENTS.md` automatically.
+
 > [!NOTE]
 > A structural baseline for `AGENTS.md` is available in the DogdouSpec source repository at [`templates/v1/AGENTS.md`](../templates/v1/AGENTS.md). Coding agents or project maintainers may use it as a starting point and adapt it to the target project.
 
@@ -624,6 +631,12 @@ The agent updates **AGENTS.md**, local guidance, wrappers, CI, build scripts,
 documentation, and version pins when the current Guide or repository requires
 it. DogdouSpec never performs those judgment-based edits and never stages,
 commits, or pushes.
+
+As part of that reconciliation, verify repository or shared ancestor
+`AGENTS.md` requires `task context --no-history` before each selected or
+resumed Task executes, so both iteration and Task constraints are read.
+Refreshing Skill and schema files alone does not update that execution entry
+point; raw Task queries and `task show` do not include iteration constraints.
 
 ### 8.2. Vendored Installation
 

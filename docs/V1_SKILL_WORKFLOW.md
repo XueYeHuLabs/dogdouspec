@@ -83,14 +83,29 @@ Task selection is derived each time:
 
 There is no persisted next-Task pointer.
 
-After selecting one Task, load the complete Task by ID:
+After selecting one Task, and whenever resuming it, read bounded context before
+starting or continuing execution:
+
+```powershell
+dogdouspec task context --task "<TASK_ID>" --iteration "<ITERATION_ID>" --no-history --format xml
+```
+
+The essential constraints include iteration rules from `spec.xml` with
+`scope="iteration"` and Task rules with `scope="task"`, retaining optional
+`kind`. Both scopes apply; Task rules do not override iteration rules. Resolve
+conflicts before execution and re-read context after a constraint change.
+`--no-history` removes supplemental records only. If essential context exceeds
+the limit, increase `--max-bytes`; do not bypass the failure with a raw Task read.
+
+Load full Task details by ID only when additional detail is needed:
 
 ```xpath
 //task[@id=$task_id]
 ```
 
 Do not load unrelated Task bodies unless a verified reference or investigation
-requires them.
+requires them. Raw Task queries and `task show` do not include iteration
+constraints and cannot substitute for the required context read.
 
 ## 4. Understand before editing
 
@@ -100,7 +115,7 @@ Before repository edits, the Skill must identify:
 - Scope and exclusions.
 - Origin Requirement or research question.
 - Dependencies.
-- Constraints and technical acceptance.
+- Effective iteration and Task constraints, and technical acceptance.
 - Key points and current context snapshot.
 - Active questions, findings, and previous attempts.
 - Applicable project knowledge discovered through explicit index terms or
