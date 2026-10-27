@@ -168,7 +168,20 @@
     </xs:sequence>
   </xs:complexType>
 
+  <xs:complexType name="ConstraintType" mixed="true">
+    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
+    <xs:attribute name="kind" type="TokenKeyType" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="ConstraintsType">
+    <xs:sequence>
+      <xs:element name="constraint" type="ConstraintType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
   <xs:element name="index" type="IndexType"/>
   <xs:element name="ref" type="RefType"/>
   <xs:element name="record" type="RecordType"/>
+  <xs:element name="constraint" type="ConstraintType"/>
+  <xs:element name="constraints" type="ConstraintsType"/>
 </xs:schema>

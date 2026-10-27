@@ -51,18 +51,15 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
      ```powershell
      dogdouspec query --document "<ITERATION_ID>/tasks.xml" --xpath "ds:filter(/tasks/task[@status='in-progress' or @status='verification'][1], '@id', '@status', '@agent', 'index')" --format xml
      ```
-     Or query bounded recovery context directly:
-     ```powershell
-     dogdouspec task context --task "<TASK_ID>" [--no-history] --format xml
-     ```
    - Phase 1b (If no task is in-progress, select first ready pending task):
      ```powershell
      dogdouspec task next --iteration "<ITERATION_ID>" --format xml
      ```
-   - Phase 2 (Load full selected task):
+   - Phase 2 (Required before starting or resuming execution: read selected Task context and effective constraints):
      ```powershell
-     dogdouspec query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id='<TASK_ID>']" --format xml
+     dogdouspec task context --task "<TASK_ID>" --iteration "<ITERATION_ID>" --no-history --format xml
      ```
+     Read both `scope="iteration"` constraints from `spec.xml` and `scope="task"` constraints. Both scopes apply. Raw Task queries and `task show` do not include iteration constraints and cannot replace this step. Increase `--max-bytes` if essential context exceeds the limit; resolve conflicting constraints before execution. Query full Task details or history only as needed, and re-read context after a constraint change.
 4. **Follow the Checked-In Skill**:
    - Read [`.agents/skills/dogdouspec/SKILL.md`](.agents/skills/dogdouspec/SKILL.md) and its references for complete guidelines on XPath projections, mutation semantics, and authority rules.
 5. **Code Changes & Verification**:
@@ -75,6 +72,8 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
    - Pass exact expected revisions (`--expected-revision <N>`).
    - After each write, run `dogdouspec validate --format xml` and re-query.
    - Persist semantic agent results—implementation summary, source commits, checks, findings, risks, review outcome, blockers, and handoff instructions—in the relevant `tasks.xml` Task records. Do not rely on `.agents/work-results/` or another report folder for recovery.
+   - Discover recent history with `task records --task "<TASK_ID>" --last 5 --kind verification --fields id,created_at,summary,checks`. Use `task record --check-command "..." --check-result passed --check-exit-code 0` for structured check evidence. These entries supplement required execution context and preserve review/owner gates.
+   - For complete new iteration intent, inspect `template show --name iteration.create` and use `iteration create --file`; preview low-level batch edits with `transaction apply --dry-run`. For complex shell expressions, `query/search --xpath-file` avoids argument rewriting.
 7. **Respect Product Authority Gates**:
    - Technical agents cannot auto-complete requirements, design decisions, or iterations.
    - Run `dogdouspec iteration readiness` to check gating status.

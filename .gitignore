@@ -11,3 +11,4 @@ publish-out/
 *.sha256
 *.pfx
 .reviews/
+/DOGDOUSPEC_USAGE_REPORT.md

@@ -106,20 +106,25 @@ try {
             throw "GitHub CLI was requested with -AutoUpload but 'gh' is not available."
         }
         Write-Host "`n[Step 5/5] Automated GitHub Release Upload via GitHub CLI..." -ForegroundColor Yellow
+        # Windows PowerShell turns redirected native stderr into errors; a missing release is expected here.
+        $savedErrorActionPreference = $ErrorActionPreference
         try {
+            $ErrorActionPreference = "Continue"
             $releaseCheck = & gh release view $tag 2>&1
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "Uploading signed assets to existing release $tag..."
-                & gh release upload $tag $zipName "$zipName.sha256" --clobber
-            } else {
-                Write-Host "Creating release $tag and uploading signed assets..."
-                & gh release create $tag $zipName "$zipName.sha256" --title "$tag" --generate-notes
-            }
-            Write-Host "`n[SUCCESS] Release $tag created/updated and signed assets uploaded automatically!" -ForegroundColor Green
-            return
-        } catch {
-            Write-Warning "Automated gh upload failed: $_"
+            $releaseExists = $LASTEXITCODE -eq 0
+        } finally {
+            $ErrorActionPreference = $savedErrorActionPreference
         }
+        if ($releaseExists) {
+            Write-Host "Uploading assets to existing release $tag..."
+            & gh release upload $tag $zipName "$zipName.sha256" --clobber
+        } else {
+            Write-Host "Creating release $tag and uploading assets..."
+            & gh release create $tag $zipName "$zipName.sha256" --title "$tag" --generate-notes
+        }
+        if ($LASTEXITCODE -ne 0) { throw "GitHub release upload failed with exit code $LASTEXITCODE." }
+        Write-Host "`n[SUCCESS] Release $tag created/updated and assets uploaded automatically!" -ForegroundColor Green
+        return
     }
 
     # Manual instructions fallback

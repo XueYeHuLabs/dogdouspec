@@ -27,9 +27,9 @@ public static class SearchCommand
 
         var xpathOption = new Option<string?>("--xpath")
         {
-            Description = "XPath 1.0 expression to evaluate against each managed document",
-            Required = true
+            Description = "XPath 1.0 expression to evaluate against each managed document"
         };
+        var xpathFileOption = new Option<string?>("--xpath-file") { Description = "Read the expression from a file instead of --xpath; avoids shell path rewriting" };
 
         var varOption = new Option<string[]>("--var")
         {
@@ -51,6 +51,7 @@ public static class SearchCommand
         searchCmd.Add(scopeOption);
         searchCmd.Add(iterationOption);
         searchCmd.Add(xpathOption);
+        searchCmd.Add(xpathFileOption);
         searchCmd.Add(varOption);
         searchCmd.Add(workspaceRootOption);
         searchCmd.Add(formatOption);
@@ -59,7 +60,7 @@ public static class SearchCommand
         {
             var scope = parseResult.GetValue(scopeOption);
             var iterationId = parseResult.GetValue(iterationOption);
-            var xpath = parseResult.GetValue(xpathOption);
+            var (xpath, xpathError) = XPathInput.Read(parseResult.GetValue(xpathOption), parseResult.GetValue(xpathFileOption));
             var rawVars = parseResult.GetValue(varOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
@@ -115,13 +116,11 @@ public static class SearchCommand
                 return 2;
             }
 
-            if (string.IsNullOrWhiteSpace(xpath))
+            if (xpathError != null)
             {
-                var envelope = new DiagnosticsEnvelope("search", Diagnostic.Error(
-                    DiagnosticCodes.InvalidArgument,
-                    "--xpath expression is required and cannot be empty."));
+                var envelope = new DiagnosticsEnvelope("search", xpathError);
                 Console.Error.Write(envelope.Format(format));
-                return 2;
+                return envelope.GetExitCode();
             }
 
             Dictionary<string, string> variables;
@@ -153,7 +152,7 @@ public static class SearchCommand
                     discoveredRoot,
                     scope.ToLowerInvariant(),
                     normalizedIterationId,
-                    xpath,
+                    xpath!,
                     variables);
 
                 if (format == OutputFormat.Xml)

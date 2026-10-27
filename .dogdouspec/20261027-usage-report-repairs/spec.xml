@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20261027-usage-report-repairs" schema_version="1.0" revision="3" kind="feature" status="active" created_at="2026-10-27T08:06:06Z" updated_at="2026-10-27T08:06:34Z">
+  <index>
+    <summary>[Active] Owner requested a new isolated iteration and execution of verified usage-report repairs on 2026-10-27.</summary>
+    <term key="kind" value="feature" />
+    <term key="iteration" value="20261027-usage-report-repairs" />
+    <term key="status" value="active" />
+    <term key="topic" value="usage-report" />
+  </index>
+  <product>
+    <objective>Address the verified DogdouSpec usage-report defects and missing public entries in an isolated worktree; preserve governance semantics and defer product design decisions.</objective>
+    <deliverables>
+      <deliverable id="20261027-deliv-usage-report-repairs">
+        <index>
+          <summary>Verified CLI fixes, public authoring/read entries, documentation and regression evidence.</summary>
+          <term key="kind" value="deliverable" />
+        </index>
+        <description>Safe additive mutations, timestamp handling, truthful previews and finish receipts; history, check, backlog and iteration-content entries; installed guidance and regression tests.</description>
+      </deliverable>
+    </deliverables>
+    <scope>
+      <included>
+        <item>DogdouSpec CLI/Core, schemas only where required for supported inputs, tests, embedded skill, bootstrap, contracts and installation/upgrade guidance in the isolated worktree.</item>
+      </included>
+      <excluded>
+        <item>Original checkout changes, release publishing, gate relaxation, standing iterations, criterion hand-off design, new external evidence types and knowledge/backlog model redesign.</item>
+      </excluded>
+    </scope>
+    <requirements>
+      <requirement id="20261027-req-usage-report-repairs" status="approved">
+        <index>
+          <summary>Fix verified usability defects and expose existing capabilities without weakening governance.</summary>
+          <term key="kind" value="requirement" />
+        </index>
+        <statement>Implement the explicit repairs and entry improvements approved in the owner request of 2026-10-27, as bounded by this iteration acceptance and excluded product decisions.</statement>
+        <rationale>The assessed usage report contains reproducible defects and discovery failures; fixes must be independently testable and isolated from the main checkout rebuild.</rationale>
+      </requirement>
+    </requirements>
+    <acceptance>
+      <criterion id="20261027-crit-usage-report-repairs-1" decision="pending">Same- and cross-iteration dependencies have correct scope; adding scope preserves existing repositories, includes, exclusions and concurrent revision protection.</criterion>
+      <criterion id="20261027-crit-usage-report-repairs-2" decision="pending">Far-future explicit timestamps fail without mutation while generated task operations remain monotonic, including legacy future metadata and replay.</criterion>
+      <criterion id="20261027-crit-usage-report-repairs-3" decision="pending">Transaction dry-run is public and read-only; all previews identify themselves; finish reports each applied transition and the complete revision range.</criterion>
+      <criterion id="20261027-crit-usage-report-repairs-4" decision="pending">Task records can be selected by last count, kind and fields with explicit truncation; XPath files avoid shell conversion and empty query diagnostics are opt-in.</criterion>
+      <criterion id="20261027-crit-usage-report-repairs-5" decision="pending">Task record accepts existing structured check evidence; backlog helpers generate optional identities, attribution and time without weakening explicit replay or open kind semantics.</criterion>
+      <criterion id="20261027-crit-usage-report-repairs-6" decision="pending">A public content input creates complete draft iteration intent atomically without a placeholder rewrite, while product approval gates stay intact.</criterion>
+      <criterion id="20261027-crit-usage-report-repairs-7" decision="pending">Help, embedded skill, bootstrap guidance, public contracts and fresh/upgrade resources describe all new entries; full build passes with zero warnings and errors.</criterion>
+    </acceptance>
+  </product>
+  <constraints>
+    <constraint id="20261027-constraint-usage-report-repairs-1" kind="workspace">Implement and validate only in L:/dogdouspec-usage-repairs; preserve the original checkout for its separate rebuild.</constraint>
+    <constraint id="20261027-constraint-usage-report-repairs-2" kind="policy">Preserve raw request schemas, exact revision checks, owner decisions and independent review gates; defer unresolved product design to backlog.</constraint>
+  </constraints>
+  <confirmations>
+    <confirmation id="20261027T080634Z-confirm-activate" action="activate" decision="accepted" actor="owner" decided_at="2026-10-27T08:06:34Z">
+      <summary>Owner requested a new isolated iteration and execution of verified usage-report repairs on 2026-10-27.</summary>
+      <requirements>
+        <requirement target="20261027-req-usage-report-repairs" decision="approved" />
+      </requirements>
+    </confirmation>
+  </confirmations>
+</iteration>

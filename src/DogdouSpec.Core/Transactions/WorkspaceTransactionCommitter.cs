@@ -106,7 +106,7 @@ public static class WorkspaceTransactionCommitter
                 .Select(o => new MutatedDocument(o.NormalizedPath, o.Op.NewRevision, o.Op.ExpectedRevision))
                 .ToList();
 
-            return (true, new MutationEnvelope(commandName, mutatedDocs), Array.Empty<Diagnostic>());
+            return (true, new MutationEnvelope(commandName, mutatedDocs, dryRun: true), Array.Empty<Diagnostic>());
         }
 
         // 2. Acquire writer lock

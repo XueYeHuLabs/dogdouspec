@@ -1,0 +1,671 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20261027-tasks-usage-report-repairs" iteration="20261027-usage-report-repairs" schema_version="1.0" revision="62">
+  <index>
+    <summary>Tasks for iteration 20261027-usage-report-repairs.</summary>
+    <term key="iteration" value="20261027-usage-report-repairs" />
+  </index>
+  <task id="20261027-task-usage-additive" status="done" created_at="2026-10-27T08:06:35Z" updated_at="2026-10-27T08:11:02Z" agent="codex" started_at="2026-10-27T08:07:41Z" completed_at="2026-10-27T08:11:02Z">
+    <index>
+      <summary>Repair additive dependency and scope authoring</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Repair additive dependency and scope authoring</title>
+    <objective>Same- and cross-iteration dependencies have correct scope; adding scope preserves existing repositories, includes, exclusions and concurrent revision protection.</objective>
+    <rationale>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261027-req-usage-report-repairs" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261027-task-usage-additive-done" status="passed">Same- and cross-iteration dependencies have correct scope; adding scope preserves existing repositories, includes, exclusions and concurrent revision protection.</criterion>
+    </acceptance>
+    <context>
+      <summary>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</summary>
+    </context>
+    <records>
+      <record id="20261027T080635Z-op-additive-2265e4da-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:35Z" actor="quick-task" operation_id="20261027T080635Z-op-additive-2265e4da">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="735160ad50182836d3d4b51f4bbbde76f067c746adca5d3c902949431738016e" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261027T080741Z-record-start-4d0346e7816045f89c961de742833a90" kind="start" status="informational" created_at="2026-10-27T08:07:41Z" actor="agent" operation_id="20261027T080741Z-taskstart-0baad7474d0d4a799c9e6d6ecd54a05e">
+        <summary>Begin the scoped repair after reading effective iteration and task constraints.</summary>
+      </record>
+      <record id="20261027T081101Z-record-verification-3290d2da96fb4f54b99e0be78ce86d3a" kind="verification" status="informational" created_at="2026-10-27T08:11:01Z" actor="agent" operation_id="20261027T081101Z-taskrecord-77f7f6bea2814998b2a37ec8d04bd56c">
+        <summary>Implemented additive scope merging with repository/exclusion/rationale preservation, snapshot revision protection and document/project dependency resolution. Validation: UsageReportRegressionCliTests 4/4 passed; build 0 warnings/errors. Raw scope replacement semantics remain unchanged.</summary>
+      </record>
+      <record id="20261027T081102Z-record-verify-4ed7aadaca174d14928b3a49a0b10c30" kind="verification" status="informational" created_at="2026-10-27T08:11:02Z" actor="agent" operation_id="20261027T081102Z-taskverify-d7c2155692fd4844a225ecbae100e90d">
+        <summary>Verified task 20261027-task-usage-additive.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-additive-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T081102Z-record-complete-9ff13a93c67c4089919676c36c5d12a0" kind="completion" status="informational" created_at="2026-10-27T08:11:02Z" actor="agent" operation_id="20261027T081102Z-taskcomplete-858696a54357459a9f98667eb53c04cd">
+        <summary>Implemented additive scope merging with repository/exclusion/rationale preservation, snapshot revision protection and document/project dependency resolution. Validation: UsageReportRegressionCliTests 4/4 passed; build 0 warnings/errors. Raw scope replacement semantics remain unchanged.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-additive-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261027-task-usage-time" status="done" created_at="2026-10-27T08:06:35Z" updated_at="2026-10-27T08:16:49Z" agent="codex" started_at="2026-10-27T08:11:03Z" completed_at="2026-10-27T08:16:49Z">
+    <index>
+      <summary>Make task timestamps safe and monotonic</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Make task timestamps safe and monotonic</title>
+    <objective>Far-future explicit timestamps fail without mutation while generated task operations remain monotonic, including legacy future metadata and replay.</objective>
+    <rationale>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261027-req-usage-report-repairs" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261027-task-usage-time-done" status="passed">Far-future explicit timestamps fail without mutation while generated task operations remain monotonic, including legacy future metadata and replay.</criterion>
+    </acceptance>
+    <context>
+      <summary>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</summary>
+    </context>
+    <records>
+      <record id="20261027T080635Z-op-time-0a9971f9-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:35Z" actor="quick-task" operation_id="20261027T080635Z-op-time-0a9971f9">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="8d1c513fe0ef3340fdf7b9b14cfb2bd396d66a4fd48e979146c9f8483a141912" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261027T081103Z-record-start-06367885496a4549918c6ea992b2c36f" kind="start" status="informational" created_at="2026-10-27T08:11:03Z" actor="agent" operation_id="20261027T081103Z-taskstart-8340e0c4be8e406db4518e0491e3da8e">
+        <summary>Begin the scoped repair after reading effective iteration and task constraints.</summary>
+      </record>
+      <record id="20261027T081648Z-record-verification-ef847023b8224e0897b93279357b50b2" kind="verification" status="informational" created_at="2026-10-27T08:16:48Z" actor="agent" operation_id="20261027T081648Z-taskrecord-acc2bf7a1884452292fe4817154221c5">
+        <summary>Added a five-minute clock-skew policy to task authoring/update/review requests after replay checks; new future timestamps fail without mutation, legacy committed times can be continued monotonically. Automatic revise/start/review time resolves committed task time; finish no longer manufactures future seconds. Validation: 6 CLI and 72 existing Core tests passed, zero build warnings/errors.</summary>
+      </record>
+      <record id="20261027T081649Z-record-verify-0c5b2cc327084d9bb6ac46d485bd0967" kind="verification" status="informational" created_at="2026-10-27T08:16:49Z" actor="agent" operation_id="20261027T081649Z-taskverify-09c724ef873245b8865462860352b57b">
+        <summary>Verified task 20261027-task-usage-time.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-time-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T081649Z-record-complete-cd6d1f1442d24b84aa77334c78b0f7a8" kind="completion" status="informational" created_at="2026-10-27T08:16:49Z" actor="agent" operation_id="20261027T081649Z-taskcomplete-de9bd54ed0bf4122b8bd48a1ca0ff63f">
+        <summary>Added a five-minute clock-skew policy to task authoring/update/review requests after replay checks; new future timestamps fail without mutation, legacy committed times can be continued monotonically. Automatic revise/start/review time resolves committed task time; finish no longer manufactures future seconds. Validation: 6 CLI and 72 existing Core tests passed, zero build warnings/errors.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-time-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261027-task-usage-mutations" status="done" created_at="2026-10-27T08:06:36Z" updated_at="2026-10-27T08:23:23Z" agent="codex" started_at="2026-10-27T08:16:50Z" completed_at="2026-10-27T08:23:23Z">
+    <index>
+      <summary>Expose safe mutation previews and complete finish receipts</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Expose safe mutation previews and complete finish receipts</title>
+    <objective>Transaction dry-run is public and read-only; all previews identify themselves; finish reports each applied transition and the complete revision range.</objective>
+    <rationale>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261027-req-usage-report-repairs" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261027-task-usage-mutations-done" status="passed">Transaction dry-run is public and read-only; all previews identify themselves; finish reports each applied transition and the complete revision range.</criterion>
+    </acceptance>
+    <context>
+      <summary>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</summary>
+    </context>
+    <records>
+      <record id="20261027T080636Z-op-mutations-3f7d6b3a-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:36Z" actor="quick-task" operation_id="20261027T080636Z-op-mutations-3f7d6b3a">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="4943d5c110bd34783c2633635c87c5ee6b70c0aa626b6aad85ead854f6184e21" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261027T081650Z-record-start-89268216480c470788c78ba2a6af0c34" kind="start" status="informational" created_at="2026-10-27T08:16:50Z" actor="agent" operation_id="20261027T081650Z-taskstart-3067d98627754d6b993699d4cb1bf957">
+        <summary>Begin the scoped repair after reading effective iteration and task constraints.</summary>
+      </record>
+      <record id="20261027T082322Z-record-verification-5afaf28202f143a794a3a4b61d613939" kind="verification" status="informational" created_at="2026-10-27T08:23:22Z" actor="agent" operation_id="20261027T082322Z-taskrecord-063422cd2a814775bb5c18ffd5366536">
+        <summary>Exposed transaction apply --dry-run using the existing guarded engine; mutation envelopes and replay previews now identify dry-run state in XML and human output. Finish reports ordered transitions, full revision range and explicit partial receipts on failure while retaining review gates. Validation: 37 CLI and 11 transaction Core tests passed with zero warnings/errors.</summary>
+      </record>
+      <record id="20261027T082322Z-record-verify-86561d68b409445fabc8a814613d91da" kind="verification" status="informational" created_at="2026-10-27T08:23:22Z" actor="agent" operation_id="20261027T082322Z-taskverify-36a42d3a1f26452fb5a3b8b39fe963ca">
+        <summary>Verified task 20261027-task-usage-mutations.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-mutations-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T082323Z-record-complete-4373db305cb64fd6ace94d7f985313e8" kind="completion" status="informational" created_at="2026-10-27T08:23:23Z" actor="agent" operation_id="20261027T082323Z-taskcomplete-77ec38c3694e4bbb8c727d71f99cdf0b">
+        <summary>Exposed transaction apply --dry-run using the existing guarded engine; mutation envelopes and replay previews now identify dry-run state in XML and human output. Finish reports ordered transitions, full revision range and explicit partial receipts on failure while retaining review gates. Validation: 37 CLI and 11 transaction Core tests passed with zero warnings/errors.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-mutations-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261027-task-usage-history" status="done" created_at="2026-10-27T08:06:37Z" updated_at="2026-10-27T08:28:53Z" agent="codex" started_at="2026-10-27T08:23:24Z" completed_at="2026-10-27T08:28:53Z">
+    <index>
+      <summary>Expose bounded history and robust XPath inputs</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Expose bounded history and robust XPath inputs</title>
+    <objective>Task records can be selected by last count, kind and fields with explicit truncation; XPath files avoid shell conversion and empty query diagnostics are opt-in.</objective>
+    <rationale>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261027-req-usage-report-repairs" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261027-task-usage-history-done" status="passed">Task records can be selected by last count, kind and fields with explicit truncation; XPath files avoid shell conversion and empty query diagnostics are opt-in.</criterion>
+    </acceptance>
+    <context>
+      <summary>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</summary>
+    </context>
+    <records>
+      <record id="20261027T080637Z-op-history-47d7b08c-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:37Z" actor="quick-task" operation_id="20261027T080637Z-op-history-47d7b08c">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="2fdd094139216b9b47e8e9e1466588bd77bd771bf27a7d00a283ef2196c28a8b" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261027T082324Z-record-start-1ce6cd50a7134540862cc7effed719fd" kind="start" status="informational" created_at="2026-10-27T08:23:24Z" actor="agent" operation_id="20261027T082324Z-taskstart-d891bd845f4f4ae99dc453d2587a8e6c">
+        <summary>Begin the scoped repair after reading effective iteration and task constraints.</summary>
+      </record>
+      <record id="20261027T082852Z-record-verification-3e5d271157a14a34866ebb567469a1ef" kind="verification" status="informational" created_at="2026-10-27T08:28:52Z" actor="agent" operation_id="20261027T082852Z-taskrecord-f023d9f5f8b6465093769abb3bd1b958">
+        <summary>Added bounded task records history with last/kind/field selection, explicit Unicode-safe summary truncation and byte-limit refusal. Added mutually exclusive XPath file input to query/search and opt-in empty-node-set structure hints without changing scalar zero or default stdout/stderr. Validation: 46 CLI and 46 XPath Core tests passed, zero warnings/errors.</summary>
+      </record>
+      <record id="20261027T082853Z-record-verify-22ffeb1be6304631b21188941661e896" kind="verification" status="informational" created_at="2026-10-27T08:28:53Z" actor="agent" operation_id="20261027T082853Z-taskverify-69006ae517e74e7cb11afdaee1a28464">
+        <summary>Verified task 20261027-task-usage-history.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-history-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T082853Z-record-complete-feacd75a859f4c32a2a6498848e02c05" kind="completion" status="informational" created_at="2026-10-27T08:28:53Z" actor="agent" operation_id="20261027T082853Z-taskcomplete-4bcdb5d90dbc4c11912895148d35cd46">
+        <summary>Added bounded task records history with last/kind/field selection, explicit Unicode-safe summary truncation and byte-limit refusal. Added mutually exclusive XPath file input to query/search and opt-in empty-node-set structure hints without changing scalar zero or default stdout/stderr. Validation: 46 CLI and 46 XPath Core tests passed, zero warnings/errors.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-history-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261027-task-usage-authoring" status="done" created_at="2026-10-27T08:06:37Z" updated_at="2026-10-27T08:35:38Z" agent="codex" started_at="2026-10-27T08:28:54Z" completed_at="2026-10-27T08:35:38Z">
+    <index>
+      <summary>Expose existing structured checks and backlog defaults</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Expose existing structured checks and backlog defaults</title>
+    <objective>Task record accepts existing structured check evidence; backlog helpers generate optional identities, attribution and time without weakening explicit replay or open kind semantics.</objective>
+    <rationale>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261027-req-usage-report-repairs" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261027-task-usage-authoring-done" status="passed">Task record accepts existing structured check evidence; backlog helpers generate optional identities, attribution and time without weakening explicit replay or open kind semantics.</criterion>
+    </acceptance>
+    <context>
+      <summary>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</summary>
+    </context>
+    <records>
+      <record id="20261027T080637Z-op-authoring-16b96df2-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:37Z" actor="quick-task" operation_id="20261027T080637Z-op-authoring-16b96df2">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="3c9bb4a3e33ec1ef6c50ccb609024b9e26f2abdd1db10910b50f97210bfbeced" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261027T082854Z-record-start-2f62dd7e0d674408a62d96cd47293493" kind="start" status="informational" created_at="2026-10-27T08:28:54Z" actor="agent" operation_id="20261027T082854Z-taskstart-378e118b812143c1b4a681c4ff6168af">
+        <summary>Begin the scoped repair after reading effective iteration and task constraints.</summary>
+      </record>
+      <record id="20261027T083535Z-record-verification-33ae8f9cbe3e47908b8d3eabbcb12bd9" kind="verification" status="informational" created_at="2026-10-27T08:35:35Z" actor="agent" operation_id="20261027T083535Z-taskrecord-2154693a42df432984e4b338d495c430">
+        <summary>Exposed existing check command/result/exit-code/summary evidence through task record and task records projection, preserving covers and criterion state. Backlog add/transition helpers now generate optional identities, timestamps and actor attribution, return replay parameters, and derive deterministic defaults from an explicit UTC operation prefix. Open kind tokens remain valid. Validation: 20 CLI and 3 backlog Core tests passed, zero warnings/errors.</summary>
+      </record>
+      <record id="20261027T083536Z-record-verify-42e250bf100a46ce9df141964a8f43ca" kind="verification" status="informational" created_at="2026-10-27T08:35:36Z" actor="agent" operation_id="20261027T083536Z-taskverify-21f64495d9c0492d8165109d16a922f3">
+        <summary>Verified task 20261027-task-usage-authoring.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-authoring-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T083538Z-record-complete-e4cede983be94bd584c6399dc0f86270" kind="completion" status="informational" created_at="2026-10-27T08:35:38Z" actor="agent" operation_id="20261027T083538Z-taskcomplete-7b6c4edb614c4cbaba4b997eca334590">
+        <summary>Exposed existing check command/result/exit-code/summary evidence through task record and task records projection, preserving covers and criterion state. Backlog add/transition helpers now generate optional identities, timestamps and actor attribution, return replay parameters, and derive deterministic defaults from an explicit UTC operation prefix. Open kind tokens remain valid. Validation: 20 CLI and 3 backlog Core tests passed, zero warnings/errors.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-authoring-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261027-task-usage-creation" status="done" created_at="2026-10-27T08:06:38Z" updated_at="2026-10-27T08:47:54Z" agent="codex" started_at="2026-10-27T08:35:40Z" completed_at="2026-10-27T08:47:54Z">
+    <index>
+      <summary>Create meaningful iteration content in one validated operation</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Create meaningful iteration content in one validated operation</title>
+    <objective>A public content input creates complete draft iteration intent atomically without a placeholder rewrite, while product approval gates stay intact.</objective>
+    <rationale>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261027-req-usage-report-repairs" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261027-task-usage-creation-done" status="passed">A public content input creates complete draft iteration intent atomically without a placeholder rewrite, while product approval gates stay intact.</criterion>
+    </acceptance>
+    <context>
+      <summary>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</summary>
+    </context>
+    <records>
+      <record id="20261027T080638Z-op-creation-4a63f7e3-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:38Z" actor="quick-task" operation_id="20261027T080638Z-op-creation-4a63f7e3">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="3e0accbcbaf4c7409ba5b9781ee6a6345488346b5339ce3e68109bfe65715207" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261027T083540Z-record-start-2e4461e4045c47358c32f22a247fed37" kind="start" status="informational" created_at="2026-10-27T08:35:40Z" actor="agent" operation_id="20261027T083540Z-taskstart-68cc7953fcd14180933820748d2e3fef">
+        <summary>Begin the scoped repair after reading effective iteration and task constraints.</summary>
+      </record>
+      <record id="20261027T084753Z-record-verification-dae596f949df4e8285852c32f4aaea59" kind="verification" status="informational" created_at="2026-10-27T08:47:53Z" actor="agent" operation_id="20261027T084753Z-taskrecord-2616875465404b7f931062e16b33ed24">
+        <summary>Implemented iteration create --file and the embedded iteration.create template. Full prospective validation publishes complete feature/research intent in one operation, rejects imported decisions and conflicting acceptance sources, and retains owner activation/product acceptance boundaries. Fixed same-day activation confirmation ID collisions. Four new creation scenarios and the same-day dependency regression passed.</summary>
+      </record>
+      <record id="20261027T084753Z-record-verify-3a849dc8488b44498284aeac812597d7" kind="verification" status="informational" created_at="2026-10-27T08:47:53Z" actor="agent" operation_id="20261027T084753Z-taskverify-3b1a9988d0c740708100d29d85557b04">
+        <summary>Verified task 20261027-task-usage-creation.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-creation-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T084754Z-record-complete-a6b32dc14db544578e881f03ea2fecad" kind="completion" status="informational" created_at="2026-10-27T08:47:54Z" actor="agent" operation_id="20261027T084754Z-taskcomplete-bb8d664cbc474794a0d814afd3f2cfdf">
+        <summary>Implemented iteration create --file and the embedded iteration.create template. Full prospective validation publishes complete feature/research intent in one operation, rejects imported decisions and conflicting acceptance sources, and retains owner activation/product acceptance boundaries. Fixed same-day activation confirmation ID collisions. Four new creation scenarios and the same-day dependency regression passed.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-creation-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261027-task-usage-integration" status="done" created_at="2026-10-27T08:06:39Z" updated_at="2026-10-27T08:59:17Z" agent="codex" started_at="2026-10-27T08:48:18Z" completed_at="2026-10-27T08:59:17Z">
+    <index>
+      <summary>Reconcile guidance and validate usage-report repairs</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Reconcile guidance and validate usage-report repairs</title>
+    <objective>Help, embedded skill, bootstrap guidance, public contracts and fresh/upgrade resources describe all new entries; full build passes with zero warnings and errors.</objective>
+    <rationale>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="docs/**" />
+        <include path=".agents/**" />
+        <include path="tests/**" />
+        <include path="templates/**" />
+        <include path="src/**" />
+        <include path="README.md" />
+        <include path="AGENTS.md" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261027-req-usage-report-repairs" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261027-task-usage-integration-done" status="passed">Help, embedded skill, bootstrap guidance, public contracts and fresh/upgrade resources describe all new entries; full build passes with zero warnings and errors.</criterion>
+    </acceptance>
+    <context>
+      <summary>Implement the bounded owner-requested repair scope from DOGDOUSPEC_USAGE_REPORT.md and the assessment.</summary>
+    </context>
+    <records>
+      <record id="20261027T080639Z-op-integration-f0819384-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:06:39Z" actor="quick-task" operation_id="20261027T080639Z-op-integration-f0819384">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="b05604be1ff819c6660bbf97808349e05b8ecf79c18a50a241572a9936ecc254" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261027T084818Z-record-start-10cc739014614f11852b170879d78653" kind="start" status="informational" created_at="2026-10-27T08:48:18Z" actor="agent" operation_id="20261027T084818Z-taskstart-acaa9250811d49039d5cd6f5b4abe2ff">
+        <summary>Begin the scoped repair after reading effective iteration and task constraints.</summary>
+      </record>
+      <record id="20261027T084843Z-record-revise-c838689e658343cdb8cff72c98473d26" kind="decision" status="informational" created_at="2026-10-27T08:48:43Z" actor="agent" operation_id="20261027T084843Z-taskrev-af86d39d9e004bd5911a709f07cf9966">
+        <summary>Include embedded guidance, bootstrap, public help and integration regression checks.</summary>
+      </record>
+      <record id="20261027T084843Z-taskrev-af86d39d9e004bd5911a709f07cf9966-receipt" kind="discussion" status="informational" created_at="2026-10-27T08:48:43Z" actor="agent" operation_id="20261027T084843Z-taskrev-af86d39d9e004bd5911a709f07cf9966">
+        <index>
+          <summary>Task revision receipt.</summary>
+          <term key="request-sha256" value="c590a956d647b34723fbbd5f8035de73062f4922c56cff854eb5d3a1d087aec2" />
+        </index>
+        <summary>Task revision receipt.</summary>
+      </record>
+      <record id="20261027T085806Z-record-verification-edf882a4a3ae4997a2c8f762e83db192" kind="verification" status="informational" created_at="2026-10-27T08:58:06Z" actor="codex" operation_id="20261027T085806Z-taskrecord-f44ad794b80c4e5c88454a12eca2094a">
+      <summary>Final source acceptance on feat/usage-report-repairs based on 6695aa0: all 955 tests passed (666 Core and 289 CLI), no skips, zero build warnings/errors. Includes additive dependency/scope safety, future-clock guard and legacy continuation, truthful dry-run and partial finish receipts, bounded records/XPath input, structured checks, backlog defaults/replay, complete iteration intent and same-day confirmation IDs. Raw request schemas and owner/independent-review gates remain intact. No source commit has been created for this iteration.</summary>
+<checks>
+          <check kind="command" result="passed" command=".\build.cmd" exit_code="0">
+            <summary>955 passed; zero failed/skipped; build zero warnings/errors.</summary>
+          </check>
+        </checks>      <covers>
+          <ref scope="document" target="20261027-task-usage-integration-done" relation="covers" />
+        </covers>
+    </record>
+      <record id="20261027T085849Z-record-verification-0a12364b956d414a876625c40cfee10e" kind="verification" status="informational" created_at="2026-10-27T08:58:49Z" actor="codex" operation_id="20261027T085849Z-taskrecord-063aee3f52ed45eb89cf04287d2573de">
+      <summary>Independent-process smoke passed with 35 source CLI calls in a fresh temporary workspace: iteration content, canonical operational quick-preview replay through task add, structured check/query projection, XPath file input, transaction preview byte preservation, complete finish transitions, generated backlog identity replay, and reviewed skill/schema upgrade. Upgrade preserved all managed XML bytes and repository-owned AGENTS.md. Fresh and upgrade automated resource tests also passed. Seven product research backlog items are open; request-targeting consistency was explicitly deferred alongside release containers/draft undo, criterion handoff, review experience, typed external evidence, knowledge adoption and backlog annotations. The low-confidence checked_documents variation was not reproduced and has no speculative behavior change.</summary>
+<checks>
+          <check kind="command" result="passed" command="python dogdouspec-usage-smoke.py (temporary external harness)" exit_code="0">
+            <summary>35 native CLI calls passed across eight end-to-end scenarios; no managed state or repository-policy changes from upgrade.</summary>
+          </check>
+        </checks>      <covers>
+          <ref scope="document" target="20261027-task-usage-integration-done" relation="covers" />
+        </covers>
+    </record>
+      <record id="20261027T085914Z-record-verify-ddc9326e3fc04a9a93fe2fbec4d8b496" kind="verification" status="informational" created_at="2026-10-27T08:59:14Z" actor="agent" operation_id="20261027T085914Z-taskverify-566e97fcf92a4b0fa6a0496224be2002">
+        <summary>Full build, regression, embedded-resource and native CLI smoke acceptance passed.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-integration-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T085917Z-record-complete-55dd3b95f7a043b48736a0f712d97ff6" kind="completion" status="informational" created_at="2026-10-27T08:59:17Z" actor="agent" operation_id="20261027T085917Z-taskcomplete-dd213bd791384d95a8a5a4d74d11f2e9">
+        <summary>Technical delivery accepted: 955 tests and 35 native CLI smoke calls passed; public help, skill, bootstrap, contracts and install/upgrade instructions reconciled. Seven research backlog items remain undecided. Work stays isolated on feat/usage-report-repairs. Managed files backlog.xml and 20261027-usage-report-repairs/spec.xml plus tasks.xml are locally durable but uncheckpointed; no Git-write request has been given for this new repair iteration. Product criteria and final iteration confirmation remain pending owner acceptance.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-integration-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T091401Z-record-discussion-a23e8883a3d84a328518c9b5494b09e3" kind="discussion" status="informational" created_at="2026-10-27T09:14:01Z" actor="codex" operation_id="20261027T091401Z-taskrecord-ff4455d0da1e4020bb95292d3af36c72">
+        <summary>Owner requested rebasing the isolated repair branch after main history was rebuilt. Rebased feat/usage-report-repairs with --onto 1e65374f6d51b1e2d411aa2c903b3f69e656930b 4ea543e19ce5680b20a5b044cf9fb7750c735ab4. The existing iteration-constraint commit 6695aa066ee8c343307d79580b4f24c884659369 is now dc69f2522415aeabde8026f97d8df4cc750a65e4; range-diff reports identical patches and the new main is its direct parent. Restored all 51 pre-rebase uncommitted paths without conflicts or missing files; three documents incorporated only upstream cleanup, and twelve source files normalized to repository LF endings. Repair implementation and governed state were preserved. Post-rebase build passed all 955 tests (666 Core, 289 CLI), zero warnings/errors; skill/schema status and workspace validation passed. Repair changes and the three authoritative files remain uncommitted in L:/dogdouspec-usage-repairs; product acceptance is still pending.</summary>
+        <checks>
+          <check kind="command" result="passed" command=".\build.cmd" exit_code="0">
+            <summary>Post-rebase: 955 tests passed; zero failures/skips and zero build warnings/errors.</summary>
+          </check>
+        </checks>
+      </record>
+    </records>
+  </task>
+  <task id="20261027-task-usage-xpath-guidance" status="done" created_at="2026-10-27T09:16:39Z" updated_at="2026-10-27T09:19:55Z" agent="codex" started_at="2026-10-27T09:17:13Z" completed_at="2026-10-27T09:19:55Z">
+    <index>
+      <summary>Guard XPath execution guidance in distributed skills</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Guard XPath execution guidance in distributed skills</title>
+    <objective>XPath guidance uses task next for pending readiness and task context --no-history before execution; embedded guide and fresh/upgrade distribution tests enforce both rules.</objective>
+    <rationale>Owner review found that dc69f25 still contains stale XPath guidance. The current uncommitted repair already corrects it, but distribution regression checks must explicitly cover both rules.</rationale>
+    <scope>
+      <repository path=".">
+        <include path=".agents/skills/dogdouspec/references/xpath.md" />
+        <include path="tests/DogdouSpec.Cli.Tests/IterationConstraintCliTests.cs" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261027-req-usage-report-repairs" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261027-task-usage-xpath-guidance-done" status="passed">XPath guidance uses task next for pending readiness and task context --no-history before execution; embedded guide and fresh/upgrade distribution tests enforce both rules.</criterion>
+    </acceptance>
+    <context>
+      <summary>Owner review found that dc69f25 still contains stale XPath guidance. The current uncommitted repair already corrects it, but distribution regression checks must explicitly cover both rules.</summary>
+    </context>
+    <records>
+      <record id="20261027T091639Z-op-usage-xpath-guidance-receipt" kind="discussion" status="informational" created_at="2026-10-27T09:16:39Z" actor="quick-task" operation_id="20261027T091639Z-op-usage-xpath-guidance">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="2c8cc4d7d250321be25300ff22fcaa9f9424a412026e5ae7e2c31249ad4e1e94" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261027T091713Z-record-start-517d92fc30364f48a52f6bc5a058db79" kind="start" status="informational" created_at="2026-10-27T09:17:13Z" actor="agent" operation_id="20261027T091713Z-taskstart-f9e9b67adc0743ed98948fcfe7335e74">
+        <summary>Verify and guard the two XPath workflow corrections in embedded and installed guidance.</summary>
+      </record>
+      <record id="20261027T091953Z-record-verification-a283f5285440424ea3cdda0dba8073cb" kind="verification" status="informational" created_at="2026-10-27T09:19:53Z" actor="codex" operation_id="20261027T091953Z-taskrecord-391b26a7d8f94081a77611d447731837">
+      <summary>Confirmed owner review: dc69f25 contains the stale XPath reference, while the isolated uncommitted repair replaces pending readiness XPath with mandatory task next and replaces raw Task loading with task context --no-history. Clarified both effective constraint scopes and fail-closed context sizing. Added explicit regression assertions on the installed XPath reference for fresh and upgraded workspaces and on skill guide --all embedded output; assertions reject the old local pending dependency expression and Full Document Loading instruction. Full build passed all 955 tests (666 Core, 289 CLI), zero warnings/errors, and embedded skill status is in sync. Corrections remain uncommitted in this repair iteration, so they are not yet part of dc69f25.</summary>
+<checks>
+          <check kind="command" result="passed" command=".\build.cmd" exit_code="0">
+            <summary>955 tests passed; fresh/upgrade and embedded Guide assertions passed; zero build warnings/errors.</summary>
+          </check>
+        </checks>      <covers>
+          <ref scope="document" target="20261027-task-usage-xpath-guidance-done" relation="covers" />
+        </covers>
+    </record>
+      <record id="20261027T091955Z-record-verify-081b8084fe2e4def876887f46b3d4575" kind="verification" status="informational" created_at="2026-10-27T09:19:55Z" actor="agent" operation_id="20261027T091955Z-taskverify-49ccc4660bcd46bca925efaf817d658f">
+        <summary>Verified task 20261027-task-usage-xpath-guidance.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-xpath-guidance-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T091955Z-record-complete-73041f5fc6f64f55bbdf6938a9e4649f" kind="completion" status="informational" created_at="2026-10-27T09:19:55Z" actor="agent" operation_id="20261027T091955Z-taskcomplete-d9f0c0c43e1843538df81a31d6f36243">
+        <summary>XPath workflow guidance corrected and explicitly guarded in embedded Guide and fresh/upgrade resource regressions. Full build and all 955 tests passed. User review finding resolved in the current uncommitted repair; no owner product acceptance or Git commit is implied.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-xpath-guidance-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261027-task-usage-gemini-review" status="done" created_at="2026-10-27T09:26:12Z" updated_at="2026-10-27T09:52:22Z" agent="gemini-4-argon-high" started_at="2026-10-27T09:26:22Z" completed_at="2026-10-27T09:52:22Z">
+    <index>
+      <summary>Review all uncommitted repairs with Gemini 4 Argon High</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Review all uncommitted repairs with Gemini 4 Argon High</title>
+    <objective>The requested agy.exe Gemini 4 Argon High review inspects tracked and untracked changes, returns actionable findings or a scoped clean result, and preserves semantic review evidence in the Task.</objective>
+    <rationale>Owner explicitly requested an independent Gemini review of the current uncommitted repair iteration.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261027-req-usage-report-repairs" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261027-task-usage-gemini-review-done" status="passed">The requested agy.exe Gemini 4 Argon High review inspects tracked and untracked changes, returns actionable findings or a scoped clean result, and preserves semantic review evidence in the Task.</criterion>
+    </acceptance>
+    <context>
+      <summary>Owner explicitly requested an independent Gemini review of the current uncommitted repair iteration.</summary>
+    </context>
+    <records>
+      <record id="20261027T092612Z-op-usage-gemini-review-receipt" kind="discussion" status="informational" created_at="2026-10-27T09:26:12Z" actor="quick-task" operation_id="20261027T092612Z-op-usage-gemini-review">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="6aadc496496bc6687ffaca2d684e59852ac04782a5c37751fa34d0a1936fcbb5" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261027T092622Z-record-start-4242ef0c53cc4ba790d93806d4112e5b" kind="start" status="informational" created_at="2026-10-27T09:26:22Z" actor="gemini-4-argon-high" operation_id="20261027T092622Z-taskstart-73e85af15613431dad6e41abf1a6786f">
+        <summary>Begin the owner-requested read-only external model review after reading effective constraints.</summary>
+      </record>
+      <record id="20261027T095151Z-record-verification-eee34065338b4931b5538c6fc17caaec" kind="verification" status="informational" created_at="2026-10-27T09:51:51Z" actor="codex-coordinator" operation_id="20261027T095151Z-taskrecord-9b28e9e1bbc54d7db9d9613c14385813">
+      <summary>Owner-requested independent review completed via agy.exe --model gemini-4-argon-high --effort high --mode plan --sandbox, external review session (identifier redacted). Reviewed all 41 modified tracked and 10 untracked files against dc69f25; hash manifest confirmed all 51 contents unchanged during review. Final verdict REQUEST CHANGES: P2 KnowledgeLifecycle.cs:101-107/358-359 omits dryRun from replay envelopes, so knowledge add --dry-run replay lacks dry_run=true and human output says Mutation applied; P3 IterationContentInput.cs:44-63 validates explicit file acceptance only on activation, allowing blank/seeded criteria in a draft unlike --criterion. Coordinator independently reproduced both using the current compiled CLI in an external temporary workspace. The first report also alleged task records contract mismatch and missing check-command validation/default-kind mismatch; direct disk and live CLI checks disproved them, and Gemini explicitly withdrew both on recheck. Model sandbox vstest aborted after a 90-second testhost connection timeout; coordinator reran the same focused tests outside sandbox, all 34 passed. Final raw report and parent reproduction evidence are transient external artifacts under external-artifact:. No implementation changes or Git commit were made by this review. Two remediation tasks will track accepted findings.</summary>
+<checks>
+          <check kind="review-execution" result="passed" command="agy.exe --model gemini-4-argon-high --effort high --mode plan --sandbox --print &lt;review and recheck prompts&gt;" exit_code="0">
+            <summary>Requested model review and recheck completed successfully; implementation verdict REQUEST CHANGES with one P2 and one P3, both independently reproduced.</summary>
+          </check>
+        </checks>      <covers>
+          <ref scope="document" target="20261027-task-usage-gemini-review-done" relation="covers" />
+        </covers>
+    </record>
+      <record id="20261027T095222Z-record-verify-4143168219f24fc6b7afab8ce29f7d70" kind="verification" status="informational" created_at="2026-10-27T09:52:22Z" actor="codex-coordinator" operation_id="20261027T095222Z-taskverify-91f9563891084e3588a7f6e64cae6354">
+        <summary>Verified task 20261027-task-usage-gemini-review.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-gemini-review-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T095222Z-record-complete-01ae4adb8b94436eb229a9e2611e2a8d" kind="completion" status="informational" created_at="2026-10-27T09:52:22Z" actor="codex-coordinator" operation_id="20261027T095222Z-taskcomplete-340ca5634b8f4bafa940c9e9bc16bfe9">
+        <summary>Gemini 4 Argon High review delivered and reconciled: REQUEST CHANGES, one confirmed P2 and one confirmed P3; two false positives withdrawn after direct disk recheck. Independent CLI reproductions confirm accepted findings, and coordinator focused rerun passed 34 tests. Review execution is complete; pending remediation is tracked separately and product acceptance remains pending.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-gemini-review-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T101627Z-record-discussion-e2d6d4d72ed94c85aad4a3eb951fb4da" kind="discussion" status="informational" created_at="2026-10-27T10:16:27Z" actor="codex" operation_id="20261027T101627Z-taskrecord-8ff8d2a8501142219af5ba30195cd490">
+        <summary>Follow-up to the historical REQUEST CHANGES review: both valid findings are now independently closed by remediation tasks 20261027-task-usage-review-preview and 20261027-task-usage-review-criteria. Knowledge replay preserves preview identity; explicit file criteria use the shared definition policy before draft publication. Added 14 boundary regressions; 42 focused cases and full build 969 tests passed, zero warnings/errors. Fresh agy Gemini 4 Argon High/high-effort review external review session (identifier redacted) returned PASS with no findings after direct disk inspection and independent compiled-CLI probes; source hashes unchanged. Report external-artifact:review.json, SHA256 74da92f6287ab1a2e667f7d0f5771ae0f43493fbf81f7a5e7d0abef9931a11ce. Preserve original review history. Seven product design research backlog items remain deferred. Technical tasks complete; product acceptance and final iteration confirmation remain with the owner. Changes remain uncommitted in the isolated worktree.</summary>
+      </record>
+    </records>
+  </task>
+  <task id="20261027-task-usage-review-preview" status="done" created_at="2026-10-27T09:52:24Z" updated_at="2026-10-27T10:15:49Z" agent="codex" started_at="2026-10-27T10:00:20Z" completed_at="2026-10-27T10:15:49Z">
+    <index>
+      <summary>Preserve dry-run identity in knowledge replay receipts</summary>
+      <term key="kind" value="quick" />
+      <term key="priority" value="p2" />
+    </index>
+    <title>Preserve dry-run identity in knowledge replay receipts</title>
+    <objective>Identical knowledge add dry-run replay returns already_applied=true plus dry_run=true, human output identifies DRY RUN, and managed bytes/revision stay unchanged; regression tests pass.</objective>
+    <rationale>Confirmed Gemini review P2 at KnowledgeLifecycle.cs:101-107 and 358-359: ReplayEnvelope drops dryRun. Coordinator native CLI reproduction confirmed missing dry_run and misleading Mutation applied output. Pass the preview flag through this existing replay path without changing knowledge product semantics.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Knowledge/**" />
+        <include path="tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261027-req-usage-report-repairs" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20261027-task-usage-gemini-review" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20261027-task-usage-review-preview-done" status="passed">Identical knowledge add dry-run replay returns already_applied=true plus dry_run=true, human output identifies DRY RUN, and managed bytes/revision stay unchanged; regression tests pass.</criterion>
+    </acceptance>
+    <context>
+      <summary>Confirmed Gemini review P2 at KnowledgeLifecycle.cs:101-107 and 358-359: ReplayEnvelope drops dryRun. Coordinator native CLI reproduction confirmed missing dry_run and misleading Mutation applied output. Pass the preview flag through this existing replay path without changing knowledge product semantics.</summary>
+    </context>
+    <records>
+      <record id="20261027T095224Z-op-review-preview-receipt" kind="discussion" status="informational" created_at="2026-10-27T09:52:24Z" actor="quick-task" operation_id="20261027T095224Z-op-review-preview">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="7ebd0e1d0357776825c9fd47c2b2cabc253b3e5208f18703e1abe9e9e2eebbd2" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261027T100020Z-record-start-4bc541c72b034275a84ee9ee0e4a82a0" kind="start" status="informational" created_at="2026-10-27T10:00:20Z" actor="agent" operation_id="20261027T100020Z-taskstart-e91fb35862f14dcfa51e235f00d0ade0">
+        <summary>Start the authorized fix/review loop for the confirmed knowledge replay preview finding.</summary>
+      </record>
+      <record id="20261027T100629Z-record-verification-eab8a01677e14abbb50bef3587a3c86c" kind="verification" status="informational" created_at="2026-10-27T10:06:29Z" actor="codex" operation_id="20261027T100629Z-taskrecord-525d5bbeff94413fba3956f3596e9f80">
+      <summary>Fixer validation: KnowledgeLifecycle now threads dryRun through its exact-replay envelope. New CLI cases verify current and previous expected revisions, XML dry_run=true plus already_applied=true, human DRY RUN heading, unchanged knowledge bytes/revision and successful workspace validation. The 42 usage-report CLI cases passed, including 14 new loop regressions; full build passed 969 tests (666 Core, 303 CLI), zero warnings/errors. Awaiting independent Gemini re-review; this record does not close the review finding.</summary>
+<checks>
+          <check kind="command" result="passed" command=".\build.cmd" exit_code="0">
+            <summary>969 tests passed; 14 new loop regression cases included; zero build warnings/errors.</summary>
+          </check>
+        </checks>      <covers>
+          <ref scope="document" target="20261027-task-usage-review-preview-done" relation="covers" />
+        </covers>
+    </record>
+      <record id="20261027T100631Z-record-verify-3c82259d81e84548ae8fb6234eb5a014" kind="verification" status="informational" created_at="2026-10-27T10:06:31Z" actor="agent" operation_id="20261027T100631Z-taskverify-f9f4c477ec0f44c3a7d2f613d8eacb2a">
+        <summary>Implementation and full test checks passed; independent re-review remains pending.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-review-preview-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T101539Z-record-decision-89b2e27a641e4a06b460aee7ef9b25e1" kind="decision" status="informational" created_at="2026-10-27T10:15:39Z" actor="gemini-4-argon-high" operation_id="20261027T101539Z-taskrecord-a9bbf2337a9e43e48bc71aaeb82d1db8">
+      <summary>Independent Gemini 4 Argon High re-review PASS with zero findings; original P2 closed. Direct disk inspection and independent compiled-CLI probes confirmed dry-run replay at prior/current revisions labels XML and human output correctly, while normal replay, revision checks and recovery guards remain correct. Fixer tests: 42 focused cases and full build 969 tests passed with zero warnings/errors; reviewer did not rerun vstest because of sandbox testhost IPC limits. Provenance: agy high effort, external review session (identifier redacted); exit 0; candidate hashes unchanged throughout review. Raw report external-artifact:review.json, SHA256 74da92f6287ab1a2e667f7d0f5771ae0f43493fbf81f7a5e7d0abef9931a11ce.</summary>
+<checks>
+          <check kind="review" result="passed" command="agy.exe --model gemini-4-argon-high --effort high --mode plan --sandbox" exit_code="0">
+            <summary>Independent external review passed; original knowledge replay preview finding closed; zero new actionable findings.</summary>
+          </check>
+        </checks>      <covers>
+          <ref scope="document" target="20261027-task-usage-review-preview-done" relation="covers" />
+        </covers>
+    </record>
+      <record id="20261027T101549Z-record-complete-2b8a95b94fe84585ae542a70103bcc6d" kind="completion" status="informational" created_at="2026-10-27T10:15:49Z" actor="codex" operation_id="20261027T101549Z-taskcomplete-dab9944c12d947d8ae4fc64e01b4a35e">
+        <summary>Fixed replay preview identity, passed 969-test full build, and closed original P2 after independent Gemini 4 Argon High PASS with zero findings.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-review-preview-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261027-task-usage-review-criteria" status="done" created_at="2026-10-27T09:52:41Z" updated_at="2026-10-27T10:16:11Z" agent="codex" started_at="2026-10-27T10:00:22Z" completed_at="2026-10-27T10:16:11Z">
+    <index>
+      <summary>Validate explicit content-file acceptance in draft creation</summary>
+      <term key="kind" value="quick" />
+      <term key="priority" value="p3" />
+    </index>
+    <title>Validate explicit content-file acceptance in draft creation</title>
+    <objective>Explicit blank or seeded placeholder acceptance in iteration create --file fails with CRITERION_UNDEFINED before publishing even without --activate; omission can retain the existing draft scaffold and defined file/flag criteria remain valid.</objective>
+    <rationale>Confirmed Gemini review P3 at IterationContentInput.cs:44-63: the content-file path validates defined criteria only on activation, while the --criterion path validates explicit values in draft creation too. Coordinator native CLI reproduction created a blank criterion via file and observed exit 5 for the equivalent flag. Apply the shared policy to explicit file acceptance without blocking intentional generated draft scaffolding.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Iterations/**" />
+        <include path="tests/**" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261027-req-usage-report-repairs" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20261027-task-usage-gemini-review" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20261027-task-usage-review-criteria-done" status="passed">Explicit blank or seeded placeholder acceptance in iteration create --file fails with CRITERION_UNDEFINED before publishing even without --activate; omission can retain the existing draft scaffold and defined file/flag criteria remain valid.</criterion>
+    </acceptance>
+    <context>
+      <summary>Confirmed Gemini review P3 at IterationContentInput.cs:44-63: the content-file path validates defined criteria only on activation, while the --criterion path validates explicit values in draft creation too. Coordinator native CLI reproduction created a blank criterion via file and observed exit 5 for the equivalent flag. Apply the shared policy to explicit file acceptance without blocking intentional generated draft scaffolding.</summary>
+    </context>
+    <records>
+      <record id="20261027T095241Z-op-review-criteria-receipt" kind="discussion" status="informational" created_at="2026-10-27T09:52:41Z" actor="quick-task" operation_id="20261027T095241Z-op-review-criteria">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="6607a22c649a1617c978688bb93e47f4db4fe7416c157065e874fc84acd07d4b" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261027T100022Z-record-start-13c16e4e1fd94a2791057f545408532e" kind="start" status="informational" created_at="2026-10-27T10:00:22Z" actor="agent" operation_id="20261027T100022Z-taskstart-eef0ea84e3294eaab8fb0c1dda689b62">
+        <summary>Start the authorized fix/review loop for explicit file acceptance policy validation and compatibility regressions.</summary>
+      </record>
+      <record id="20261027T100633Z-record-verification-1cb334102d144cf98a362c3b4020381c" kind="verification" status="informational" created_at="2026-10-27T10:06:33Z" actor="codex" operation_id="20261027T100633Z-taskrecord-7a16ef00679a4c3ebee8a8df5aec62b3">
+      <summary>Fixer validation: IterationContentInput captures explicit acceptance before inserting generated scaffolding, and reuses IterationCriterionPolicy.Validate for explicit file criteria or activation. New feature/research CLI cases reject empty/whitespace and both seeded placeholder literals before publishing with byte-identical existing managed XML. Compatibility tests preserve omitted-acceptance draft scaffolding and reject its activation. Existing valid file/flag creation paths passed. Full build passed 969 tests (666 Core, 303 CLI), zero warnings/errors. Awaiting independent Gemini re-review; finding remains pending review.</summary>
+<checks>
+          <check kind="command" result="passed" command=".\build.cmd" exit_code="0">
+            <summary>969 tests passed; explicit rejection and omitted-scaffold compatibility cases passed; zero build warnings/errors.</summary>
+          </check>
+        </checks>      <covers>
+          <ref scope="document" target="20261027-task-usage-review-criteria-done" relation="covers" />
+        </covers>
+    </record>
+      <record id="20261027T100635Z-record-verify-79be3dfd72804a90bbe57ae4161fcd62" kind="verification" status="informational" created_at="2026-10-27T10:06:35Z" actor="agent" operation_id="20261027T100635Z-taskverify-dbecf404fcbf42e6b55edaf9a346cf61">
+        <summary>Implementation and full test checks passed; independent re-review remains pending.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-review-criteria-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261027T101602Z-record-decision-1df6afdc2c6c4db68658019ca6dc39ee" kind="decision" status="informational" created_at="2026-10-27T10:16:02Z" actor="gemini-4-argon-high" operation_id="20261027T101602Z-taskrecord-c1ddea148e1444a9a4280fa21596cf12">
+      <summary>Independent Gemini 4 Argon High re-review PASS with zero findings; original P3 closed. Direct source inspection confirmed shared criterion validation rejects explicit blank and seeded placeholders for draft/active feature and research content. Independent compiled-CLI probes confirmed explicit blank draft fails before publishing, omitted acceptance still creates a draft scaffold, and activation of undefined acceptance fails. Valid criteria and owner authority remain intact. Fixer full build passed 969 tests, including 14 new boundary cases, with zero warnings/errors; reviewer did not rerun vstest because of sandbox IPC limits. Provenance: agy high effort, external review session (identifier redacted); exit 0; candidate hashes unchanged during review. Report external-artifact:review.json, SHA256 74da92f6287ab1a2e667f7d0f5771ae0f43493fbf81f7a5e7d0abef9931a11ce.</summary>
+<checks>
+          <check kind="review" result="passed" command="agy.exe --model gemini-4-argon-high --effort high --mode plan --sandbox" exit_code="0">
+            <summary>Independent external review passed; explicit file acceptance finding closed; zero new actionable findings.</summary>
+          </check>
+        </checks>      <covers>
+          <ref scope="document" target="20261027-task-usage-review-criteria-done" relation="covers" />
+        </covers>
+    </record>
+      <record id="20261027T101611Z-record-complete-683d631ed96f43cfa788a869e864f699" kind="completion" status="informational" created_at="2026-10-27T10:16:11Z" actor="codex" operation_id="20261027T101611Z-taskcomplete-2c1fc258760f468bbca387856729ff7a">
+        <summary>Applied shared explicit criterion validation without breaking draft scaffolding, passed 969-test full build, and closed original P3 after independent Gemini 4 Argon High PASS with zero findings.</summary>
+        <covers>
+          <ref scope="document" target="20261027-task-usage-review-criteria-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+</tasks>

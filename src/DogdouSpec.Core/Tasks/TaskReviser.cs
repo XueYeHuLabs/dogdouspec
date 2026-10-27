@@ -303,7 +303,7 @@ public static class TaskReviser
                 var alreadyAppliedEnv = new MutationEnvelope(
                     "task revise",
                     new[] { new MutatedDocument(normTasksDocPath, actualRevision) },
-                    alreadyApplied: true);
+                    alreadyApplied: true, dryRun: dryRun);
                 return (true, alreadyAppliedEnv, Array.Empty<Diagnostic>());
             }
 
@@ -348,6 +348,9 @@ public static class TaskReviser
                 ActualRevision: actualRevision);
             return (false, null, new[] { diag });
         }
+
+        var timestampError = TaskTimestampPolicy.ValidateRequest(reqRoot, clock ?? SystemClock.Instance, normTasksDocPath, targetTask);
+        if (timestampError != null) return (false, null, new[] { timestampError });
 
         // 4. Apply Revisions
         var reqRationale = reqRoot.Element("rationale");

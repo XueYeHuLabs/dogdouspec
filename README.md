@@ -144,8 +144,16 @@ All commands run directly through `dogdouspec <command> [options]`:
   ```
 - **Iteration Creation** (supports `--activate` for immediate active state)
   ```powershell
-  dogdouspec iteration create --id YYYYMMDD-name --kind feature|research [--activate] [--workspace-root PATH] [--format xml|human]
+  dogdouspec iteration create --id YYYYMMDD-name --kind feature|research [--file iteration-content.xml] [--constraint "kind: text" ...] [--activate] [--criterion "..." ...] [--workspace-root PATH] [--format xml|human]
   ```
+  Export `template show --name iteration.create`, fill the product/research intent, and pass it through `--file` to create complete content in one validated operation. Use pending criteria and proposed requirements/design. Acceptance comes from the file or `--criterion`, never both. `--activate` requires explicit owner authorization and leaves product criteria pending.
+- **Iteration Constraints** (apply to every Task in the iteration)
+  ```powershell
+  dogdouspec iteration constraint add --iteration ID --text "..." [--kind TOKEN] [--constraint-id ID] [--expected-spec-revision N] [--format xml|human]
+  dogdouspec iteration constraint list [--iteration ID] [--format xml|human]
+  dogdouspec iteration constraint remove --iteration ID --constraint-id ID [--expected-spec-revision N] [--format xml|human]
+  ```
+  Constraints are stored in `spec.xml`. Add/remove use its revision through `--expected-spec-revision`; the CLI resolves the current revision when omitted. Creation accepts repeatable `--constraint`. Its text, and add's text when `--kind` is omitted, recognize `kind: text` or `[kind] text` and remove that prefix. Constraint kinds are open tokens (`[a-z][a-z0-9-]*`), such as `environment`, `configuration`, or a project-specific kind. Explicit add `--kind` preserves the supplied text apart from outer whitespace. See the [CLI contract](docs/V1_CLI_CONTRACT.md#44-iteration-constraints) for the full behavior and authority boundaries.
 - **Iteration Activation** (Porcelain command)
   ```powershell
   dogdouspec iteration activate [--iteration ID] [--auto-approve] [--summary "..."] [--format xml|human]
@@ -170,29 +178,39 @@ All commands run directly through `dogdouspec <command> [options]`:
   ```
 - **XPath Query**
   ```powershell
-  dogdouspec query --document REF --xpath EXPR [--var name=value ...] [--workspace-root PATH] [--format xml|human]
+  dogdouspec query --document REF (--xpath EXPR|--xpath-file PATH) [--var name=value ...] [--warn-empty] [--workspace-root PATH] [--format xml|human]
   ```
 - **Scoped Search**
   ```powershell
-  dogdouspec search --scope project|iteration [--iteration ID] --xpath EXPR [--var name=value ...] [--workspace-root PATH] [--format xml|human]
+  dogdouspec search --scope project|iteration [--iteration ID] (--xpath EXPR|--xpath-file PATH) [--var name=value ...] [--workspace-root PATH] [--format xml|human]
   ```
+  `--xpath-file` avoids shell quoting and Git Bash/MSYS argument rewriting. For empty node-set diagnosis, `query --warn-empty` reports the root/direct children on stderr while preserving successful output and exit status. Backlog items are at `/backlog/items/item`.
 
 ### 5. Task & Requirement Mutations
 - **High-Level Task Operations**:
   - `task start --task <TASK_ID> [--iteration <ID>] [--summary "..."]` (Transition to `in-progress`)
   - `task verify --task <TASK_ID> [--iteration <ID>] [--covers <CRITERION>] [--summary "..."]` (Transition to `verification`)
-  - `task finish --task <TASK_ID> [--iteration <ID>] [--covers <CRITERION>] [--summary "..."]` (Atomic completion to `done`)
+  - `task finish --task <TASK_ID> [--iteration <ID>] [--covers <CRITERION>] [--summary "..."]` (Sequential transitions to `done`, reporting every revision and any partial progress)
   - `task block --task <TASK_ID> --summary "..." [--blocker-kind <KIND>] [--blocker-owner <OWNER>] [--blocker-review-at <TIMESTAMP>] [--condition "..."] [--next-action "..."]` (Transition to `blocked` with structured finding)
   - `task resume --task <TASK_ID> (--finding <FINDING_ID> | --all) --summary "..."` (Resolve blocker findings and resume to `in-progress`)
   - `task quick --title ... --scope ... --done-when ... --why ... [--start]` (Quick-create task)
   - `task next [--iteration <ID>]` (Discover next actionable task with progression assessment facts)
   - `task blockers [--iteration <ID>] [--task <ID>] [--owner <OWNER>] [--due-only]` (Query active blockers and recheck queue)
-  - `task context --task <TASK_ID> [--iteration <ID>] [--max-bytes <N>] [--no-history]` (Query bounded, traceable task recovery context)
+  - `task context --task <TASK_ID> [--iteration <ID>] [--max-bytes <N>] [--no-history]` (Read bounded context with effective iteration and Task constraints)
+  - `task records --task <TASK_ID> [--last 5] [--kind verification] [--fields id,created_at,summary,checks] [--max-summary N] [--max-bytes N]` (Bounded persisted history with explicit omission/truncation metadata)
+  - `task record --task <TASK_ID> --kind verification --summary "..." --check-command "dotnet test" --check-result passed --check-exit-code 0` (Append structured evidence to existing checks without changing acceptance)
+
+  Before starting or resuming a selected Task, read `task context --no-history`. Its essential constraints retain both `scope="iteration"` and `scope="task"`, including optional `kind`; both scopes apply. Raw Task queries and `task show` do not include iteration constraints. Re-read context after a constraint change, and resolve conflicts before execution.
+
 - **Plumbing & Governance Operations**:
   - `task update` (Raw XML state machine update), `task review` (Review gate submission), `task add`, `task revise`, `task split`
   - `requirement propose`, `change propose`, `change apply`
   - `backlog add`, `backlog list`, `backlog schedule`, `backlog complete`, `backlog cancel`
   - `append`, `transaction apply`
+
+  `task revise --add-scope` preserves repositories/exclusions and deduplicates includes; `--add-dependency` resolves document or cross-iteration project scope. `transaction apply --dry-run` validates without publishing and labels its preview. `task quick --dry-run --format xml` returns a labeled canonical task-add request for inspection/replay. Finish can leave earlier transitions committed if a later step fails; its partial receipt and nonzero exit identify that state, and review gates still apply.
+
+  Backlog add can generate omitted item ID, operation ID and time, with actor from `DOGDOUSPEC_ACTOR` or `agent`. Its receipt returns exact replay parameters in `backlog-identity`; reuse those for retries. An explicit operation ID without `--occurred-at` must have a valid UTC timestamp prefix. Kinds are open tokens. Keep product proposals as research backlog with an owner review condition until a design is chosen.
 
 ### 6. Diagnostics & Reporting
 - **Iteration Summary** (instant progress card and task breakdown with progression assessment)

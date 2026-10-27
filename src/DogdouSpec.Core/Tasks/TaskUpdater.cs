@@ -485,7 +485,7 @@ public static class TaskUpdater
             var alreadyAppliedEnv = new MutationEnvelope(
                 "task update",
                 new[] { new MutatedDocument(normDocPath, actualRevision) },
-                alreadyApplied: true);
+                alreadyApplied: true, dryRun: dryRun);
             return (true, alreadyAppliedEnv, Array.Empty<Diagnostic>());
         }
 
@@ -531,6 +531,9 @@ public static class TaskUpdater
                 ActualRevision: actualRevision);
             return (false, null, new[] { diag });
         }
+
+        var timestampError = TaskTimestampPolicy.ValidateRequest(reqRoot, clock, normDocPath, targetTask);
+        if (timestampError != null) return (false, null, new[] { timestampError });
 
         var taskCreatedAtStr = targetTask.Attribute("created_at")?.Value;
         if (!string.IsNullOrWhiteSpace(taskCreatedAtStr) &&

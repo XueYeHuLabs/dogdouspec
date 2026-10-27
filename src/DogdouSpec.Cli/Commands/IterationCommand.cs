@@ -28,6 +28,7 @@ public static class IterationCommand
         var completeCmd = BuildCompleteCommand();
         var summaryCmd = SummaryCommand.BuildCommand();
         var criterionCmd = BuildCriterionCommand();
+        var constraintCmd = BuildConstraintCommand();
 
         iterationCmd.Add(listCmd);
         iterationCmd.Add(createCmd);
@@ -37,6 +38,7 @@ public static class IterationCommand
         iterationCmd.Add(completeCmd);
         iterationCmd.Add(summaryCmd);
         iterationCmd.Add(criterionCmd);
+        iterationCmd.Add(constraintCmd);
 
         return iterationCmd;
     }
@@ -124,6 +126,13 @@ public static class IterationCommand
             AllowMultipleArgumentsPerToken = false
         };
 
+        var constraintOption = new Option<string[]>("--constraint")
+        {
+            Description = "Iteration-wide constraint (repeatable); recognizes 'kind: text' or '[kind] text' with any valid token kind",
+            AllowMultipleArgumentsPerToken = false
+        };
+        var contentFileOption = new Option<string?>("--file") { Description = "Create from <iteration-content> intent in one validated operation (template: iteration.create); product decisions must be pending/proposed" };
+
         var workspaceRootOption = new Option<string?>("--workspace-root")
         {
             Description = "Explicit path to workspace root or project directory containing .dogdouspec"
@@ -139,6 +148,8 @@ public static class IterationCommand
         createCmd.Add(kindOption);
         createCmd.Add(activateOption);
         createCmd.Add(criterionOption);
+        createCmd.Add(constraintOption);
+        createCmd.Add(contentFileOption);
         createCmd.Add(workspaceRootOption);
         createCmd.Add(formatOption);
 
@@ -148,6 +159,8 @@ public static class IterationCommand
             var kind = parseResult.GetValue(kindOption);
             var activate = parseResult.GetValue(activateOption);
             var criteria = parseResult.GetValue(criterionOption);
+            var constraints = parseResult.GetValue(constraintOption);
+            var contentFile = parseResult.GetValue(contentFileOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
             var format = WorkspaceCommand.ResolveFormat(formatArg);
@@ -180,7 +193,7 @@ public static class IterationCommand
 
             if (activate)
             {
-                if (criteria == null || criteria.Length == 0)
+                if (contentFile == null && (criteria == null || criteria.Length == 0))
                 {
                     var envelope = new DiagnosticsEnvelope("iteration create", Diagnostic.Error(
                         DiagnosticCodes.CriterionUndefined,
@@ -189,9 +202,9 @@ public static class IterationCommand
                     return 5;
                 }
 
-                for (var i = 0; i < criteria.Length; i++)
+                for (var i = 0; i < (criteria?.Length ?? 0); i++)
                 {
-                    var (isValid, reason) = IterationCriterionPolicy.Validate(criteria[i], $"index-{i + 1}");
+                    var (isValid, reason) = IterationCriterionPolicy.Validate(criteria![i], $"index-{i + 1}");
                     if (!isValid)
                     {
                         var envelope = new DiagnosticsEnvelope("iteration create", Diagnostic.Error(
@@ -214,12 +227,32 @@ public static class IterationCommand
                 return 2;
             }
 
+            string? contentXml = null;
+            if (contentFile != null)
+            {
+                try
+                {
+                    if (new FileInfo(contentFile).Length > Core.XPath.XPathQueryLimits.MaxDocumentBytes)
+                    {
+                        Console.Error.Write(new DiagnosticsEnvelope("iteration create", Diagnostic.Error(DiagnosticCodes.LimitExceeded, "Iteration content file exceeds 16 MiB.")).Format(format));
+                        return 7;
+                    }
+                    contentXml = File.ReadAllText(contentFile);
+                }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+                {
+                    Console.Error.Write(new DiagnosticsEnvelope("iteration create", Diagnostic.Error(DiagnosticCodes.InvalidArgument, $"Cannot read iteration content file: {error.Message}")).Format(format));
+                    return 2;
+                }
+            }
             var (success, envelopeResult, diagnostics) = IterationCreator.Create(
                 discoveredRoot,
                 id,
                 kind,
                 activate: activate,
-                criteria: criteria);
+                criteria: criteria,
+                constraints: constraints,
+                contentXml: contentXml);
 
             if (!success || diagnostics.Count > 0)
             {
@@ -1108,6 +1141,256 @@ public static class IterationCommand
         criterionCmd.Add(addCmd);
 
         return criterionCmd;
+    }
+
+    private static Command BuildConstraintCommand()
+    {
+        var constraintCmd = new Command("constraint", "Author and manage iteration-level constraints (environment, configuration, etc.)");
+
+        // Subcommand: add
+        var addCmd = new Command("add", "Add a new iteration-level constraint (mutating)");
+        var addIterOpt = new Option<string?>("--iteration") { Description = "Iteration identifier (omitted auto-resolves candidate iteration)" };
+        var addTextOpt = new Option<string>("--text") { Description = "Constraint text; recognizes 'kind: text' or '[kind] text' when --kind is omitted", Required = true };
+        var addKindOpt = new Option<string?>("--kind") { Description = "Open token kind ([a-z][a-z0-9-]*), e.g. environment; explicit kind preserves the full --text" };
+        var addIdOpt = new Option<string?>("--constraint-id") { Description = "Explicit constraint ID (omitted auto-generates deterministic ID)" };
+        var addRevOpt = new Option<int?>("--expected-spec-revision") { Description = "Expected spec.xml revision (omitted resolves current revision)" };
+        var addWsOpt = new Option<string?>("--workspace-root") { Description = "Explicit path to workspace root or project directory containing .dogdouspec" };
+        var addFmtOpt = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        addFmtOpt.AcceptOnlyFromAmong("xml", "human");
+
+        addCmd.Add(addIterOpt);
+        addCmd.Add(addTextOpt);
+        addCmd.Add(addKindOpt);
+        addCmd.Add(addIdOpt);
+        addCmd.Add(addRevOpt);
+        addCmd.Add(addWsOpt);
+        addCmd.Add(addFmtOpt);
+
+        addCmd.SetAction(parseResult =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parseResult.GetValue(addFmtOpt));
+            var text = parseResult.GetValue(addTextOpt);
+            var kind = parseResult.GetValue(addKindOpt);
+            var constraintId = parseResult.GetValue(addIdOpt);
+            var expectedSpecRev = parseResult.GetValue(addRevOpt);
+            var explicitIterId = parseResult.GetValue(addIterOpt);
+            var wsRoot = parseResult.GetValue(addWsOpt);
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                var envelope = new DiagnosticsEnvelope("iteration constraint add", Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "--text option is required and cannot be blank."));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var (discoverSuccess, discoveredRoot, discoverError) = WorkspaceDiscovery.FindWorkspaceRoot(
+                wsRoot,
+                Environment.CurrentDirectory);
+
+            if (!discoverSuccess || discoverError != null)
+            {
+                var envelope = new DiagnosticsEnvelope("iteration constraint add", discoverError!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var iterId = ResolveIterationId(explicitIterId, discoveredRoot);
+            if (string.IsNullOrWhiteSpace(iterId))
+            {
+                var envelope = new DiagnosticsEnvelope("iteration constraint add", Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "--iteration is required when multiple or zero candidate iterations exist."));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var (success, envelopeResult, diagnostics) = IterationConstraintAuthor.Add(
+                discoveredRoot,
+                iterId,
+                text,
+                kind: kind,
+                constraintId: constraintId,
+                expectedSpecRevision: expectedSpecRev);
+
+            if (!success || diagnostics.Count > 0)
+            {
+                var diagEnvelope = new DiagnosticsEnvelope("iteration constraint add", diagnostics);
+                Console.Error.Write(diagEnvelope.Format(format));
+                return diagEnvelope.GetExitCode();
+            }
+
+            if (envelopeResult != null)
+            {
+                Console.Out.Write(envelopeResult.Format(format));
+            }
+
+            return 0;
+        });
+
+        // Subcommand: list
+        var listCmd = new Command("list", "List iteration-level constraints");
+        var listIterOpt = new Option<string?>("--iteration") { Description = "Iteration identifier (omitted auto-resolves candidate iteration)" };
+        var listWsOpt = new Option<string?>("--workspace-root") { Description = "Explicit path to workspace root or project directory containing .dogdouspec" };
+        var listFmtOpt = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        listFmtOpt.AcceptOnlyFromAmong("xml", "human");
+
+        listCmd.Add(listIterOpt);
+        listCmd.Add(listWsOpt);
+        listCmd.Add(listFmtOpt);
+
+        listCmd.SetAction(parseResult =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parseResult.GetValue(listFmtOpt));
+            var explicitIterId = parseResult.GetValue(listIterOpt);
+            var wsRoot = parseResult.GetValue(listWsOpt);
+
+            var (discoverSuccess, discoveredRoot, discoverError) = WorkspaceDiscovery.FindWorkspaceRoot(
+                wsRoot,
+                Environment.CurrentDirectory);
+
+            if (!discoverSuccess || discoverError != null)
+            {
+                var envelope = new DiagnosticsEnvelope("iteration constraint list", discoverError!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var iterId = ResolveIterationId(explicitIterId, discoveredRoot);
+            var (success, resolvedIterId, constraints, diagnostics) = IterationConstraintAuthor.List(
+                discoveredRoot,
+                iterId);
+
+            if (!success || diagnostics.Count > 0)
+            {
+                var diagEnvelope = new DiagnosticsEnvelope("iteration constraint list", diagnostics);
+                Console.Error.Write(diagEnvelope.Format(format));
+                return diagEnvelope.GetExitCode();
+            }
+
+            if (format == OutputFormat.Xml)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+                if (constraints.Count == 0)
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"<iteration-constraints iteration=\"{resolvedIterId}\" count=\"0\"/>");
+                }
+                else
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"<iteration-constraints iteration=\"{resolvedIterId}\" count=\"{constraints.Count}\">");
+                    foreach (var c in constraints)
+                    {
+                        var kindAttr = !string.IsNullOrEmpty(c.Kind) ? $" kind=\"{c.Kind}\"" : string.Empty;
+                        var escaped = SecurityElement.Escape(c.Text);
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  <constraint id=\"{c.Id}\"{kindAttr}>{escaped}</constraint>");
+                    }
+                    sb.AppendLine("</iteration-constraints>");
+                }
+                Console.Out.Write(sb.ToString().Replace("\r\n", "\n"));
+            }
+            else
+            {
+                var sb = new StringBuilder();
+                if (constraints.Count == 0)
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"Iteration {resolvedIterId} has no iteration-level constraints.");
+                }
+                else
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"Iteration Constraints for {resolvedIterId} ({constraints.Count}):");
+                    foreach (var c in constraints)
+                    {
+                        var kindTag = !string.IsNullOrEmpty(c.Kind) ? $" ({c.Kind})" : string.Empty;
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  - [{c.Id}]{kindTag} {c.Text}");
+                    }
+                }
+                Console.Out.Write(sb.ToString());
+            }
+
+            return 0;
+        });
+
+        // Subcommand: remove
+        var removeCmd = new Command("remove", "Remove an iteration-level constraint (mutating)");
+        var remIterOpt = new Option<string?>("--iteration") { Description = "Iteration identifier (omitted auto-resolves candidate iteration)" };
+        var remIdOpt = new Option<string>("--constraint-id") { Description = "Constraint ID to remove", Required = true };
+        var remRevOpt = new Option<int?>("--expected-spec-revision") { Description = "Expected spec.xml revision (omitted resolves current revision)" };
+        var remWsOpt = new Option<string?>("--workspace-root") { Description = "Explicit path to workspace root or project directory containing .dogdouspec" };
+        var remFmtOpt = new Option<string?>("--format") { Description = "Output format (xml or human)" };
+        remFmtOpt.AcceptOnlyFromAmong("xml", "human");
+
+        removeCmd.Add(remIterOpt);
+        removeCmd.Add(remIdOpt);
+        removeCmd.Add(remRevOpt);
+        removeCmd.Add(remWsOpt);
+        removeCmd.Add(remFmtOpt);
+
+        removeCmd.SetAction(parseResult =>
+        {
+            var format = WorkspaceCommand.ResolveFormat(parseResult.GetValue(remFmtOpt));
+            var constraintId = parseResult.GetValue(remIdOpt);
+            var expectedSpecRev = parseResult.GetValue(remRevOpt);
+            var explicitIterId = parseResult.GetValue(remIterOpt);
+            var wsRoot = parseResult.GetValue(remWsOpt);
+
+            if (string.IsNullOrWhiteSpace(constraintId))
+            {
+                var envelope = new DiagnosticsEnvelope("iteration constraint remove", Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "--constraint-id option is required and cannot be blank."));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var (discoverSuccess, discoveredRoot, discoverError) = WorkspaceDiscovery.FindWorkspaceRoot(
+                wsRoot,
+                Environment.CurrentDirectory);
+
+            if (!discoverSuccess || discoverError != null)
+            {
+                var envelope = new DiagnosticsEnvelope("iteration constraint remove", discoverError!);
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var iterId = ResolveIterationId(explicitIterId, discoveredRoot);
+            if (string.IsNullOrWhiteSpace(iterId))
+            {
+                var envelope = new DiagnosticsEnvelope("iteration constraint remove", Diagnostic.Error(
+                    DiagnosticCodes.InvalidArgument,
+                    "--iteration is required when multiple or zero candidate iterations exist."));
+                Console.Error.Write(envelope.Format(format));
+                return 2;
+            }
+
+            var (success, envelopeResult, diagnostics) = IterationConstraintAuthor.Remove(
+                discoveredRoot,
+                iterId,
+                constraintId,
+                expectedSpecRevision: expectedSpecRev);
+
+            if (!success || diagnostics.Count > 0)
+            {
+                var diagEnvelope = new DiagnosticsEnvelope("iteration constraint remove", diagnostics);
+                Console.Error.Write(diagEnvelope.Format(format));
+                return diagEnvelope.GetExitCode();
+            }
+
+            if (envelopeResult != null)
+            {
+                Console.Out.Write(envelopeResult.Format(format));
+            }
+
+            return 0;
+        });
+
+        constraintCmd.Add(addCmd);
+        constraintCmd.Add(listCmd);
+        constraintCmd.Add(removeCmd);
+
+        return constraintCmd;
     }
 
     internal static string? ResolveIterationId(string? explicitId, string workspaceRoot)
