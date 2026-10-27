@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Xml;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Security;
@@ -26,9 +27,10 @@ public static class QueryCommand
 
         var xpathOption = new Option<string?>("--xpath")
         {
-            Description = "XPath 1.0 expression to evaluate",
-            Required = true
+            Description = "XPath 1.0 expression; use --xpath-file to avoid shell path rewriting"
         };
+        var xpathFileOption = new Option<string?>("--xpath-file") { Description = "Read the expression from a file instead of --xpath" };
+        var warnEmptyOption = new Option<bool>("--warn-empty") { Description = "Emit an advisory structure hint on stderr when a node-set is empty; exit status stays successful" };
 
         var varOption = new Option<string[]>("--var")
         {
@@ -50,6 +52,8 @@ public static class QueryCommand
         queryCmd.Add(iterationOption);
         queryCmd.Add(documentOption);
         queryCmd.Add(xpathOption);
+        queryCmd.Add(xpathFileOption);
+        queryCmd.Add(warnEmptyOption);
         queryCmd.Add(varOption);
         queryCmd.Add(workspaceRootOption);
         queryCmd.Add(formatOption);
@@ -58,7 +62,7 @@ public static class QueryCommand
         {
             var iterationId = parseResult.GetValue(iterationOption);
             var documentPath = parseResult.GetValue(documentOption);
-            var xpath = parseResult.GetValue(xpathOption);
+            var (xpath, xpathError) = XPathInput.Read(parseResult.GetValue(xpathOption), parseResult.GetValue(xpathFileOption));
             var rawVars = parseResult.GetValue(varOption);
             var workspaceRoot = parseResult.GetValue(workspaceRootOption);
             var formatArg = parseResult.GetValue(formatOption);
@@ -87,13 +91,11 @@ public static class QueryCommand
                 return 2;
             }
 
-            if (string.IsNullOrWhiteSpace(xpath))
+            if (xpathError != null)
             {
-                var envelope = new DiagnosticsEnvelope("query", Diagnostic.Error(
-                    DiagnosticCodes.InvalidArgument,
-                    "--xpath expression is required and cannot be empty."));
+                var envelope = new DiagnosticsEnvelope("query", xpathError);
                 Console.Error.Write(envelope.Format(format));
-                return 2;
+                return envelope.GetExitCode();
             }
 
             Dictionary<string, string> variables;
@@ -142,7 +144,13 @@ public static class QueryCommand
 
             try
             {
-                var result = XPathQueryEngine.EvaluateDocument(discoveredRoot, managedDoc, xpath, variables);
+                var result = XPathQueryEngine.EvaluateDocument(discoveredRoot, managedDoc, xpath!, variables);
+                if (parseResult.GetValue(warnEmptyOption) && result.ResultType == XPathResultKind.NodeSet && result.Nodes.Count == 0)
+                {
+                    var hint = DescribeStructure(fullPath);
+                    Console.Error.Write(new DiagnosticsEnvelope("query", Diagnostic.Warning(DiagnosticCodes.EmptyQueryResult,
+                        $"No nodes matched in '{normalizedDocPath}'. {hint}Check the XPath and variable values.", normalizedDocPath)).Format(format));
+                }
 
                 if (format == OutputFormat.Xml)
                 {
@@ -174,5 +182,24 @@ public static class QueryCommand
         });
 
         return queryCmd;
+    }
+
+    private static string DescribeStructure(string path)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            using var reader = SecureXmlReaderFactory.CreateReader(stream);
+            reader.MoveToContent();
+            var root = reader.Name;
+            var children = new HashSet<string>(StringComparer.Ordinal);
+            while (reader.Read() && children.Count < 8)
+                if (reader.Depth == 1 && reader.NodeType == XmlNodeType.Element) children.Add(reader.Name);
+            return $"Root: /{root}; direct children: {string.Join(", ", children)}. ";
+        }
+        catch (Exception error) when (error is IOException or XmlException or UnauthorizedAccessException)
+        {
+            return "Document structure hint is unavailable. ";
+        }
     }
 }

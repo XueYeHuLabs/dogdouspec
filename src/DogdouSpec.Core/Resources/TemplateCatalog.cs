@@ -62,6 +62,21 @@ public static class TemplateCatalog
 </iteration-confirmation>
 """),
         new TemplateDescriptor(
+            "iteration.create",
+            "Iteration creation content; pass to iteration create --file (not transaction apply)",
+            "iteration-content",
+            """
+<iteration-content>
+  <product>
+    <objective>Define the intended outcome.</objective>
+    <deliverables/>
+    <scope><included/><excluded/></scope>
+    <requirements/>
+    <acceptance><criterion id="YYYYMMDD-crit-slug" decision="pending">Define an observable owner acceptance criterion.</criterion></acceptance>
+  </product>
+</iteration-content>
+"""),
+        new TemplateDescriptor(
             "knowledge.entry",
             "Knowledge entry request template",
             "knowledge-entry",

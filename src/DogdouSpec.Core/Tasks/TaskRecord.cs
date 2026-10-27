@@ -12,6 +12,8 @@ using DogdouSpec.Core.Workspace;
 
 namespace DogdouSpec.Core.Tasks;
 
+public sealed record TaskRecordCheck(string Kind, string Result, string Summary, string? Command = null, int? ExitCode = null);
+
 public static class TaskRecord
 {
     private static readonly HashSet<string> ValidKinds = new(StringComparer.OrdinalIgnoreCase)
@@ -42,7 +44,8 @@ public static class TaskRecord
         string? occurredAt = null,
         string? operationId = null,
         string? recordId = null,
-        IClock? clock = null)
+        IClock? clock = null,
+        IReadOnlyList<TaskRecordCheck>? checks = null)
     {
         clock ??= SystemClock.Instance;
         actor = string.IsNullOrWhiteSpace(actor) ? "agent" : actor.Trim();
@@ -67,6 +70,8 @@ public static class TaskRecord
         {
             return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Record summary is required.") });
         }
+        if (checks?.Any(c => string.IsNullOrWhiteSpace(c.Kind) || string.IsNullOrWhiteSpace(c.Summary) || c.Result is not ("passed" or "failed" or "skipped")) == true)
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Checks require kind, summary and a passed, failed or skipped result.") });
 
         var (discoverSuccess, root, discoverError) = WorkspaceDiscovery.FindWorkspaceRoot(workspaceRoot, Environment.CurrentDirectory);
         if (!discoverSuccess || discoverError != null)
@@ -215,6 +220,11 @@ public static class TaskRecord
 
         var resolveRecordsXml = resolveRecordsSb.Length > 0 ? resolveRecordsSb.ToString() : string.Empty;
         var coversXml = coversSb.Length > 0 ? coversSb.ToString() : string.Empty;
+        var checksXml = checks is { Count: > 0 }
+            ? new XElement("checks", checks.Select(c => new XElement("check", new XAttribute("kind", c.Kind), new XAttribute("result", c.Result),
+                c.Command == null ? null : new XAttribute("command", c.Command), c.ExitCode.HasValue ? new XAttribute("exit_code", c.ExitCode.Value) : null,
+                new XElement("summary", c.Summary)))).ToString(SaveOptions.DisableFormatting)
+            : string.Empty;
 
         var requestXml = $"""
 <?xml version="1.0" encoding="utf-8"?>
@@ -232,7 +242,7 @@ public static class TaskRecord
       actor="{actor}"
       operation_id="{opId}">
       <summary>{SecurityElement.Escape(summary.Trim())}</summary>
-{contextElem}{impactElem}{outcomeElem}{coversXml}
+{contextElem}{impactElem}{outcomeElem}{checksXml}{coversXml}
     </record>
   </records>
 </task-update>

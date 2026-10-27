@@ -19,8 +19,27 @@ DogdouSpec enforces single-source-of-truth document integrity through structured
 | **Change Propose** | `dogdouspec change propose` | Attaching one or more active finding receipts to tasks, freezing target tasks to `blocked`, and proposing requirements across documents. | 2-document atomic commit (`spec.xml` + `tasks.xml`). Requires `active` iteration status. Immediate identical replay is durable; later revision drift is rejected. |
 | **Change Apply** | `dogdouspec change apply` | Resolving active findings, setting terminal task dispositions, and adding successor tasks during `status="replanning"`. | Recovery-backed commit to `tasks.xml`; a deterministic informational receipt is appended to the first impacted task. No-op application is rejected; immediate identical replay is durable. |
 | **Generic Append** | `dogdouspec append` | Appending a single valid child element to a managed document container (e.g. adding knowledge entries or backlog items). | Single-document atomic commit. Revision-checked. Performs identity-based deduplication for elements with unique `@id`. |
+| **Iteration Constraint Add** | `dogdouspec iteration constraint add` | Adding an iteration-wide technical rule to `spec.xml`; optional `kind` is an open token, e.g. `environment` or `configuration`. | Single-document atomic commit to `spec.xml`. Uses `--expected-spec-revision`. Automatically projected into `task context` for all iteration tasks with `scope="iteration"`. |
+| **Iteration Constraint Remove** | `dogdouspec iteration constraint remove` | Removing an iteration-level constraint from `spec.xml`. | Single-document atomic commit to `spec.xml`. Revision-checked. Removes empty `<constraints>` wrapper when all constraints are deleted. |
 | **Transaction Apply** | `dogdouspec transaction apply` | Low-level multi-document escape hatch, structural replacements, batch initialization. Supports `--revision latest` opt-in. | Multi-document staged publish with crash recovery. Correlated by `operation_id`. Non-durable (no separate business receipt container); stale retry conflicts if revision advanced. |
 | **Iteration Confirm** | `dogdouspec iteration confirm` | Owner-gated product decisions: iteration activation, design change acceptance, replanning, continuation, completion, cancellation, or supersession. | Protected single-document write to `spec.xml`. Reads `tasks.xml` for consistency/readiness verification without modifying it. Requires current-interaction human owner instruction. |
+
+## Authoring and Preview Entry Points
+
+- `iteration create --file PATH` accepts `<iteration-content>` intent (template `iteration.create`), one matching `product`/`research` body and optional `index`, `constraints`, `design`. It generates lifecycle metadata and validates the complete prospective workspace before publishing. Input cannot import confirmations, operation receipts or already-decided criteria/requirements/design. Acceptance comes from either the file or `--criterion`. `--activate` retains the explicit owner-authorization requirement and never accepts product criteria.
+- `task revise --add-scope PATH` appends deduplicated includes to repository `.` while preserving all existing repositories and exclusions. `--add-dependency ID` resolves a unique target and emits document-local or project scope. Its revision guard protects the read/merge/write snapshot. Raw `<task-revise><scope>` keeps its existing whole-scope replacement semantics.
+- `transaction apply --dry-run` runs prospective validation without publishing changes. Preview envelopes expose `dry_run="true"`; human output says `DRY RUN, nothing written`. `task quick --dry-run --format xml` emits a comment-labeled canonical task-add request, still directly consumable by `task add`.
+- `task finish` runs missing start/verify/complete transitions sequentially, advancing one revision per transition. It reports the overall previous/final revision and ordered `<transition>` entries. A later failure returns a nonzero exit, diagnostics on stderr and a `partial="true"` receipt on stdout for earlier committed transitions; it does not roll them back or bypass review. A failure before any transition returns diagnostics only.
+- `backlog add` may omit `--id`, `--operation-id`, `--actor`, `--occurred-at`. Transitions still require the target `--id`. Defaults use UTC and unique operations, actor `DOGDOUSPEC_ACTOR` or `agent`; `<backlog-identity>` returns actual values for replay. An explicit operation ID with no time must begin with a valid `yyyyMMddTHHmmssZ` timestamp. Reuse returned identity, payload and revision to retry. Raw XML identity rules remain unchanged. Backlog `kind` is an open token, including project-specific values.
+
+## Structured Check Evidence
+
+```powershell
+dogdouspec task record --task "<TASK_ID>" --iteration "<ITERATION_ID>" --kind verification --summary "Regression verification." --check-command "dotnet test" --check-result passed --check-exit-code 0 --check-summary "All selected tests passed." --covers "<CRITERION_ID>" --expected-revision <REV> --format xml
+dogdouspec task records --task "<TASK_ID>" --last 5 --kind verification --fields id,created_at,summary,checks,covers --format xml
+```
+
+The flags populate existing `<checks><check kind="command" result="passed|failed|skipped" command="..." exit_code="..."><summary>...</summary></check></checks>`. `--check-kind` overrides the default kind; check summary defaults to the record summary. Any check field requires `--check-result`; exit code requires a command. `--covers` links criteria but does not change their status. Read-only history projection is described in [XPath reference](xpath.md#bounded-task-history).
 
 ## Terminal Task Immutability
 
@@ -39,14 +58,29 @@ Blockers are stored within the owning `<task>` under `<records>` as an active fi
 - **Record-Only Mode**: `task block --record-only` records an active blocker finding without transitioning the task's state to `blocked`.
 - **Blocker Queue & Modes**: `task blockers` aggregates active blockers, unmet dependencies, and active findings, deterministically ordered by review due dates. Filter with `--mode all` (default), `--mode status-blocked`, or `--mode record-only`.
 
-## Bounded Task Recovery Context (`task context`)
+## Iteration Constraint Commands
 
-`task context` provides a structured, fail-closed view for newly spawned coding sessions to resume work without loading transient external reports:
+```powershell
+dogdouspec iteration create --id "<ITERATION_ID>" --kind feature --constraint "environment: .NET 10 is required" --constraint "[configuration] Deterministic builds" --format xml
+dogdouspec iteration constraint add --iteration "<ITERATION_ID>" --text "..." [--kind <TOKEN>] [--constraint-id <ID>] --expected-spec-revision <REV> --format xml
+dogdouspec iteration constraint list --iteration "<ITERATION_ID>" --format xml
+dogdouspec iteration constraint remove --iteration "<ITERATION_ID>" --constraint-id <ID> --expected-spec-revision <REV> --format xml
+```
+
+- Creation accepts repeatable `--constraint`; constraints are optional for both feature and research iterations. Creation's `--kind` selects the iteration type, not a constraint kind.
+- Constraint `kind` is an optional open token matching `[a-z][a-z0-9-]*`, not a fixed enum. Creation and add without explicit `--kind` recognize `kind: text` and `[kind] text`, lowercase the kind, and store the remaining text. Add with explicit `--kind` lowercases that value and preserves the full supplied text (apart from outer whitespace).
+- Add auto-generates a time-first ID when `--constraint-id` is omitted. List is read-only and returns IDs, optional kinds, and text in document order. Remove requires the exact constraint ID. An omitted `--iteration` is resolved only when a unique candidate exists; specify it explicitly when ambiguous.
+- Add/remove change only `spec.xml` and advance its revision once through the normal validated atomic commit. Supply its exact observed revision with `--expected-spec-revision`; the CLI resolves the current revision if omitted, without requiring `--revision latest`. A stale explicit value fails with `REVISION_CONFLICT`. Terminal iterations (`completed`, `cancelled`, `superseded`) reject these mutations.
+- Both iteration and Task constraints remain effective; the context view presents both without overriding or deduplicating them. Re-read it after constraint changes. Technical authoring does not replace product change or owner confirmation gates.
+
+## Bounded Task Context (`task context`)
+
+`task context` is required before starting or resuming execution of a selected Task. It provides a structured, fail-closed view without loading transient external reports:
 - **Command Syntax**:
   ```powershell
   dogdouspec task context --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--max-bytes 32768] [--no-history] --format xml|human
   ```
-- **Essential Context (Unconditionally Preserved)**: Title, objective, rationale, scope, constraints, origin requirements, acceptance criteria, active blockers, latest status records, and progression facts (action category, reason code, recommended action, permitted actions, prohibited actions, and authority boundaries).
+- **Essential Context (Unconditionally Preserved)**: Title, objective, rationale, scope, constraints from both `spec.xml` (`scope="iteration"`) and the Task (`scope="task"`) with optional `kind`, origin requirements, acceptance criteria, active blockers, latest status records, and progression facts (action category, reason code, recommended action, permitted actions, prohibited actions, and authority boundaries). Raw Task queries and `task show` omit iteration constraints and cannot replace this read.
 - **Fail-Closed Size Enforcement**: If Essential Context alone exceeds `--max-bytes` (default: 32 KB), the query fails closed with `LIMIT_EXCEEDED` (exit code `7`). The diagnostic response includes an element-level `section_size_breakdown` (metadata, objective, rationale, scope, origin requirements, acceptance criteria, constraints, blockers, and essential status records) detailing byte consumption across sections to guide surgical task refinement.
 - **Supplemental Record Deduplication**: Supplemental candidate history automatically excludes records already selected as latest status records in Essential Context, eliminating duplicate serialization.
 - **Record Count Accounting**: Context output reports precise metrics: `total_records` (total records on the task), `essential_records` (unconditionally preserved), `supplemental_candidates` (`total_records - essential_records`), `included_records` (`essential_records + supplemental_included`), and `omitted_records` (candidates omitted due to byte limits or `--no-history`).
@@ -66,11 +100,14 @@ Generated operation receipts store a canonical-XML `request-sha256` value and re
 
 The task/change/requirement helper requests are rejected before parsing when their UTF-8 payload exceeds the configured XML document limit; any managed document they read is checked against the same bound before it is opened. A write request cannot backdate a modified task or document: `occurred_at` must be at least its current `updated_at` and `created_at`. When backdating is attempted, the engine rejects the request with an `INVALID_ARGUMENT` diagnostic clearly reporting the minimal acceptable timestamp. New tasks are pending except `task quick --start`, which atomically creates a normal in-progress task with `created_at=updated_at=started_at` and a start record.
 
+Task add/update/revise/review also reject new execution timestamps more than five minutes ahead of the current UTC clock. Default task start/revise/review timestamps clamp to the latest committed created/update time, preserving monotonicity. For legacy tasks already dated farther ahead, continuation may reuse that committed time but cannot advance it further into the future. A verified replay retains its original identity and time. Finish uses the same effective timestamp for its sequential steps instead of adding synthetic future seconds. Generic transaction input is still governed by its existing schema/semantic checks; it is not a clock-repair API.
+
 ## Document Revisions
 
 Every managed document root contains an authoritative `revision="N"` attribute owned by the engine.
 
 - Mutating CLI commands require revision control: pass `--expected-revision <N>`, `--expected-spec-revision <N>`, `--expected-tasks-revision <N>`, or opt in to auto-resolution with `--revision latest` (supported on `task update`, `task add`, `task split`, and `transaction apply`).
+- Constraint add/remove use the separate `--expected-spec-revision` option; omitting it automatically resolves the current spec revision. Do not pass a tasks revision or `--expected-revision` to those commands.
 - If explicit expected revisions do not match the current document revision (`actualRevision != expectedRevision`), the command fails with `REVISION_CONFLICT` (exit code `4`).
 - Callers must re-query the current document state and recalculate the mutation when revision conflict occurs.
 
@@ -98,6 +135,7 @@ Use `dogdouspec template list` to discover all available built-in request templa
 - `change.apply`: Replanned change apply request template.
 - `transaction.apply`: Multi-document transaction request template.
 - `iteration.confirmation`: Iteration confirmation request template.
+- `iteration.create`: Complete iteration creation intent for `iteration create --file`; not a mutation request for `transaction apply`.
 - `record.discussion`: Discussion record template for task records.
 - `record.finding`: Finding record template for task records.
 - `record.verification`: Verification record template for task records.

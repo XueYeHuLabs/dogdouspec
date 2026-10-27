@@ -102,7 +102,7 @@ public static class KnowledgeLifecycle
         if (replay.Handled)
         {
             return replay.Success
-                ? (true, ReplayEnvelope("knowledge add", actualRevision), Array.Empty<Diagnostic>())
+                ? (true, ReplayEnvelope("knowledge add", actualRevision, dryRun), Array.Empty<Diagnostic>())
                 : (false, null, replay.Diagnostics);
         }
 
@@ -355,8 +355,8 @@ public static class KnowledgeLifecycle
     private static string FormatTime(DateTimeOffset value) =>
         value.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
 
-    private static MutationEnvelope ReplayEnvelope(string command, int revision) =>
-        new(command, new[] { new MutatedDocument(KnowledgeDocument, revision) }, alreadyApplied: true);
+    private static MutationEnvelope ReplayEnvelope(string command, int revision, bool dryRun) =>
+        new(command, new[] { new MutatedDocument(KnowledgeDocument, revision) }, alreadyApplied: true, dryRun: dryRun);
 
     private static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Commit(
         string workspaceRoot, string command, XDocument knowledge, int actualRevision, bool dryRun = false)

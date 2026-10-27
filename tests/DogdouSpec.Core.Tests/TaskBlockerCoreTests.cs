@@ -533,7 +533,8 @@ public sealed class TaskBlockerCoreTests
   </records>
 </task-update>
 """;
-        var (cancOk, _, cancDiags) = TaskUpdater.Update(_workspace, upstreamIter, taskUpCancelled, 3, xmlCancel, clock: clock);
+        var (cancOk, _, cancDiags) = TaskUpdater.Update(_workspace, upstreamIter, taskUpCancelled, 3, xmlCancel,
+            clock: new TestClock(new DateTime(2026, 8, 24, 9, 20, 0, DateTimeKind.Utc)));
         Assert.IsTrue(cancOk, string.Join(", ", cancDiags.Select(d => d.Message)));
 
         // Add taskDownSatisfied in downstreamIter with scope="project" depending on cancelled upstream task

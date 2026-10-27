@@ -363,7 +363,7 @@ public static class ChangeProposer
             {
                 new MutatedDocument(normSpecDocPath, actualSpecRevision),
                 new MutatedDocument(normTasksDocPath, actualTasksRevision)
-            }, alreadyApplied: true), Array.Empty<Diagnostic>());
+            }, alreadyApplied: true, dryRun: dryRun), Array.Empty<Diagnostic>());
         }
 
         if (expectedSpecRevision != actualSpecRevision)

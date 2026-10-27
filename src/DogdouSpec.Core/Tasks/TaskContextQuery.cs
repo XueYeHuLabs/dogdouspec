@@ -106,16 +106,29 @@ public static class TaskContextQuery
         var rationale = taskElem.Element("rationale")?.Value ?? string.Empty;
         var scopeElement = taskElem.Element("scope");
 
-        // Essential: Constraints
-        var constraintsList = new List<(string Id, string Text)>();
+        // Essential: Constraints (Iteration-level + Task-level)
+        var constraintsList = new List<TaskContextConstraint>();
+        var iterConstraintsElem = specRoot.Element("constraints");
+        if (iterConstraintsElem != null)
+        {
+            foreach (var c in iterConstraintsElem.Elements("constraint"))
+            {
+                var cId = (string?)c.Attribute("id") ?? string.Empty;
+                var cKind = (string?)c.Attribute("kind");
+                var cText = c.Value.Trim();
+                constraintsList.Add(new TaskContextConstraint(cId, cText, Scope: "iteration", Kind: cKind));
+            }
+        }
+
         var constraintsElem = taskElem.Element("constraints");
         if (constraintsElem != null)
         {
             foreach (var c in constraintsElem.Elements("constraint"))
             {
                 var cId = (string?)c.Attribute("id") ?? string.Empty;
+                var cKind = (string?)c.Attribute("kind");
                 var cText = c.Value.Trim();
-                constraintsList.Add((cId, cText));
+                constraintsList.Add(new TaskContextConstraint(cId, cText, Scope: "task", Kind: cKind));
             }
         }
 

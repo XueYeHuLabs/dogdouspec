@@ -1,5 +1,7 @@
 using System.CommandLine;
 using System.Globalization;
+using System.Xml.Linq;
+using DogdouSpec.Core.Serialization;
 using DogdouSpec.Core.Backlog;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
@@ -25,11 +27,11 @@ public static class BacklogCommand
     private static Command BuildAddCommand()
     {
         var command = new Command("add", "Create an open backlog item (mutating unless --dry-run)");
-        var id = RequiredString("--id", "Time-first backlog item ID");
-        var operationId = RequiredString("--operation-id", "Time-first replay operation ID");
-        var actor = RequiredString("--actor", "Actor attribution (provenance, not authenticated identity)");
-        var occurredAt = RequiredString("--occurred-at", "UTC or offset timestamp for deterministic replay");
-        var kind = RequiredString("--kind", "Backlog kind (use defect for defects; kind 'defect' requires --severity)");
+        var id = OptionalString("--id", "Backlog item ID (omitted derives from the operation ID)");
+        var operationId = OptionalString("--operation-id", "Replay operation ID (omitted generates a UTC timestamp and unique suffix)");
+        var actor = OptionalString("--actor", "Actor attribution (default DOGDOUSPEC_ACTOR or agent; not authenticated identity)");
+        var occurredAt = OptionalString("--occurred-at", "Timestamp (default operation UTC prefix, or now for a generated operation)");
+        var kind = RequiredString("--kind", "Open kind token (e.g. feature, research, xyz); defect requires --severity");
         var severity = OptionalString("--severity", "Defect severity: p0, p1, p2, or p3 (required when --kind is defect)");
         severity.AcceptOnlyFromAmong("p0", "p1", "p2", "p3");
         var summary = RequiredString("--summary", "Short indexed summary");
@@ -54,11 +56,8 @@ public static class BacklogCommand
         command.SetAction(parseResult =>
         {
             var outputFormat = WorkspaceCommand.ResolveFormat(parseResult.GetValue(format));
-            if (!TryParseOccurredAt(parseResult.GetValue(occurredAt), out var timestamp))
-            {
-                return WriteError("backlog add", outputFormat,
-                    Diagnostic.Error(DiagnosticCodes.InvalidArgument, "--occurred-at must be a valid ISO-8601 timestamp."));
-            }
+            var (identity, identityError) = ResolveIdentity(parseResult.GetValue(id), parseResult.GetValue(operationId), parseResult.GetValue(actor), parseResult.GetValue(occurredAt));
+            if (identity == null || identityError != null) return WriteError("backlog add", outputFormat, identityError!);
             var (found, root, discoveryError) = WorkspaceDiscovery.FindWorkspaceRoot(
                 parseResult.GetValue(workspaceRoot), Environment.CurrentDirectory);
             if (!found || discoveryError != null)
@@ -73,14 +72,14 @@ public static class BacklogCommand
             }
             var isDryRun = parseResult.GetValue(dryRun);
             var input = new BacklogCreateInput(
-                parseResult.GetValue(id)!, parseResult.GetValue(operationId)!, parseResult.GetValue(actor)!, timestamp,
+                identity.Id, identity.OperationId, identity.Actor, identity.OccurredAt,
                 parseResult.GetValue(kind)!, parseResult.GetValue(severity), parseResult.GetValue(summary)!,
                 parseResult.GetValue(statement)!, parseResult.GetValue(rationale)!, parseResult.GetValue(impact)!,
                 parseResult.GetValue(sourceIteration) ?? Array.Empty<string>(),
                 parseResult.GetValue(sourceTask) ?? Array.Empty<string>(),
                 parseResult.GetValue(targetIteration), parseResult.GetValue(reviewCondition));
             var (success, envelope, diagnostics) = BacklogLifecycle.Add(root, resolvedRev, input, dryRun: isDryRun);
-            return WriteMutationResult("backlog add", outputFormat, success, envelope, diagnostics);
+            return WriteMutationResult("backlog add", outputFormat, success, envelope, diagnostics, identity);
         });
         return command;
     }
@@ -129,9 +128,9 @@ public static class BacklogCommand
     {
         var command = new Command(name, description + " (mutating unless --dry-run)");
         var id = RequiredString("--id", "Backlog item ID");
-        var operationId = RequiredString("--operation-id", "Time-first replay operation ID");
-        var actor = RequiredString("--actor", "Actor attribution (provenance, not authenticated identity)");
-        var occurredAt = RequiredString("--occurred-at", "UTC or offset timestamp for deterministic replay");
+        var operationId = OptionalString("--operation-id", "Replay operation ID (omitted generates a UTC timestamp and unique suffix)");
+        var actor = OptionalString("--actor", "Actor attribution (default DOGDOUSPEC_ACTOR or agent; not authenticated identity)");
+        var occurredAt = OptionalString("--occurred-at", "Timestamp (default operation UTC prefix, or now for a generated operation)");
         var resolvingTask = OptionalString("--resolving-task", "Task ID recorded as resolution evidence");
         var expectedRevision = RequiredRevision();
         var dryRun = new Option<bool>("--dry-run")
@@ -153,11 +152,8 @@ public static class BacklogCommand
         {
             var commandName = "backlog " + name;
             var outputFormat = WorkspaceCommand.ResolveFormat(parseResult.GetValue(format));
-            if (!TryParseOccurredAt(parseResult.GetValue(occurredAt), out var timestamp))
-            {
-                return WriteError(commandName, outputFormat,
-                    Diagnostic.Error(DiagnosticCodes.InvalidArgument, "--occurred-at must be a valid ISO-8601 timestamp."));
-            }
+            var (identity, identityError) = ResolveIdentity(parseResult.GetValue(id), parseResult.GetValue(operationId), parseResult.GetValue(actor), parseResult.GetValue(occurredAt));
+            if (identity == null || identityError != null) return WriteError(commandName, outputFormat, identityError!);
             var (found, root, discoveryError) = WorkspaceDiscovery.FindWorkspaceRoot(
                 parseResult.GetValue(workspaceRoot), Environment.CurrentDirectory);
             if (!found || discoveryError != null)
@@ -172,10 +168,10 @@ public static class BacklogCommand
             }
             var isDryRun = parseResult.GetValue(dryRun);
             var input = new BacklogTransitionInput(
-                parseResult.GetValue(id)!, parseResult.GetValue(operationId)!, parseResult.GetValue(actor)!,
-                timestamp, parseResult.GetValue(resolvingTask));
+                identity.Id, identity.OperationId, identity.Actor,
+                identity.OccurredAt, parseResult.GetValue(resolvingTask));
             var (success, envelope, diagnostics) = transition(root, resolvedRev, input, isDryRun);
-            return WriteMutationResult(commandName, outputFormat, success, envelope, diagnostics);
+            return WriteMutationResult(commandName, outputFormat, success, envelope, diagnostics, identity);
         });
         return command;
     }
@@ -214,18 +210,54 @@ public static class BacklogCommand
         return option;
     }
 
+    private sealed record BacklogIdentity(string Id, string OperationId, string Actor, DateTimeOffset OccurredAt);
+
+    private static (BacklogIdentity? Identity, Diagnostic? Error) ResolveIdentity(string? id, string? operationId, string? actor, string? occurredAt)
+    {
+        DateTimeOffset timestamp;
+        if (occurredAt != null)
+        {
+            if (!TryParseOccurredAt(occurredAt, out timestamp))
+                return (null, Diagnostic.Error(DiagnosticCodes.InvalidArgument, "--occurred-at must be a valid ISO-8601 timestamp."));
+        }
+        else if (operationId != null)
+        {
+            if (operationId.Length < 16 || !DateTimeOffset.TryParseExact(operationId[..16], "yyyyMMddTHHmmssZ", CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out timestamp))
+                return (null, Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Without --occurred-at, an explicit --operation-id must begin with a valid UTC YYYYMMDDTHHmmssZ timestamp for deterministic replay."));
+        }
+        else timestamp = DateTimeOffset.UtcNow;
+        operationId ??= timestamp.ToString("yyyyMMddTHHmmssZ", CultureInfo.InvariantCulture) + "-backlog-" + Guid.NewGuid().ToString("N");
+        id ??= operationId + "-item";
+        actor ??= Environment.GetEnvironmentVariable("DOGDOUSPEC_ACTOR") ?? "agent";
+        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(operationId) || string.IsNullOrWhiteSpace(actor))
+            return (null, Diagnostic.Error(DiagnosticCodes.InvalidArgument, "Explicit IDs and actor attribution cannot be blank."));
+        return (new BacklogIdentity(id, operationId, actor, timestamp), null);
+    }
+
     private static bool TryParseOccurredAt(string? raw, out DateTimeOffset result) =>
         DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
             DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out result);
 
     private static int WriteMutationResult(string command, OutputFormat format, bool success,
-        MutationEnvelope? envelope, IReadOnlyList<Diagnostic> diagnostics)
+        MutationEnvelope? envelope, IReadOnlyList<Diagnostic> diagnostics, BacklogIdentity identity)
     {
         if (!success || diagnostics.Count > 0 || envelope == null)
         {
             return WriteDiagnostics(command, format, diagnostics);
         }
-        Console.Out.Write(envelope.Format(format));
+        if (format == OutputFormat.Xml)
+        {
+            var document = XDocument.Parse(envelope.ToXmlString());
+            document.Root!.Add(new XElement("backlog-identity", new XAttribute("id", identity.Id), new XAttribute("operation_id", identity.OperationId),
+                new XAttribute("actor", identity.Actor), new XAttribute("occurred_at", identity.OccurredAt.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture))));
+            Console.Out.Write(ManagedDocumentSerializer.Serialize(document));
+        }
+        else
+        {
+            Console.Out.Write(envelope.Format(format));
+            Console.Out.WriteLine(string.Create(CultureInfo.InvariantCulture, $"Backlog item: {identity.Id}; operation: {identity.OperationId}; actor: {identity.Actor}; occurred_at: {identity.OccurredAt:yyyy-MM-ddTHH:mm:ssZ}"));
+        }
         return 0;
     }
 

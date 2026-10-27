@@ -7,6 +7,7 @@ DogdouSpec maintains a strict, unbypassable boundary between technical task auto
 | Domain | Technical Agent Authority | Product Owner Authority | Schema Dispositions |
 | :--- | :--- | :--- | :--- |
 | **Tasks & Code** | Autonomous: start/verify/complete tasks, add/revise/split tasks, update acceptance criteria, capture context, and record findings/discussions. | Sets task priorities, reviews milestones. | `pending`, `in-progress`, `blocked`, `verification`, `done`, `transferred`, `superseded`, `cancelled` |
+| **Iteration Constraints** | Define iteration-wide technical, environment, and configuration constraints with `iteration create --constraint` or `iteration constraint add|list|remove`, within approved product scope and existing owner rules. | Sets environment standards and baseline policies; approves material changes to product scope, architecture, or acceptance. | Text with optional open-token `kind` (e.g. `environment`, `configuration`); add/remove reject terminal iterations |
 | **Requirements** | Propose new requirements (`status="proposed"` via `requirement propose` or `change propose`). Cannot approve, supersede, or withdraw. | Explicit owner disposition (`approved`, `superseded`, `withdrawn`) via `iteration confirm`. | `proposed`, `approved`, `superseded`, `withdrawn` |
 | **Design Decisions** | Propose new design decisions (`status="proposed"`). Cannot accept, reject, or supersede. | Explicit owner disposition (`accepted`, `rejected`, `superseded`) via `iteration confirm`. | `proposed`, `accepted`, `rejected`, `superseded` |
 | **Research Questions** | Open new research questions (`status="open"`). Cannot answer, defer, or withdraw. | Explicit owner disposition (`answered`, `deferred`, `withdrawn`) via `iteration confirm`. | `open`, `answered`, `deferred`, `withdrawn` |
@@ -24,6 +25,14 @@ The core engine enforces protected state rules during all low-level mutations (`
 - Execution transitions (`start`, `resume`, `verify`, `complete`) require every requirement origin to exist and be `approved`. An operational Task instead has exactly one current-iteration `supports` origin; it may execute only while active, never satisfies Requirement coverage, and remains a normal non-terminal readiness blocker.
 
 ## Surprise, Change, & Replanning Protocol
+
+Iteration constraints live in `spec.xml` and apply alongside Task constraints.
+Read `task context --no-history` before starting or resuming a Task; it exposes
+both scopes. Adding or removing a technical constraint does not approve a
+Requirement, waive acceptance, override an owner rule, or authorize a product
+change. Use the product change and owner confirmation paths when those
+boundaries would change. Constraint mutations use the `spec.xml` revision via
+`--expected-spec-revision`, independently of the Task document revision.
 
 When encountering unexpected technical findings, requirements evolution, or scope changes during an iteration:
 
@@ -48,6 +57,13 @@ When the product owner instructs `dogdouspec iteration confirm` with `action="co
 3. **Requirement Successor Alignment**: Every superseded requirement must have a finally approved successor with `sources/ref relation="supersedes"`; every such provenance target must itself be finally superseded; every non-terminal task origin must be finally approved; and an approved proposed successor must have non-terminal task coverage. Returns `REQUIREMENT_SUCCESSOR_MISSING` on any mismatch.
 
 ## Iteration Readiness (`iteration readiness`)
+
+Discovery and authoring helpers do not add authority. `task records` is a derived
+read view; structured `checks` are reported evidence and never automatic review
+approval or owner acceptance. `iteration create --file` accepts only undecided
+intent; `--activate` still requires explicit current-interaction owner direction.
+Product suggestions recorded as research backlog remain undecided until research
+and an owner decision establish their scope and acceptance.
 
 `dogdouspec iteration readiness` is a deterministic, **read-only** assessment tool:
 

@@ -334,8 +334,8 @@ public sealed class UsabilityPorcelainCliTests
             System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.RoundtripKind);
 
-        string TimestampAfterCreation(int minutes) => createdAtValue
-            .AddMinutes(minutes)
+        string TimestampAfterCreation(int seconds) => createdAtValue
+            .AddSeconds(seconds)
             .ToUniversalTime()
             .ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture);
 

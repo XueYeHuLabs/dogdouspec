@@ -9,6 +9,7 @@ using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Serialization;
+using DogdouSpec.Core.Time;
 using DogdouSpec.Core.Transactions;
 using DogdouSpec.Core.Validation;
 using DogdouSpec.Core.Workspace;
@@ -20,8 +21,9 @@ public static class TaskReviewer
 {
     public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Submit(
         string workspaceRoot, string iterationId, string taskId, int expectedRevision, string requestXml,
-        string version = "1.0", bool dryRun = false)
+        string version = "1.0", bool dryRun = false, IClock? clock = null)
     {
+        clock ??= SystemClock.Instance;
         if (expectedRevision <= 0 || string.IsNullOrWhiteSpace(requestXml))
         {
             return Failure(DiagnosticCodes.InvalidArgument, "A positive expected revision and non-empty review request are required.");
@@ -188,7 +190,7 @@ public static class TaskReviewer
                     $"Review operation '{operationId}' was already used with different semantics or revision context.");
             }
             return (true, new MutationEnvelope("task review",
-                new[] { new MutatedDocument(tasksRelative, actualRevision) }, alreadyApplied: true), Array.Empty<Diagnostic>());
+                new[] { new MutatedDocument(tasksRelative, actualRevision) }, alreadyApplied: true, dryRun: dryRun), Array.Empty<Diagnostic>());
         }
         var newIds = new[] { submissionId, recordId };
         if (newIds.Distinct(StringComparer.Ordinal).Count() != newIds.Length)
@@ -222,6 +224,8 @@ public static class TaskReviewer
                 $"Expected revision {expectedRevision} does not match actual revision {actualRevision}.", tasksRelative,
                 ExpectedRevision: expectedRevision, ActualRevision: actualRevision) });
         }
+        var timestampError = TaskTimestampPolicy.ValidateRequest(root, clock, tasksRelative, task);
+        if (timestampError != null) return (false, null, new[] { timestampError });
         var reviewTime = DateTimeOffset.Parse(occurredAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
         foreach (var attributeName in new[] { "created_at", "updated_at" })
         {
@@ -285,6 +289,7 @@ public static class TaskReviewer
         tasks.Root!.SetAttributeValue("revision", actualRevision + 1);
         var operation = new TransactionDocumentOperation(tasksRelative, Serialize(tasks), actualRevision, actualRevision + 1);
         return WorkspaceTransactionCommitter.Commit(workspaceRoot, "task review", new[] { operation },
+            clock: clock,
             readPreconditions: new[] { new TransactionReadPrecondition(specRelative, specRevision) },
             dryRun: dryRun);
     }

@@ -68,16 +68,6 @@
     </xs:sequence>
   </xs:complexType>
 
-  <xs:complexType name="ConstraintType" mixed="true">
-    <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
-  </xs:complexType>
-
-  <xs:complexType name="ConstraintsType">
-    <xs:sequence>
-      <xs:element name="constraint" type="ConstraintType" minOccurs="0" maxOccurs="unbounded"/>
-    </xs:sequence>
-  </xs:complexType>
-
   <xs:complexType name="TaskCriterionType" mixed="true">
     <xs:attribute name="id" type="TimeFirstIdType" use="required"/>
     <xs:attribute name="status" type="TaskCriterionStatusType" use="required"/>

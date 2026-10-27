@@ -311,7 +311,7 @@ public static class ChangeApplier
                 return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.IdempotencyConflict, $"Change application operation '{applyId}' was already applied with different effects.", normTasksDocPath) });
             }
 
-            return (true, new MutationEnvelope("change apply", new[] { new MutatedDocument(normTasksDocPath, actualTasksRevision) }, alreadyApplied: true), Array.Empty<Diagnostic>());
+            return (true, new MutationEnvelope("change apply", new[] { new MutatedDocument(normTasksDocPath, actualTasksRevision) }, alreadyApplied: true, dryRun: dryRun), Array.Empty<Diagnostic>());
         }
 
         if (tasksRoot.Descendants().Any(e => string.Equals(e.Attribute("operation_id")?.Value, applyId, StringComparison.Ordinal)))

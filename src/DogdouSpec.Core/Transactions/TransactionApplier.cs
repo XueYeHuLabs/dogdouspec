@@ -677,7 +677,7 @@ public static class TransactionApplier
             var envelope = new MutationEnvelope(
                 "transaction apply",
                 Array.Empty<MutatedDocument>(),
-                alreadyApplied: true);
+                alreadyApplied: true, dryRun: dryRun);
             return (true, envelope, Array.Empty<Diagnostic>());
         }
 

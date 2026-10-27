@@ -28,6 +28,7 @@ If your project does not yet have an `AGENTS.md`, create one. Add a `## DogdouSp
 4. **Read the checked-in skill** — point agents to `.agents/skills/dogdouspec/SKILL.md` for complete workflow rules.
 5. **Never edit `.dogdouspec/*.xml` directly** — all mutations must go through the CLI.
 6. **Preserve user work** — do not commit or push unless explicitly asked.
+7. **Read effective constraints before execution** — after selecting or resuming a Task, run `dogdouspec task context --task "<TASK_ID>" --iteration "<ITERATION_ID>" --no-history --format xml` and read both iteration and task constraints before starting work. A raw Task query or `task show` alone omits iteration constraints.
 
 Tailor the section to your project's build commands (e.g., replace `.\build.cmd` with `npm test`, `cargo build`, `dotnet test`, etc.).
 
@@ -85,7 +86,7 @@ DogdouSpec replaces unstructured markdown tracking with **schema-validated XML a
 
 1. **Global CLI Execution & Pre-flight**: Use the global `dogdouspec <command>`. Before running commands, verify `dogdouspec --version`. If `dogdouspec` is missing, fail closed and prompt the user to install via `winget install Vixasol.DogdouSpec`. No repository-local wrapper scripts (`dogdouspec.cmd`) or background daemons are required.
 2. **Never Edit Managed XML Directly**: Never edit, write, or copy `.dogdouspec/*.xml` using text editors or scripts. All mutations must pass through the public CLI (`task update`, `task review`, `task add`, `task revise`, `task split`, `requirement propose`, `change propose`, `change apply`, `append`, `transaction apply`, `iteration confirm`).
-3. **Two-Phase Query Pattern**: Query compact indexes first (`ds:filter`), then load full task details only for the active task. Never load whole task graphs into context.
+3. **Two-Phase Query Pattern**: Query compact indexes first (`ds:filter`), then read `task context --no-history` for the selected task before execution, including both iteration and task constraints. Load additional Task details only as needed. Never load whole task graphs into context.
 4. **Exact Revisions & Post-Mutation Re-Query**: Always pass exact expected revisions to mutating commands. After each mutation, validate the workspace with `dogdouspec validate` and re-query target documents.
 5. **Respect Authority Boundaries**: Technical task automation never auto-completes product requirements, design decisions, acceptance criteria, or iterations. Stop and prompt the owner when product decisions are needed.
 6. **Terminal Task Immutability**: Tasks in `done`, `transferred`, `superseded`, or `cancelled` statuses are immutable; low-level edits and execution transitions fail with `TASK_IMMUTABLE`. Only append-only informational records may be added.
@@ -102,7 +103,7 @@ DogdouSpec replaces unstructured markdown tracking with **schema-validated XML a
 flowchart TD
     Z["0. Environment Pre-flight (dogdouspec --version)"] --> A["1. Workspace Discovery & Validation"]
     A --> B["2. Index-First Task Selection"]
-    B --> C["3. Load Full Selected Task"]
+    B --> C["3. Read Selected Task Context & Effective Constraints"]
     C --> D["4. Execute & Verify Code (build.cmd)"]
     D --> E["5. Task Update (verify -> complete)"]
     E --> F["6. Validate Workspace & Check Next Task"]
@@ -154,21 +155,25 @@ Use two explicit compact queries to derive the next actionable task:
    empty. A pending-task XPath is document-local and cannot prove readiness for
    `depends-on` references in another iteration or document.
 
-### 3. Load Full Selected Task or Bounded Recovery Context
+### 3. Read Selected Task Context & Effective Constraints (Required)
 
-Load the complete task document by ID:
+After selecting a Task, and whenever resuming it in a new session, read its bounded context before starting or continuing execution:
+
+```powershell
+dogdouspec task context --task "<TASK_ID>" --iteration "<ITERATION_ID>" --no-history --format xml
+```
+
+This essential view includes constraints from `spec.xml` with `scope="iteration"` and from the Task with `scope="task"`, preserving optional `kind`. Both scopes apply; task constraints do not override iteration constraints. Resolve conflicting constraints before execution through the appropriate technical or owner decision path. `--no-history` omits supplemental history, never effective constraints. If essential context exceeds the byte limit, increase `--max-bytes`; do not bypass a failed context query with a raw Task read.
+
+When additional Task details or history are needed, query them separately:
 
 ```powershell
 dogdouspec query --document "<ITERATION_ID>/tasks.xml" --xpath "/tasks/task[@id='<TASK_ID>']" --format xml
+dogdouspec task context --task "<TASK_ID>" --iteration "<ITERATION_ID>" --max-bytes 32768 --format xml
+dogdouspec task records --task "<TASK_ID>" --iteration "<ITERATION_ID>" --last 5 --kind verification --fields id,created_at,summary,checks --format xml
 ```
 
-Or when recovering or resuming in a new session, query bounded recovery context directly:
-
-```powershell
-dogdouspec task context --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--max-bytes 32768] [--no-history] --format xml
-```
-
-Use `--no-history` when resuming execution where supplemental status history is not needed, minimizing token footprint. Identify objectives, scope includes/excludes, origin requirement, acceptance criteria, constraints, and previous records before modifying code.
+Raw Task queries and `task show` describe only `tasks.xml`; they do not replace the required context read. Identify objectives, scope includes/excludes, origin requirement, acceptance criteria, effective constraints, and previous records before modifying code. Re-read context after a constraint change before continuing work.
 
 ### 4. Technical Execution & State Transitions
 
@@ -185,6 +190,7 @@ Use `--no-history` when resuming execution where supplemental status history is 
      ```powershell
      dogdouspec task record --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--kind discussion|finding|verification|completion|decision] [--status informational|active|resolved] [--summary "..."] [--occurred-at <TIMESTAMP>] [--covers "<CRITERION_ID>"] --format xml
      ```
+   - For command evidence, add `--check-command "dotnet test" --check-result passed --check-exit-code 0 --check-summary "Describe the observed result."`. This writes existing structured `checks` on the record; use `task records --fields id,summary,checks,covers` to read it. Evidence does not automatically accept criteria or satisfy an independent review gate.
 3. **Block Task & Manage Recheck Queue** (when obstructed by external/review/dependency obstacles):
    ```powershell
    # Record structured blocker finding and transition to blocked (or pass --record-only to record finding without status change):
@@ -208,29 +214,36 @@ Use `--no-history` when resuming execution where supplemental status history is 
    # Or structured request payload:
    Get-Content task_review.xml -Raw | dogdouspec task review --iteration "<ITERATION_ID>" --task "<TASK_ID>" --expected-revision <REV> --stdin --format xml
    ```
-6. **Complete Task** (transitions `verification` -> `done` or atomic finish):
+6. **Complete Task** (transitions `verification` -> `done`; finish runs missing transitions sequentially):
    ```powershell
    # Standard finish:
    dogdouspec task finish --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--summary "..."] [--occurred-at <TIMESTAMP>] --format xml
    ```
+   Finish reports the full revision range and each applied transition. If a later step fails (for example, review is still required), earlier transitions remain committed and the receipt reports `partial="true"` with a nonzero exit. Re-read state before retrying; finish never supplies review approval.
 
 #### 🛡️ Low-Level Plumbing Fallback (Raw XML Payload & Revision Opt-In)
 If detailed manual XML payloads are required, inspect templates with `dogdouspec template list` and `dogdouspec template show --name <NAME>`:
 - `dogdouspec task update --iteration "<ITERATION_ID>" --task "<TASK_ID>" (--expected-revision <REV> | --revision latest) --stdin/--file <PATH> --format xml`
 - `dogdouspec task add --iteration "<ITERATION_ID>" (--expected-revision <REV> | --revision latest) --stdin/--file <PATH> --format xml`
 - `dogdouspec task split --iteration "<ITERATION_ID>" --task "<TASK_ID>" (--expected-revision <REV> | --revision latest) --stdin/--file <PATH> --format xml`
-- `dogdouspec transaction apply [--revision latest] --stdin/--file <PATH> --format xml`
+- `dogdouspec transaction apply [--revision latest] [--dry-run] --stdin/--file <PATH> --format xml`
+
+Preview receipts explicitly say `dry_run="true"` / `DRY RUN, nothing written`. `task quick --dry-run --format xml` returns a labeled canonical task-add request that can be saved and passed to `task add`; inspect and use its exact revision before replaying. `transaction apply --dry-run` validates the prospective documents without publishing them.
 
 ### 5. Task & Requirement Change Decision Tree
 
-When requirements, scope, or architecture need adjustment during an iteration:
+When requirements, scope, constraints, or architecture need adjustment during an iteration:
 
-- **Elaborating an Active or Pending Task**: Use `dogdouspec task revise` to add constraints, acceptance criteria, or dependencies.
+- **Creating Complete Iteration Intent**: Export `dogdouspec template show --name iteration.create` to a file outside `.dogdouspec/`, fill its product or research body, then run `dogdouspec iteration create --id "<ITERATION_ID>" --kind feature --file iteration-content.xml`. Optional `index`, `constraints`, and `design` are accepted. Creation validates and publishes the complete iteration together; no follow-up transaction is needed. Criteria must remain pending and requirements/design proposed. Add `--activate` only with current-interaction owner authorization; it approves baseline requirements/design while product criteria remain pending. Put acceptance in the file or repeat `--criterion`, never both.
+- **Managing Iteration-level Constraints**: For rules applying to every Task (e.g. required SDK, OS target, compiler flags), use `iteration create --constraint "environment: .NET 10 is required"` (repeatable), or `iteration constraint add --iteration "<ITERATION_ID>" --text "..." [--kind <TOKEN>] [--constraint-id <ID>] --expected-spec-revision <REV>`. Inspect with `iteration constraint list --iteration "<ITERATION_ID>"`; remove with `iteration constraint remove --iteration "<ITERATION_ID>" --constraint-id <ID> --expected-spec-revision <REV>`. `kind` is an open token (`[a-z][a-z0-9-]*`), not an enum; without an explicit kind, `kind: text` or `[kind] text` is recognized and stripped from the stored text. Add/remove affect `spec.xml`, so use its revision (not the tasks revision). The CLI can resolve the current spec revision when omitted; agents should pass the exact observed revision. These commands do not authorize changing product requirements or owner decisions; follow [authority rules](references/authority.md). All iteration constraints appear in `task context` with `scope="iteration"`.
+- **Elaborating an Active or Pending Task**: Use `dogdouspec task revise` to add task-specific constraints (`--add-constraint`), acceptance criteria, scope includes (`--add-scope`), or dependencies (`--add-dependency`). Additive scope preserves every repository and exclusion; dependencies resolve to `scope="document"` locally or `scope="project"` across iterations. Raw task-revise XML still replaces its supplied scope.
 - **Adding Bounded Work for Immediate Execution**: Use `dogdouspec task quick --title ... --scope ... --done-when ... --why ... [--start]`.
 - **Adding a New Planned Technical Task**: Use `dogdouspec task add` to add a pending task referencing an existing approved requirement.
 - **Deferred or Material Work**: Put work not ready to execute in backlog (`dogdouspec backlog add`). If it changes product behavior, architecture, requirements, or owner acceptance boundaries, use `change propose`.
 - **Splitting a Complex Task**: Use `dogdouspec task split` to mark the parent task `superseded`, `transferred`, or `cancelled` and add 2+ focused pending subtasks atomically.
 - **Proposing a New Requirement**: Use `dogdouspec requirement propose` to add a requirement with `status="proposed"` (owner confirmation via `iteration confirm` is required).
+
+Backlog porcelain can generate omitted item ID, operation ID and UTC timestamp; actor defaults to `DOGDOUSPEC_ACTOR` or `agent`. Receipts return `<backlog-identity>` with exact replay parameters. Preserve them for retries; an omitted operation ID creates a new operation. With an explicit operation ID, omitted time is derived only from its `yyyyMMddTHHmmssZ` prefix; otherwise supply `--occurred-at`. `kind` is an open token, not a fixed enum. Research items should preserve the question and owner review condition; recording a suggestion does not approve its product design.
 
 ### 6. Post-Mutation Re-query & Validation
 

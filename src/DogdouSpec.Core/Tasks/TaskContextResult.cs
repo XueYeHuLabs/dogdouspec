@@ -20,6 +20,22 @@ public sealed record TaskContextDependency(
     string Title,
     bool Satisfied);
 
+public sealed record TaskContextConstraint(
+    string Id,
+    string Text,
+    string Scope = "task",
+    string? Kind = null)
+{
+    public void Deconstruct(out string id, out string text)
+    {
+        id = Id;
+        text = Text;
+    }
+
+    public static implicit operator (string Id, string Text)(TaskContextConstraint c) => (c.Id, c.Text);
+    public static implicit operator TaskContextConstraint((string Id, string Text) t) => new(t.Id, t.Text);
+}
+
 public sealed class TaskContextResult
 {
     public string IterationId { get; init; } = string.Empty;
@@ -38,7 +54,7 @@ public sealed class TaskContextResult
     public string Objective { get; init; } = string.Empty;
     public string Rationale { get; init; } = string.Empty;
     public XElement? ScopeElement { get; init; }
-    public IReadOnlyList<(string Id, string Text)> Constraints { get; init; } = Array.Empty<(string, string)>();
+    public IReadOnlyList<TaskContextConstraint> Constraints { get; init; } = Array.Empty<TaskContextConstraint>();
     public IReadOnlyList<TaskContextRequirement> OriginRequirements { get; init; } = Array.Empty<TaskContextRequirement>();
     public IReadOnlyList<(string Id, string Status, string Text)> AcceptanceCriteria { get; init; } = Array.Empty<(string, string, string)>();
     public IReadOnlyList<TaskBlockerItem> ActiveBlockers { get; init; } = Array.Empty<TaskBlockerItem>();
@@ -115,6 +131,14 @@ public sealed class TaskContextResult
                 {
                     writer.WriteStartElement("constraint");
                     writer.WriteAttributeString("id", c.Id);
+                    if (!string.IsNullOrEmpty(c.Scope))
+                    {
+                        writer.WriteAttributeString("scope", c.Scope);
+                    }
+                    if (!string.IsNullOrEmpty(c.Kind))
+                    {
+                        writer.WriteAttributeString("kind", c.Kind);
+                    }
                     writer.WriteString(c.Text);
                     writer.WriteEndElement();
                 }
@@ -370,7 +394,10 @@ public sealed class TaskContextResult
             sb.AppendLine("Constraints:");
             foreach (var c in Constraints)
             {
-                sb.AppendLine(CultureInfo.InvariantCulture, $"  - [{c.Id}] {c.Text}");
+                var tag = !string.IsNullOrEmpty(c.Kind)
+                    ? $" ({c.Scope}, {c.Kind})"
+                    : (c.Scope == "iteration" ? " (iteration)" : string.Empty);
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  - [{c.Id}]{tag} {c.Text}");
             }
             sb.AppendLine();
         }

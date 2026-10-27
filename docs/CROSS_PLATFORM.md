@@ -13,7 +13,7 @@ DogdouSpec is designed as a portable, native-first tool targeting .NET 10 and C#
 >   - **Linux x64** (`linux-x64`)
 >   - **macOS ARM64** (`osx-arm64`)
 >
-> Automated cross-platform builds are compiled via GitHub Actions matrix runners (`ubuntu-latest` and `macos-latest`). Due to the absence of dedicated physical Linux/macOS release certification environments, non-Windows platforms are provided on a **best-effort** basis without official SLA commitments or commercial support guarantees.
+> Linux and macOS builds must currently be compiled and verified on their respective platforms using the commands below. This repository does not include a GitHub Actions cross-platform release workflow. Due to the absence of dedicated physical Linux/macOS release certification environments, non-Windows platforms are provided on a **best-effort** basis without official SLA commitments or commercial support guarantees.
 
 ---
 
@@ -87,7 +87,7 @@ dotnet run --project src/DogdouSpec.Cli/DogdouSpec.Cli.csproj -- <command> [opti
 
 ## 4. Release Packaging Structure
 
-The automated GitHub Actions release pipeline (`.github/workflows/release.yml`) generates:
+The Windows release script (`scripts/publish-release.ps1`) generates the Windows ZIP and its `.sha256` checksum. Linux and macOS archives require separate builds and packaging on their respective platforms; the expected package names are:
 
 | Target Platform | Package Name | Contents |
 |---|---|---|
@@ -95,4 +95,4 @@ The automated GitHub Actions release pipeline (`.github/workflows/release.yml`) 
 | **macOS ARM64** | `dogdouspec-osx-arm64.tar.gz` | `dogdouspec` (Executable binary) |
 | **Windows x64** | `dogdouspec-win-x64.zip` | `dogdouspec.exe` (Executable binary) |
 
-Each archive is accompanied by a standard `.sha256` checksum file in the GitHub Release assets.
+When publishing additional platform archives, generate and upload a matching `.sha256` checksum file for each archive.

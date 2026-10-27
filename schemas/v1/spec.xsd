@@ -248,6 +248,7 @@
         <xs:element name="product" type="ProductType"/>
         <xs:element name="research" type="ResearchType"/>
       </xs:choice>
+      <xs:element name="constraints" type="ConstraintsType" minOccurs="0"/>
       <xs:element name="design" type="DesignType" minOccurs="0"/>
       <xs:element name="confirmations">
         <xs:complexType>

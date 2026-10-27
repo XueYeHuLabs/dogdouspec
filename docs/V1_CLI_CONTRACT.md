@@ -49,6 +49,9 @@ dogdouspec workspace init
 
 dogdouspec iteration list
 dogdouspec iteration create
+dogdouspec iteration constraint add
+dogdouspec iteration constraint list
+dogdouspec iteration constraint remove
 dogdouspec iteration readiness
 dogdouspec iteration confirm --stdin|--file
 
@@ -86,8 +89,10 @@ dogdouspec transaction apply --stdin|--file
 `transaction apply` is the low-level escape hatch. The Skill normally uses
 templates, `task quick`, `task add/revise/split`, `requirement propose`, `change propose/apply`, `append`, `task update`, and `iteration confirm`.
 
-Every mutating command identifies itself as mutating in help output and requires
-an expected revision for each existing document it may change.
+Every mutating command identifies itself as mutating in help output and uses
+revision protection for each existing document it may change. Low-level writes
+require explicit expected revisions; porcelain helpers may resolve current
+revisions as documented below.
 
 ### 2.1 Read-only task selection and scope verification
 
@@ -157,18 +162,55 @@ their normal diagnostic exit codes.
 
 ### 2.1.2 Bounded task recovery context
 
-`task context` produces a deterministic, bounded XML or human view enabling an agent session to resume work without loading transient external reports:
-- **Essential Context (Non-truncatable)**: Always contains task identity, objectives, rationale, scope, constraints, origin requirements with key points, acceptance criteria, dependency statuses, active blockers/findings, latest status records, and progression assessment (action category, reason code, recommended/permitted/prohibited actions, and authority boundaries).
+`task context` produces a deterministic, bounded XML or human view for starting or resuming work without loading transient external reports. The Skill requires this read before execution of each selected or resumed Task; use `--no-history` when supplemental records are unnecessary:
+- **Essential Context (Non-truncatable)**: Always contains task identity, objectives, rationale, scope, constraints, origin requirements with key points, acceptance criteria, dependency statuses, active blockers/findings, latest status records, and progression assessment (action category, reason code, recommended/permitted/prohibited actions, and authority boundaries). Constraints are emitted in document order, iteration constraints first (`scope="iteration"` from `spec.xml`), then Task constraints (`scope="task"`), retaining IDs, text, and optional `kind`. Both scopes apply with no implicit override or deduplication. Raw Task queries and `task show` expose only Task-local data and cannot replace this context read.
 - **Fail-Closed Limit Enforcement**: If Essential Context alone exceeds `--max-bytes` (default: 32,768), the command refuses to truncate and fails closed with `LIMIT_EXCEEDED` (exit code 7).
 - **Greedy Supplemental Budgeting**: Historical execution records are budgeted greedily into the remaining byte limit; omitted records are reported with `truncated="true"`, `omitted_records="<N>"`, and a copy-pasteable follow-up XPath locator.
 - **Read-Drift Protection**: Verifies snapshot consistency between `tasks.xml` and `spec.xml`, retrying bounded transient drift and failing closed on persistent conflict.
+
+Re-read context after a constraint change. Resolve conflicting constraints before
+execution; if essential context exceeds the limit, increase `--max-bytes`
+instead of bypassing the failed context query.
+
+### 2.1.3 Bounded history and structured check authoring
+
+`task records --task ID [--iteration ID] [--last N] [--kind KIND ...]
+[--fields id,kind,created_at,summary,checks,covers] [--max-summary N]
+[--max-bytes N]` reads persisted records in document order. Filtering precedes
+last-N selection (default 20, maximum 10000). Default fields are
+`id,kind,status,created_at,summary`; supported children include index, summary,
+context, options, impact, outcome, checks, covers and sources. The derived
+`task-records` envelope reports source tasks revision and total/matching/count/
+omitted counts. Optional summary truncation reports `summary_truncated` and
+`summary_original_characters` (UTF-16 code units, without splitting surrogate
+pairs). Byte overflow fails with `LIMIT_EXCEEDED`, rather than dropping records.
+This read never replaces effective `task context` before execution.
+
+`task record` supports `--check-command`, `--check-result passed|failed|skipped`,
+`--check-exit-code`, `--check-kind` (default command), and `--check-summary`
+(default record summary). Any check flag requires result; exit code requires a
+command. The flags create the existing checks/check structure and `--covers`
+retains criterion links. They do not pass acceptance or supply review approval.
+Task add/update/revise/review reject new timestamps beyond current UTC plus five
+minutes, allowing continuation at already-committed legacy future metadata.
+Generated task operations clamp to committed create/update time. Verified
+replays preserve original identity and timestamp.
 
 ### 2.2 Backlog lifecycle helpers
 
 `backlog add`, `schedule`, `complete`, and `cancel` are bounded mutating helpers;
 `backlog list` is read-only. Every mutation requires the exact positive
 `backlog.xml` revision plus stable `--id`, `--operation-id`, `--actor`, and
-`--occurred-at` values. An identical retry at the current or immediately prior
+`--occurred-at` values at the core boundary. Porcelain may generate omitted
+identity fields: add's item ID and operation ID are unique, actor defaults to
+`DOGDOUSPEC_ACTOR` or `agent`, and time is UTC now. Transitions require the target
+item ID. With an explicit operation ID and omitted time, a valid
+`yyyyMMddTHHmmssZ` prefix supplies deterministic time; otherwise pass time
+explicitly. `<backlog-identity id="..." operation_id="..." actor="..."
+occurred_at="..."/>` on the mutation result returns exact replay parameters.
+Omitting operation ID on retry generates a new operation, so retain the receipt.
+`kind` is an open token, not an enum; defect-specific rules still apply.
+An identical retry at the current or immediately prior
 revision returns `already_applied="true"`; changed payload, reused operation ID,
 or stale unrelated revision fails closed.
 
@@ -191,10 +233,24 @@ provenance, not authenticated identity.
 
 ## 3. Result and diagnostic envelope
 
+Preview mutations use `dry_run="true"` on the envelope and human heading
+`DRY RUN, nothing written`. Public `transaction apply --dry-run` validates
+prospective documents without publishing. Quick dry-run XML instead retains
+the canonical task-add request with a leading XML comment identifying the
+preview; it remains consumable by `task add`.
+
+`task finish` performs missing start/verify/complete transitions sequentially,
+one revision per transition. Its result reports the full document revision
+range and ordered `<transition name="..." from="..." to="..." document="..."
+previous_revision="..." revision="..."/>` elements. If a later step fails,
+earlier committed transitions remain: stdout contains `partial="true"` and
+their receipts, stderr contains diagnostics, and exit status is nonzero.
+Re-query before retrying. Independent review gates remain enforced.
+
 V1 formats are `xml` and `human`. `xml` is the default when stdout is not an
 interactive terminal. Skills explicitly request `--format xml`.
 
-A successful mutation returns only changed documents and idempotency state:
+A successful mutation returns changed documents and idempotency state:
 
 ```xml
 <mutation command="task update" already_applied="false">
@@ -256,9 +312,12 @@ dogdouspec workspace init --format xml
 ```
 
 Initialization creates `.dogdouspec`, `_schema`, `_skill`, `knowledge.xml`, and
-`backlog.xml` atomically. It fails without mutation if managed state already
+`backlog.xml`, and installs the embedded Skill under
+`.agents/skills/dogdouspec/`. It fails without mutation if managed state already
 exists. `_schema` receives readable version-matched schema copies; the embedded
-CLI schemas remain authoritative.
+CLI schemas remain authoritative. The installed Skill includes constraint
+authoring and required effective-context guidance; `AGENTS.md` is reconciled by
+the caller, not generated by the CLI.
 
 ### 4.3 List and create
 
@@ -268,6 +327,7 @@ dogdouspec iteration list --format xml
 dogdouspec iteration create `
   --id 20260823-xpath-core `
   --kind feature `
+  --constraint "environment: .NET 10 is required" `
   --format xml
 ```
 
@@ -275,7 +335,71 @@ dogdouspec iteration create `
 `feature` or `research`. Creation atomically creates the directory, `spec.xml`,
 and `tasks.xml`; it never chooses a suffix silently.
 
+`--file PATH` accepts a UTF-8 `<iteration-content>` document (max 16 MiB),
+available via `template show --name iteration.create`. It contains exactly one
+matching `product` or `research` body plus optional `index`, `constraints`, and
+`design`. It cannot supply lifecycle metadata, confirmations or operation
+receipts. Requirements and design decisions must be proposed, questions open,
+criteria pending. The resulting managed spec still passes complete existing
+schema and semantic validation before any directory is published. Acceptance
+comes from the file or repeatable `--criterion`, never both. Missing acceptance
+inherits generated criteria; activation requires defined text. Explicit
+owner-authorized `--activate` approves baseline requirements/design and generates
+confirmation targets from the supplied IDs; product criteria remain pending.
+This is creation intent, not a new managed document schema or transaction
+request. Generated activation confirmation IDs include the iteration slug to
+avoid collisions among same-day iterations.
+
 Iteration listing discovers candidate iteration direct child directories matching the time-first pattern and returns summaries in deterministic ascending chronological order based on `created_at` timestamp (parsed as UTC), with ordinal directory/iteration `id` as the tie-breaker. Both `xml` (as `@created_at` attribute on `<iteration>`) and `human` output formats expose `created_at`. It reports malformed candidate directories as structured diagnostics rather than hiding them.
+
+### 4.4 Iteration constraints
+
+`iteration create` accepts optional repeatable `--constraint <TEXT>` for both
+feature and research iterations. Later authoring uses:
+
+```powershell
+dogdouspec iteration constraint add --iteration <ID> --text <TEXT> [--kind <TOKEN>] [--constraint-id <ID>] [--expected-spec-revision <N>] --format xml
+dogdouspec iteration constraint list [--iteration <ID>] --format xml
+dogdouspec iteration constraint remove --iteration <ID> --constraint-id <ID> [--expected-spec-revision <N>] --format xml
+```
+
+All three commands accept `--workspace-root` and `--format xml|human`.
+`--iteration` may be omitted when exactly one candidate can be resolved;
+ambiguous or missing candidates require an explicit iteration.
+
+- Constraints live in `/iteration/constraints` in `spec.xml` and apply to all
+  Tasks in that iteration. Add generates a time-first ID unless
+  `--constraint-id` supplies one. List is read-only and returns IDs, optional
+  kinds, and text in document order; XML uses an `<iteration-constraints
+  iteration="..." count="...">` envelope. Remove requires an exact ID and
+  removes the wrapper after its last constraint is removed.
+- Constraint `kind` is an optional open token matching
+  `[a-z][a-z0-9-]*`, not an enumeration. Creation and add without explicit
+  `--kind` recognize `kind: text` and `[kind] text`, lowercase the kind, and
+  strip the prefix from stored text. Without a recognized prefix the text
+  remains untyped. Add with explicit `--kind` lowercases that value and
+  preserves the complete supplied text apart from outer whitespace.
+  Creation's `--kind feature|research` selects the iteration type.
+- Add/remove change only `spec.xml` through the validated atomic writer and
+  advance its revision once. `--expected-spec-revision` checks that document's
+  exact positive revision; it is independent of `tasks.xml` and is not named
+  `--expected-revision`. When omitted the helper resolves the current revision
+  automatically; no `--revision latest` flag is required. A stale explicit
+  revision fails with `REVISION_CONFLICT`.
+- Add/remove reject terminal iterations (`completed`, `cancelled`,
+  `superseded`). Technical constraints do not approve Requirements, waive
+  product acceptance, change protected design decisions, or override owner
+  rules. Material product changes still use change proposal and owner gates.
+- `task context` always includes both iteration and Task constraints in its
+  essential section, even with `--no-history`; neither scope overrides the
+  other. The Skill must read that context before starting or resuming work.
+
+Fresh workspaces receive these embedded schema and Skill resources. Existing
+workspaces refresh them through the Guide-first `schema status/sync` and
+`skill status/sync` upgrade contract. The optional XML extension requires no
+managed-document migration; synchronization does not edit existing XML or
+`AGENTS.md`. Callers reconcile repository or shared bootstrap instructions to
+require the effective-context read.
 
 ## 5. XPath query contract
 
@@ -370,6 +494,14 @@ processing-instruction, or mixed node-sets use minimal typed item wrappers.
 
 No successful result is silently truncated.
 
+Both `query` and `search` accept exactly one of `--xpath EXPR` or
+`--xpath-file PATH` (UTF-8 file, max 16 MiB). Variable bindings and XPath limits
+are identical. File input avoids shell interpolation and Git Bash/MSYS path
+rewriting. `query --warn-empty` is opt-in: an empty node-set emits a warning
+`EMPTY_QUERY_RESULT` on stderr with the document root/direct children while
+stdout and exit status remain unchanged. Scalar zero is not an empty node-set.
+Backlog item queries use `/backlog/items/item`.
+
 ### 5.4 Project search
 
 `search` evaluates the same XPath independently against every document in a
@@ -441,6 +573,7 @@ V1 templates include:
 - `task.update`
 - `task.review`
 - `iteration.confirmation`
+- `iteration.create` (creation intent for `iteration create --file`)
 - `knowledge.entry`
 - `backlog.item`
 
@@ -631,6 +764,7 @@ dogdouspec task split `
 
 1. `task add`: Appends a pending task to `tasks.xml`. Requires `<origin>` referencing an existing requirement in `spec.xml`. Newly added task must have `status="pending"`.
 2. `task revise`: Elaborates `rationale`, `scope`, `add_dependencies`, `add_constraints`, `add_acceptance`, and appends discussion records on active/pending tasks. Fails with `TASK_IMMUTABLE` if target task is in terminal status.
+   Porcelain `--add-scope` merges deduplicated includes into repository `.` and preserves all other repositories and exclusions; raw XML scope remains whole-scope replacement. `--add-dependency` resolves one target and supplies `scope="document"` in the same tasks document or `scope="project"` across iterations. The merged request uses the observed exact revision to reject concurrent edits.
 3. `task split`: Sets a parent task terminal disposition (`superseded`, `transferred`, `cancelled`) with rationale and records, and atomically appends 2 or more pending subtasks.
 
 These helper requests are bounded by the normal XML document-size limit before parsing or reading any managed input. Their `occurred_at` must not precede the `updated_at` of every task or document they modify. A newly added successor/task must be pending, stamped with `created_at` and `updated_at` exactly equal to request `occurred_at`, and must not supply `started_at` or `completed_at`.

@@ -707,7 +707,7 @@ public static class TaskAdder
                 var alreadyAppliedEnv = new MutationEnvelope(
                     commandName,
                     new[] { new MutatedDocument(normTasksDocPath, actualRevision) },
-                    alreadyApplied: true);
+                    alreadyApplied: true, dryRun: dryRun);
                 return (true, alreadyAppliedEnv, Array.Empty<Diagnostic>());
             }
 
@@ -755,6 +755,9 @@ public static class TaskAdder
 
         // 4. Apply mutation
         tasksRoot.Add(taskElem);
+        var timestampError = TaskTimestampPolicy.ValidateRequest(reqRoot, clock ?? SystemClock.Instance, normTasksDocPath);
+        if (timestampError != null) return (false, null, new[] { timestampError });
+
         var newRevision = actualRevision + 1;
         tasksRoot.SetAttributeValue("revision", newRevision.ToString(CultureInfo.InvariantCulture));
 
