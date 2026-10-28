@@ -41,7 +41,8 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
    - Verify `dogdouspec --version`.
    - If missing, fail closed and instruct the user: `winget install Vixasol.DogdouSpec`.
    - Execute commands directly via `dogdouspec <command>` (or `dotnet run --project src/DogdouSpec.Cli/DogdouSpec.Cli.csproj -- <command>` during source development).
-   - After installing or replacing the CLI, read `dogdouspec skill guide --all` before repository mutation. Inspect `skill status` and `schema status`, run explicit sync commands only after reviewing their output, then reconcile repository-specific guidance and automation as described in the embedded upgrade contract.
+   - After installing or replacing the CLI, inspect `skill status` and `schema status`, then read `dogdouspec skill guide --file references/upgrade.md`. Use `skill diff` and optional `skill records` to discover local changes and intent. Users/agents edit Skill Markdown directly and may record why/what changed with `skill record --summary`. Upgrade advice and history are informational; the caller decides synchronization and reconciliation of repository guidance and automation.
+   - In this source repository, `.agents/skills/dogdouspec/*.md` and its references are also embedded product inputs. For unreleased commands and self-hosted Skill synchronization, build the current source and use `dotnet run --project src/DogdouSpec.Cli/DogdouSpec.Cli.csproj -- <command>` or the corresponding local build. Compare the current files before syncing; an older globally installed binary contains older guidance. Keep `.skill-state.xml` with the Skill as repository metadata; it is not an embedded resource.
 2. **Never Directly Edit `.dogdouspec/*.xml`**:
    - Do not use file editors, `Set-Content`, or scripts to modify files inside `.dogdouspec/`.
    - All managed mutations must be executed through the public CLI (`task update`, `task quick`, `task add`, `append`, `transaction apply`, `schema sync`, `iteration confirm`).
@@ -81,6 +82,7 @@ This repository uses **DogdouSpec** to manage iterations, specifications, and ta
    - Only execute `iteration confirm` when explicitly instructed by the human owner in the current interaction.
 8. **Preserve User Work**:
    - Do not commit or push to git unless explicitly requested by the user.
+   - Do not push directly to `main` in this repository. Keep implementation changes on a non-main branch; branch pushes still require explicit user authorization.
 9. **Checkpoint Governed State**:
    - In Git-backed Mode B work, inspect `git status --short -- .dogdouspec` at material lifecycle, review, handoff, external-blocker, and release boundaries.
    - Version managed `.dogdouspec/` documents and ignore only `.dogdouspec/_tmp/`. If Git-write authority is absent, report the workspace as locally durable but not transport-ready and list the exact uncheckpointed files.

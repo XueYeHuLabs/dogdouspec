@@ -3,6 +3,7 @@ using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Resources;
 using DogdouSpec.Core.Security;
 using DogdouSpec.Core.Serialization;
+using DogdouSpec.Core.Skills;
 
 namespace DogdouSpec.Core.Workspace;
 
@@ -164,6 +165,9 @@ In a Git-backed governed workspace, version the managed `.dogdouspec/` documents
             // Skip files that already exist — never overwrite on init (use 'skill sync' to upgrade).
             var agentSkillDir = Path.Combine(projectRoot, ".agents", "skills", "dogdouspec");
             var agentSkillRefDir = Path.Combine(agentSkillDir, "references");
+            using var skillWriter = SkillStateStore.AcquireWriter(agentSkillDir);
+            var newSkill = !EmbeddedResources.SkillFilePaths.Any(path => File.Exists(Path.Combine(agentSkillDir, path)))
+                && !File.Exists(Path.Combine(agentSkillDir, SkillStateStore.FileName));
 
             if (!Directory.Exists(agentSkillDir))
             {
@@ -188,6 +192,15 @@ In a Git-backed governed workspace, version the managed `.dogdouspec/` documents
                         createdFiles.Add(destPath);
                     }
                 }
+            }
+
+            // Existing or mixed installations retain their previous provenance; only a new install is stamped.
+            if (newSkill)
+            {
+                var skillState = SkillStateStore.Read(agentSkillDir);
+                SkillStateStore.SetBaseline(skillState, EmbeddedResources.SkillFilePaths);
+                SkillStateStore.Write(agentSkillDir, skillState);
+                createdFiles.Add(Path.Combine(agentSkillDir, SkillStateStore.FileName));
             }
 
             // Update .gitignore: append /.dogdouspec/_tmp/ if not already present (idempotent).

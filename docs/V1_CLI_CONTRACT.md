@@ -11,24 +11,26 @@ Status: Normative implementation contract
 To make a write replayable, supply both `--id` and `--operation-id`; the operation ID must begin with a UTC `YYYYMMDDTHHmmssZ` timestamp, which becomes the generated request time. Dry-run emits canonical XML with `--format xml`; `--format human` emits a stable preview summary and directs callers to XML for the request.
 
 This document defines the first usable repository-local CLI. XML is the
-machine-facing request and result format. The CLI is a secure XML/XPath engine
-with a small set of schema-aware atomic helpers; it is not an autonomous project
-manager.
+machine-facing request and result format. The CLI is a collaborative XML/XPath
+engine with schema-aware helpers. It reports facts and provides explicit
+mechanical operations; users and agents decide how to reconcile upgrades.
 
 ## 1. Invocation and discovery
 
-The repository wrapper is:
+The standard invocation uses the global CLI:
 
 ```text
-dogdouspec.cmd
+dogdouspec
 ```
 
-It invokes the pinned local executable without global installation. From the
-working directory, commands walk ancestors to the nearest `.dogdouspec`
+Vendored installations can use `dogdouspec.cmd` to invoke a pinned executable.
+During source development, `dotnet run --project src/DogdouSpec.Cli/DogdouSpec.Cli.csproj -- <command>`
+uses the current implementation and embedded guidance. From the working
+directory, workspace commands walk ancestors to the nearest `.dogdouspec`
 directory. `--workspace-root` overrides discovery and must name that exact
 directory or its parent project directory.
 
-All persisted document paths in commands and results are normalized `/`
+Managed workspace document paths in commands and results are normalized `/`
 separated paths relative to `.dogdouspec`:
 
 ```text
@@ -61,7 +63,15 @@ dogdouspec validate
 
 dogdouspec schema show
 dogdouspec schema status
+dogdouspec schema diff
 dogdouspec schema sync
+dogdouspec skill guide
+dogdouspec skill status
+dogdouspec skill diff
+dogdouspec skill sync
+dogdouspec skill export
+dogdouspec skill record
+dogdouspec skill records
 dogdouspec template show
 dogdouspec append --stdin|--file
 dogdouspec task update --stdin|--file
@@ -89,10 +99,12 @@ dogdouspec transaction apply --stdin|--file
 `transaction apply` is the low-level escape hatch. The Skill normally uses
 templates, `task quick`, `task add/revise/split`, `requirement propose`, `change propose/apply`, `append`, `task update`, and `iteration confirm`.
 
-Every mutating command identifies itself as mutating in help output and uses
-revision protection for each existing document it may change. Low-level writes
+Managed task/specification mutations use revision protection. Low-level writes
 require explicit expected revisions; porcelain helpers may resolve current
-revisions as documented below.
+revisions as documented below. Skill baseline/history is separate collaboration
+metadata in the Skill directory; its commands do not use task revisions or
+product approval gates. Schema-copy synchronization uses its expected schema
+version and workspace writer lock.
 
 ### 2.1 Read-only task selection and scope verification
 
@@ -395,8 +407,8 @@ ambiguous or missing candidates require an explicit iteration.
   other. The Skill must read that context before starting or resuming work.
 
 Fresh workspaces receive these embedded schema and Skill resources. Existing
-workspaces refresh them through the Guide-first `schema status/sync` and
-`skill status/sync` upgrade contract. The optional XML extension requires no
+workspaces inspect them through `schema status/diff` and `skill status/diff`,
+read the focused upgrade guide, and choose the explicit sync commands. The optional XML extension requires no
 managed-document migration; synchronization does not edit existing XML or
 `AGENTS.md`. Callers reconcile repository or shared bootstrap instructions to
 require the effective-context read.
@@ -541,17 +553,18 @@ serialization where possible.
 ```powershell
 dogdouspec schema show --name tasks --version 1.0
 dogdouspec schema status --version 1.0 --format xml
+dogdouspec schema diff --name tasks --version 1.0 --format xml
 dogdouspec template show --name record.discussion --version 1.0
 ```
 
-`schema show`, `schema status`, and `template show` are read-only. `schema show`
+`schema show`, `schema status`, `schema diff`, and `template show` are read-only. `schema show`
 and `template show` write exact embedded resources to stdout. `schema status`
 reports whether each optional readable copy under `.dogdouspec/_schema` is
 matching, modified, or missing; exit code `1` means differences were found.
 Templates are valid examples, not hidden scripts. An Agent copies a template,
 replaces example identity and content, validates it, then submits it.
 
-After the calling Agent reads `dogdouspec skill guide --all`, assesses the
+After the calling Agent reads `dogdouspec skill guide --file references/upgrade.md`, assesses the
 repository, and determines that readable schema copies should be refreshed, it
 may invoke:
 
@@ -576,6 +589,65 @@ V1 templates include:
 - `iteration.create` (creation intent for `iteration create --file`)
 - `knowledge.entry`
 - `backlog.item`
+
+### 6.1 Collaborative Skill customization and upgrades
+
+Skill commands default to `.agents/skills/dogdouspec` relative to the working
+directory. `--output-dir PATH` selects the owning Skill directory, including a
+shared ancestor installation. Guide reads the current binary's embedded content.
+
+```powershell
+dogdouspec skill guide --file references/upgrade.md
+dogdouspec skill status --format xml
+dogdouspec skill diff --file references/authority.md --format xml
+dogdouspec skill record --summary "Why the guidance changed and what changed" --format xml
+dogdouspec skill records --last 5 --format xml
+dogdouspec skill sync --force --format xml
+```
+
+The single `.skill-state.xml` stores `baseline` and `history` under
+`skill-state format_version="1"`. Baseline fields are `cli_version`, `synced_at`,
+`content_normalization="utf8-lf"` and relative file `path` / `sha256`. Only CRLF
+is normalized to LF; other text remains significant. History records contain
+generated `id`, `created_at`, `cli_version` and free-text `summary`.
+
+Users/agents edit Markdown directly. Recording intent is optional. `record`
+appends history without refreshing the baseline; `records --last N` returns the
+last N entries in append order and does not write. History is not interpreted as
+instructions, proof of current customization, or an upgrade decision.
+
+`status` retains the existing `matching/modified/missing/extra` states and adds
+per-file `provenance`, `local_changed` and `embedded_changed`. Missing or unusable
+baselines produce unknown provenance. The metadata file is excluded from content
+comparison. `automatic_upgrade` is advisory: `ready`, `review-needed`, `unknown`
+or `not-needed`. Retained customization can produce differences even after
+successfully adopting the current embedded baseline.
+
+`sync --force` and `export --output-dir PATH` overwrite the current managed file
+set, publish its baseline after the writes, and preserve history and unmanaged
+files. They do not require customization logs or discard acknowledgements.
+`workspace init` stamps a new installation but does not certify existing or
+mixed Skill contents. Sync does not edit `AGENTS.md` or migrate managed XML.
+
+`skill diff` and `schema diff` compare local content to current embedded content,
+with `--format unified` (default) or `xml`. No Git or old binary is required.
+Hashes cannot reconstruct old text; these are not three-way merges. Retired
+Skill files are shown with `sync_action="preserve"`, not deleted. Status/diff
+exit 0 for matching content, 1 for reported differences, and nonzero errors for
+invalid arguments or failed operations; 1 is not an upgrade refusal.
+An already absent retired file is not an extra content entry. Explicitly
+comparing that baseline path returns an empty diff. Text comparison errors name
+the file and return a filesystem diagnostic without partial stdout; inputs must
+be UTF-8 text representable in XML. XML diff payloads preserve carriage returns
+through entity references. Sync receipts list local customizations only when
+their content differs from the target being written, including preexisting local
+files at newly managed paths. Absolute receipt paths use platform separators.
+
+`guide --file` selects one embedded document, while `--all` remains available
+for the whole guide. They are mutually exclusive. Export writes UTF-8 files;
+the executable also emits UTF-8 stdout/stderr on Windows. Build/test selection
+depends on changed inputs and repository rules. In this source repository,
+Skill Markdown and XSDs are embedded product inputs and require `build.cmd`.
 
 ## 7. Generic append
 

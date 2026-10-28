@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Globalization;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 using DogdouSpec.Core.Diagnostics;
 using DogdouSpec.Core.Formatting;
 using DogdouSpec.Core.Resources;
@@ -72,6 +73,7 @@ public static class SchemaCommand
 
         schemaCmd.Add(showCmd);
         schemaCmd.Add(BuildStatusCommand());
+        schemaCmd.Add(BuildDiffCommand());
         schemaCmd.Add(BuildSyncCommand());
         return schemaCmd;
     }
@@ -166,6 +168,68 @@ public static class SchemaCommand
             return 0;
         });
 
+        return command;
+    }
+
+    private static Command BuildDiffCommand()
+    {
+        var command = new Command("diff", "Review local-to-embedded schema differences without modifying the workspace or requiring Git");
+        var workspaceOption = CreateWorkspaceRootOption();
+        var nameOption = new Option<string?>("--name") { Description = "Limit the comparison to one schema" };
+        var versionOption = new Option<string>("--version") { DefaultValueFactory = _ => "1.0" };
+        var formatOption = new Option<string>("--format") { DefaultValueFactory = _ => "unified" };
+        formatOption.AcceptOnlyFromAmong("unified", "xml", "human");
+        command.Add(workspaceOption);
+        command.Add(nameOption);
+        command.Add(versionOption);
+        command.Add(formatOption);
+        command.SetAction(parse =>
+        {
+            var xml = parse.GetValue(formatOption) == "xml";
+            var format = xml ? OutputFormat.Xml : OutputFormat.Human;
+            var (found, workspace, error) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspaceOption), Environment.CurrentDirectory);
+            if (!found || error != null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("schema diff", error!).Format(format));
+                return 2;
+            }
+            var version = parse.GetValue(versionOption)!;
+            var name = parse.GetValue(nameOption);
+            name = name == null ? null : EmbeddedResources.NormalizeSchemaName(name);
+            if (name != null && !EmbeddedResources.SchemaNames.Contains(name))
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("schema diff", Diagnostic.Error(DiagnosticCodes.InvalidArgument,
+                    "Unknown schema. Available schemas: " + string.Join(", ", EmbeddedResources.SchemaNames))).Format(format));
+                return 2;
+            }
+            var (success, status, diagnostics) = WorkspaceSchemaCopies.Inspect(workspace, version);
+            if (!success || status == null)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("schema diff", diagnostics).Format(format));
+                return 2;
+            }
+            try
+            {
+                var root = new XElement("schema-diff", new XAttribute("workspace", workspace), new XAttribute("version", version),
+                    new XAttribute("direction", "local-to-embedded"));
+                foreach (var file in status.Files.Where(file => file.State != "matching" && (name == null || file.Name == name)))
+                {
+                    var path = Path.GetFullPath(Path.Combine(workspace, file.Path.Replace('/', Path.DirectorySeparatorChar)));
+                    var before = File.Exists(path) ? Core.Skills.SkillInspection.ReadText(path) : null;
+                    var diff = UnifiedDiff.Create(file.Path, before, EmbeddedResources.GetSchemaText(file.Name, version), normalizeLineEndings: false);
+                    root.Add(new XElement("file", new XAttribute("path", file.Path), new XAttribute("state", file.State), new XElement("diff", diff)));
+                }
+                root.SetAttributeValue("changed", root.Elements("file").Count());
+                if (xml) SkillCommand.WriteXml(root);
+                else foreach (var file in root.Elements("file")) Console.Out.Write(file.Element("diff")!.Value);
+                return root.HasElements ? 1 : 0;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                Console.Error.Write(new DiagnosticsEnvelope("schema diff", Diagnostic.Error(DiagnosticCodes.FilesystemError, ex.Message)).Format(format));
+                return 2;
+            }
+        });
         return command;
     }
 

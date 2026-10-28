@@ -31,7 +31,7 @@ public sealed class UpgradeWorkflowCliTests
     }
 
     [TestMethod]
-    public void PreviousVersionRepository_FollowsGuideFirstExplicitUpgradeWithoutChangingRepoGuidance()
+    public void PreviousVersionRepository_FollowsStatusFirstExplicitUpgradeWithoutChangingRepoGuidance()
     {
         var agentsPath = Path.Combine(_tempDir, "AGENTS.md");
         const string repositoryGuidance = "# Repository-owned agent guidance";
@@ -44,8 +44,8 @@ public sealed class UpgradeWorkflowCliTests
         var (helpExit, helpOut, helpErr) = RunCli("--help");
         Assert.AreEqual(0, helpExit, helpErr);
         Assert.IsTrue(helpOut.Contains("dogdouspec skill guide --all", StringComparison.Ordinal));
-        Assert.IsTrue(helpOut.IndexOf("dogdouspec skill guide --all", StringComparison.Ordinal) <
-                      helpOut.IndexOf("dogdouspec skill status", StringComparison.Ordinal));
+        Assert.IsTrue(helpOut.IndexOf("dogdouspec skill status", StringComparison.Ordinal) <
+                      helpOut.IndexOf("dogdouspec skill guide --file references/upgrade.md", StringComparison.Ordinal));
 
         var (guideExit, guideOut, guideErr) = RunCli("skill", "guide", "--all", "--format", "markdown");
         Assert.AreEqual(0, guideExit, guideErr);

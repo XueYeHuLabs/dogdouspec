@@ -1,128 +1,125 @@
 # DogdouSpec Upgrade Contract
 
-This document is the authoritative upgrade workflow shipped inside the
-DogdouSpec binary. `dogdouspec skill guide --all` prints the current binary's
-copy, so callers can recover the correct workflow before synchronizing any
-repository files.
+DogdouSpec provides upgrade facts and convenient tools for collaboration.
+The calling agent owns repository analysis and judgment: whether to overwrite,
+preserve, reapply or retire a customization. Advice and history are not approval
+gates. Installing a binary does not itself change repository files.
 
-## Responsibility Boundary
+## Read What You Need
 
-An upgrade has two owners:
-
-- The CLI owns deterministic, schema-aware filesystem operations. It reports
-  exact status and changes only the files named by an explicit mutating command.
-- The calling agent owns repository analysis and judgment. It decides how to
-  reconcile local conventions, customized guidance, `AGENTS.md`, wrappers,
-  build and CI configuration, and Git checkpoints.
-
-The CLI never treats installing a new executable as authorization to mutate a
-repository. It never edits `AGENTS.md`, commits, or pushes.
-
-## Required Order
-
-Run these read-only commands from the target repository before synchronization:
+After replacing a global or vendored binary, a useful assessment sequence is:
 
 ```powershell
 dogdouspec --version
-dogdouspec skill guide --all
 dogdouspec workspace discover --format xml
-dogdouspec validate --format xml
 dogdouspec skill status --format xml
 dogdouspec schema status --format xml
-git status --short -- .dogdouspec .agents/skills/dogdouspec AGENTS.md
+dogdouspec skill guide --file references/upgrade.md
+dogdouspec validate --format xml
 ```
 
-The agent then inspects the reported differences and the repository history.
-It must identify intentional local Skill changes before allowing an overwrite.
-It must also inspect repository references to DogdouSpec, including wrappers,
-automation, CI, build scripts, and contributor documentation.
+Use `skill guide --file <path>` for one reference, `skill guide --all` for the
+complete guide, or `skill export --output-dir <new-directory>` for UTF-8 files.
+Older binaries without file selection still support `skill guide --all`.
+Status-first assessment avoids loading the whole Skill. Read this short upgrade
+guide after changing binaries even when files match; file status cannot describe
+every CLI behavior change.
 
-The default Skill path applies when the current repository owns its own Skill.
-In a monorepo or nested workspace, repository instructions may deliberately use
-one ancestor Skill for several `.dogdouspec` workspaces. Inspect that shared
-installation with `skill status --output-dir <shared-skill-path>` and synchronize
-it once at its owning scope. Run schema status and validation separately for
-each workspace. Do not install duplicate Skill copies merely to make a nested
-workspace's default status report green.
+In a shared-ancestor installation, use `--output-dir <shared-skill-path>` on
+Skill commands and synchronize at the owning scope. Do not install duplicate Skill copies
+merely to make a nested workspace's default status green. Validate and inspect
+schema copies separately for each workspace.
 
-After that analysis, the mechanical synchronization commands are:
+## Baseline, Differences and Optional History
+
+This release adds `.skill-state.xml` inside the Skill directory. Commit it with
+the Skill. Its `baseline` records the writing CLI version, UTC sync time and
+per-file SHA-256 digests; UTF-8 content uses CRLF-to-LF normalization only.
+Its `history` stores optional free-text explanations. Metadata is excluded from
+Skill content comparison. `workspace init` stamps a new installation, while an
+existing or mixed installation retains its previous provenance.
+
+`skill status` preserves `matching`, `modified`, `missing`, `extra` and exit codes
+0 (matching) / 1 (differences). Additional provenance describes `pristine`,
+`outdated`, `locally-modified`, `unknown-provenance`, new and retired files.
+`automatic_upgrade` is advisory:
+
+- `ready`: differing target files have no detected local changes against the baseline.
+- `review-needed`: local changes would be overwritten while an embedded update is available.
+- `unknown`: the available baseline cannot establish upgrade conditions.
+- `not-needed`: target content already matches, or no new embedded changes exist.
+
+Local differences can remain after a successful upgrade with retained customization.
+Unknown provenance does not mean customized. Old history does not mean a file
+is still customized. Missing history does not mean unmodified.
 
 ```powershell
-dogdouspec schema sync --expected-version 1.0 --format xml
-dogdouspec skill sync --force --format xml
+dogdouspec skill diff --format unified
+dogdouspec skill records --last 5 --format xml
+dogdouspec schema diff --format unified
 ```
 
-`schema sync` refreshes only the known readable XSD copies under
-`.dogdouspec/_schema`. Embedded schemas remain authoritative. It does not
-migrate managed XML documents between schema versions. If a workspace version
-is unsupported or a document migration is required, stop and follow the
-version-specific migration instructions shipped by that binary.
+Diffs compare local content with the current binary, require no Git, and write
+nothing. Limit output with `skill diff --file references/authority.md` or
+`schema diff --name tasks`. Both accept `--format xml`; exit 1 means differences,
+not command failure. Baseline hashes do not reconstruct old text or provide a
+three-way merge. Retired files are compared but preserved by sync.
+If a local file cannot be read as UTF-8 text, diff identifies the file and returns
+an error without partial output. XML diff output preserves the same payload as
+unified output, including schema CRLF/LF differences. These comparison errors do
+not introduce an additional approval requirement for `sync --force`.
 
-`skill sync --force` deterministically writes the current binary's managed
-Skill files. It does not merge local customizations. The caller must preserve
-or reapply intentional changes based on the pre-sync status, repository history,
-and current Guide.
+Users and agents edit Skill Markdown directly. After customization, optionally
+explain the reason and outcome; no template or file association is required:
 
-## Repository-Specific Reconciliation
+```powershell
+dogdouspec skill record --summary "Added the repository's independent review convention to references/authority.md."
+```
 
-After mechanical synchronization, the agent decides whether to update:
+`record` appends history without resetting the baseline. `records` reads recent
+entries without writing. Summaries help the next agent find the appropriate
+place to preserve the intent in newer guidance; the CLI does not interpret them.
 
-- `AGENTS.md` bootstrap rules and repository-specific build commands;
-- references to renamed commands, Skill paths, or deprecated wrappers;
-- CI, release, developer setup, and air-gapped deployment scripts;
-- local policy text that intentionally extends the shipped Skill;
-- version pins and package-manager configuration.
+## Synchronize and Reconcile
 
-In particular, reconcile repository or shared ancestor `AGENTS.md` execution
-steps so every selected or resumed Task reads `task context --no-history`
-before execution. That view includes both iteration constraints from `spec.xml`
-and Task constraints; raw Task queries and `task show` alone do not. Neither
-`skill sync` nor `schema sync` updates this bootstrap guidance automatically.
+For uncustomized files, inspect the update and synchronize when desired:
 
-These edits are ordinary repository work. They are not performed by
-`schema sync` or `skill sync`.
+```powershell
+dogdouspec skill sync --force --format xml
+dogdouspec schema sync --expected-version 1.0 --format xml
+```
 
-After an upgrade that adds discovery helpers, reconcile local examples with
-`task records`, `task record --check-*`, `query/search --xpath-file`,
-`query --warn-empty`, `transaction apply --dry-run`, backlog default identity
-receipts and `iteration create --file` / `template show --name iteration.create`.
-Use `task next` for pending selection, and describe finish as sequential with
-possible partial progress. The creation input and derived history output do not
-change managed XML schemas; existing raw request/replay contracts remain valid.
-Templates and help come from the selected binary; Skill files require reviewed
-synchronization in existing installations. Preserve project customizations.
+For customized files, a useful workflow is to inspect diff/history, keep old
+content for comparison, sync the new version, then reapply the intended changes
+to the new Markdown and optionally record the result. The caller can also adopt
+the new content unchanged. Neither history nor provenance blocks `--force`.
+No discard acknowledgement or automatic merge is provided.
+
+`skill sync` and `skill export` write the current embedded files, update the
+baseline after writing, and preserve history and unmanaged files. They never
+edit `AGENTS.md`, wrappers or CI. `schema sync` refreshes optional readable XSD
+copies; embedded schemas remain authoritative and managed XML is not migrated.
+Unsupported document versions require the applicable migration workflow.
+
+Reconcile repository-specific guidance as appropriate. Selected or resumed tasks
+should read `task context --no-history`, including iteration and task constraints.
+Use `task next`, `task records`, `task record --check-*`, `query/search --xpath-file`,
+`query --warn-empty`, `transaction apply --dry-run` and `iteration create --file`
+where useful. Preserve raw request contracts and owner/review boundaries.
 
 ## Verification and Recovery
 
-Run the repository's normal build and test commands, then complete the upgrade
-with:
+Recheck `validate`, `skill status`, `schema status` and the repository diff.
+For Git repositories, `git diff --check` and `git status --short -- .dogdouspec
+.agents/skills/dogdouspec AGENTS.md` help review the result. Git is not required
+for Skill inspection, recording or synchronization.
 
-```powershell
-dogdouspec validate --format xml
-dogdouspec skill status --format xml
-dogdouspec schema status --format xml
-git diff --check
-git status --short -- .dogdouspec .agents/skills/dogdouspec AGENTS.md
-```
+Choose build/tests based on what changed and repository rules. Independent
+guidance and unused schema copies may need only the checks above, with the
+reason recorded when useful. Code, build inputs, wrappers and CI changes need
+appropriate verification. In DogdouSpec's own source repository, Skill Markdown
+and XSDs are embedded build inputs, so run `build.cmd`.
 
-Schema status must report no drift after schema synchronization. Skill status
-may continue to report intentional repository customizations that the agent
-preserved or reapplied; every remaining difference must be classified and
-documented. Review every repository diff before committing. If validation or
-project tests fail, restore repository files through the project's version
-control or prepared backup, then retain the failure evidence for diagnosis.
-Package-manager downgrade or executable replacement is controlled by the
-caller and is separate from repository rollback.
-
-## Global and Vendored Installations
-
-For a global installation, upgrading the executable changes the CLI used by
-every repository on that machine. Each repository still requires its own
-read-only assessment and explicit synchronization pass.
-
-For a vendored installation, replace the repository-local executable only
-after staging and verifying the candidate. The same Guide-first assessment and
-repository reconciliation apply. Compare an installed Skill with its recorded
-previous-version baseline when deciding whether it was customized; comparing
-an old standard Skill directly with new standard content cannot distinguish a
-normal version change from a local modification.
+The caller handles backups, repository rollback and executable downgrade as
+needed. Review and checkpoint with existing Git-write authorization; DogdouSpec
+does not stage, commit, push or decide that a customization should be discarded.

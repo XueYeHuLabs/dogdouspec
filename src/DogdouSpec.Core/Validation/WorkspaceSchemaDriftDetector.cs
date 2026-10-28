@@ -139,7 +139,7 @@ public static class WorkspaceSchemaDriftDetector
                 {
                     diagnostics.Add(Diagnostic.Error(
                         SchemaDriftDetected,
-                        $"Workspace schema copy '{relPath}' differs from embedded authoritative schema '{resourceName}'. Refresh the optional copy from 'dogdouspec schema show --name {normalizedName} --version {version}'; embedded schemas remain authoritative.",
+                        $"Workspace schema copy '{relPath}' differs from embedded authoritative schema '{resourceName}'. Review with 'dogdouspec schema diff --name {normalizedName} --version {version}' and refresh copies with 'dogdouspec schema sync --expected-version {version}'; embedded schemas remain authoritative and sync does not migrate managed XML documents.",
                         relPath));
                 }
             }

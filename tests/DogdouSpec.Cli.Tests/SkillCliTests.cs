@@ -243,7 +243,7 @@ public sealed class SkillCliTests
         Assert.IsTrue(output.Contains("# Reference: references/upgrade.md", StringComparison.Ordinal));
         Assert.IsTrue(output.Contains("# DogdouSpec Upgrade Contract", StringComparison.Ordinal));
         Assert.IsTrue(output.Contains("Do not install duplicate Skill copies", StringComparison.Ordinal));
-        Assert.IsTrue(output.IndexOf("dogdouspec skill guide --all", StringComparison.Ordinal) <
+        Assert.IsTrue(output.IndexOf("dogdouspec skill guide --file references/upgrade.md", StringComparison.Ordinal) <
                       output.IndexOf("dogdouspec skill sync --force", StringComparison.Ordinal));
     }
 

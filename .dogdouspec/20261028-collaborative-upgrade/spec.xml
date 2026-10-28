@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20261028-collaborative-upgrade" schema_version="1.0" revision="1" kind="feature" status="active" created_at="2026-10-28T06:02:21Z" updated_at="2026-10-28T06:02:21Z">
+  <index>
+    <summary>Implement the owner-reviewed collaborative Skill customization and upgrade workflow.</summary>
+  </index>
+  <product>
+    <objective>Provide convenient baseline, difference and optional history discovery while users and agents decide how to upgrade or preserve customization.</objective>
+    <deliverables>
+      <deliverable id="20261028-deliv-collaborative-upgrade">
+        <index>
+          <summary>Collaborative Skill upgrade tools and guidance.</summary>
+        </index>
+        <description>Single XML Skill state, optional history, advisory status, read-only diffs, focused guide selection and practical upgrade guidance.</description>
+      </deliverable>
+    </deliverables>
+    <scope>
+      <included>
+        <item>CLI/Core Skill metadata and commands, schema diff and drift diagnostic, initialization, tests and shipped documentation in this repository.</item>
+      </included>
+      <excluded>
+        <item>Automatic merge, mandatory customization logging, new overwrite approvals, release publishing and unrelated task governance changes.</item>
+      </excluded>
+    </scope>
+    <requirements>
+      <requirement id="20261028-req-collaborative-upgrade" status="approved">
+        <index>
+          <summary>Implement the plan approved by the owner in this conversation.</summary>
+        </index>
+        <statement>Store baseline and optional customization summaries in .skill-state.xml. Report local and embedded changes, offer skill/schema diff and focused guide reading, preserve explicit force overwrite and caller judgment.</statement>
+        <rationale>The owner explicitly requested implementation and emphasized convenience and collaboration instead of coercive upgrade decisions.</rationale>
+      </requirement>
+    </requirements>
+    <acceptance>
+      <criterion id="20261028-crit-collaborative-upgrade" decision="pending">Customization, customized upgrade and uncustomized upgrade workflows are tested, metadata survives sync and clone, and no history or provenance gate blocks explicit force synchronization.</criterion>
+    </acceptance>
+  </product>
+  <constraints>
+    <constraint id="20261028-constraint-collaboration" kind="policy">Upgrade information is advisory. No mandatory history, discard-local flag, automatic merge, or repository-guidance edits by sync.</constraint>
+  </constraints>
+  <confirmations>
+    <confirmation id="20261028T000000Z-confirm-collaborative-upgrade-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="2026-10-28T06:02:21Z">
+      <summary>Initial iteration activation.</summary>
+      <requirements>
+        <requirement target="20261028-req-collaborative-upgrade" decision="approved" />
+      </requirements>
+    </confirmation>
+  </confirmations>
+</iteration>

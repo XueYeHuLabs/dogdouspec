@@ -53,15 +53,17 @@ After installing a newer version:
 ```powershell
 winget upgrade Vixasol.DogdouSpec
 
-# Read the new binary's authoritative workflow before changing the repository:
-dogdouspec skill guide --all
+# Inspect changes and read the focused upgrade workflow:
+dogdouspec skill status --format xml
+dogdouspec skill guide --file references/upgrade.md
 ```
 
 The embedded [upgrade contract](.agents/skills/dogdouspec/references/upgrade.md)
-requires read-only workspace, Skill, schema, and Git assessment before explicit
-mechanical synchronization. The calling agent then reconciles `AGENTS.md`,
+offers read-only workspace, Skill, schema, diff and optional customization-history
+discovery before explicit synchronization. The calling agent reconciles `AGENTS.md`,
 local guidance, wrappers, CI, and other repository-specific content. DogdouSpec
-never makes those judgment-based edits, stages files, commits, or pushes.
+never makes those judgment-based edits, stages files, commits, or pushes. Upgrade
+advice does not block `skill sync --force`; logging customization is optional.
 
 ---
 
@@ -90,6 +92,20 @@ dotnet build DogdouSpec.slnx -c Debug
 dotnet test DogdouSpec.slnx -c Debug --no-build
 ```
 
+This repository also uses the checked-in Skill that it embeds in the CLI. After
+editing Skill sources, build them before self-hosted synchronization; use the
+current source-built CLI for unreleased commands:
+
+```powershell
+dotnet run --project src/DogdouSpec.Cli/DogdouSpec.Cli.csproj -- skill status
+dotnet run --project src/DogdouSpec.Cli/DogdouSpec.Cli.csproj -- skill diff
+dotnet run --project src/DogdouSpec.Cli/DogdouSpec.Cli.csproj -- skill sync --force
+```
+
+The `.skill-state.xml` baseline/history travels with this checkout but is not
+embedded or distributed as another repository's history. An older global binary
+contains its own older Skill; use it only when those are the intended contents.
+
 ---
 
 ## 3. CLI Commands Reference
@@ -114,18 +130,32 @@ All commands run directly through `dogdouspec <command> [options]`:
 ### 2. Skill and Schema Upgrade Primitives
 - **Skill Guide** (authoritative guidance embedded in the current binary)
   ```powershell
-  dogdouspec skill guide [--all] [--format markdown|human|xml]
+  dogdouspec skill guide [--all | --file RELATIVE_PATH] [--format markdown|human|xml]
   ```
 - **Skill Status** (read-only embedded-versus-repository comparison)
   ```powershell
   dogdouspec skill status [--output-dir PATH] [--format xml|human]
   ```
   Exit code `1` means differences were reported for caller review. It is not a command failure.
+  `.skill-state.xml` stores a portable sync baseline and optional history alongside the Skill.
+  Status adds per-file provenance and advisory `automatic_upgrade` (`ready`, `review-needed`,
+  `unknown`, `not-needed`). Content hashes normalize CRLF to LF; existing customization may remain
+  after upgrading. History never decides whether a file is currently customized.
+- **Skill Diff and Optional History**
+  ```powershell
+  dogdouspec skill diff [--file RELATIVE_PATH] [--output-dir PATH] [--format unified|xml]
+  dogdouspec skill record --summary "Why and what changed" [--output-dir PATH] [--format xml|human]
+  dogdouspec skill records [--last 5] [--output-dir PATH] [--format xml|human]
+  ```
+  Users/agents edit Markdown directly. Recording intent is optional and never resets the baseline.
+  Diff and records are read-only and require no Git. Diff exits `1` when differences exist.
 - **Skill Sync** (synchronize skill files with this CLI's embedded version; pass `--force` to overwrite upon upgrade)
   ```powershell
   dogdouspec skill sync [--force] [--output-dir PATH] [--format xml|human]
   ```
   Requires `--force` to overwrite existing files. Never reads or modifies `AGENTS.md`. Agent and owner decide how to update `AGENTS.md` based on `skill guide` output.
+  Sync preserves history, updates the baseline, and allows explicitly requested overwrites even
+  with local changes or unknown provenance. Export has the same metadata behavior.
 - **Skill Export**
   ```powershell
   dogdouspec skill export --output-dir PATH [--format xml|human]
@@ -133,6 +163,7 @@ All commands run directly through `dogdouspec <command> [options]`:
 - **Schema Status and Sync** (inspect or mechanically refresh optional readable XSD copies)
   ```powershell
   dogdouspec schema status [--version 1.0] [--workspace-root PATH] [--format xml|human]
+  dogdouspec schema diff [--name NAME] [--version 1.0] [--workspace-root PATH] [--format unified|xml]
   dogdouspec schema sync --expected-version 1.0 [--workspace-root PATH] [--format xml|human]
   ```
   `schema sync` uses the workspace writer lock and crash recovery. It never migrates or edits managed XML documents.

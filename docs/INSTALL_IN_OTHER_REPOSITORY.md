@@ -403,21 +403,19 @@ The initialized XML is locally durable authoritative state, not generated cache.
 
 ### 5.2. Install DogdouSpec Agent Skill
 
-Copy the checked-in skill instructions and references from `$SOURCE_REPO\.agents\skills\dogdouspec` into `$TARGET_REPO\.agents\skills\dogdouspec\`:
+`workspace init` normally installs the Skill and its baseline. If the Skill
+directory is absent, install it from the verified candidate executable so the
+files and baseline describe that binary. Repository-specific source history is
+not copied into another repository:
 
 ```powershell
 # snippet: skill-install
-$sourceSkillDir = Join-Path "$SOURCE_REPO" ".agents\skills\dogdouspec"
 $targetSkillDir = Join-Path "$TARGET_REPO" ".agents\skills\dogdouspec"
-$targetSkillRef = Join-Path "$targetSkillDir" "references"
 
 Assert-InsideTarget $targetSkillDir $TARGET_REPO
 if (-not (Test-Path "$targetSkillDir")) {
-    Assert-InsideTarget $targetSkillRef $TARGET_REPO
-    New-Item -ItemType Directory -Path "$targetSkillRef" -Force | Out-Null
-
-    Copy-Item -Path (Join-Path "$sourceSkillDir" "SKILL.md") -Destination (Join-Path "$targetSkillDir" "SKILL.md")
-    Copy-Item -Path (Join-Path "$sourceSkillDir" "references\*") -Destination (Join-Path "$targetSkillDir" "references\")
+    & "$TARGET_REPO\tools\dogdouspec\dogdouspec.exe" skill sync --output-dir "$targetSkillDir" --format xml
+    if ($LASTEXITCODE -ne 0) { throw "[ERROR] Skill installation failed with exit code $LASTEXITCODE" }
     Write-Host "[OK] Installed DogdouSpec skill in '$targetSkillDir'"
 } else {
     Write-Host "[OK] DogdouSpec skill already initialized in '$targetSkillDir'"
@@ -575,7 +573,7 @@ The authoritative repository-upgrade workflow is shipped inside the candidate
 binary at **references/upgrade.md** and is always available through:
 
 ~~~powershell
-dogdouspec skill guide --all
+dogdouspec skill guide --file references/upgrade.md
 ~~~
 
 The binary is intentionally self-describing. Replacing it does not authorize
@@ -591,19 +589,23 @@ machine. Upgrade each repository separately:
 ~~~powershell
 winget upgrade Vixasol.DogdouSpec
 dogdouspec --version
-dogdouspec skill guide --all
-
 # Read-only repository assessment
 dogdouspec workspace discover --format xml
 dogdouspec validate --format xml
 dogdouspec skill status --format xml
 dogdouspec schema status --format xml
+dogdouspec skill guide --file references/upgrade.md
+dogdouspec skill diff --format unified
+dogdouspec schema diff --format unified
+dogdouspec skill records --last 5 --format xml
 git status --short -- .dogdouspec .agents/skills/dogdouspec AGENTS.md
 ~~~
 
-Exit code 1 from either status command means differences were reported; it is
-not a command or validation failure. The agent must inspect those differences
-and repository history before allowing an overwrite.
+Exit code 1 from status or diff means differences were reported; it is not a
+command failure. The tools provide discovery and best practices. The caller
+decides how to handle differences; neither optional history nor upgrade advice
+blocks an explicit overwrite. Use `skill guide --all` when the full reference
+set is useful, or on older binaries without `--file`.
 
 In monorepos and nested repositories, first determine which instruction scope
 owns the DogdouSpec Skill. If several `.dogdouspec` workspaces intentionally
@@ -612,7 +614,7 @@ sync that Skill once. Run `schema status` and `validate` for every workspace.
 Do not create redundant per-repository Skill copies solely because the default
 relative path is missing in a nested workspace.
 
-After the agent identifies intentional local changes:
+When the caller chooses to synchronize:
 
 ~~~powershell
 # Mechanical, explicit CLI mutations
@@ -655,7 +657,7 @@ Use the source, clean-tree, exact-commit, staging, build, and candidate
 verification steps from Sections 3 and 4. Back up the existing repo-local
 executable outside the repository, replace only
 **tools/dogdouspec/dogdouspec.exe**, and run the candidate's
-**skill guide --all** before changing repository content.
+**skill guide --file references/upgrade.md** for focused upgrade guidance.
 
 The same read-only status, explicit synchronization, repository reconciliation,
 and final verification sequence from Section 8.1 applies, using
@@ -664,8 +666,10 @@ and final verification sequence from Section 8.1 applies, using
 Do not classify an existing Skill as customized merely because it differs from
 the new candidate. A standard Skill from the previous version naturally differs
 when shipped guidance changes. Determine customization against the repository's
-recorded previous-version baseline and Git history. **skill status** deliberately
-reports facts only; the calling agent owns that classification.
+recorded previous-version baseline. **skill status** reports per-file local and
+embedded changes, including unknown provenance when a baseline is unavailable.
+Use **skill records** for optional explanations of intent and **skill diff** for
+local-to-new content. The calling agent decides how to reconcile the result.
 
 If the candidate executable cannot read the workspace or its Guide requires a
 managed-document migration, restore the previous executable and stop. Do not
@@ -677,9 +681,16 @@ the optional readable XSD copies and rejects managed documents whose
 
 - **skill status** is read-only and reports every embedded managed file as
   **matching**, **modified**, or **missing**, plus repository-only **extra**
-  entries.
+  entries. It additionally reports provenance and advisory automatic-upgrade
+  conditions. **.skill-state.xml** is metadata, not an extra Skill content file.
 - **skill sync --force** writes the embedded managed Skill files. It does not
-  merge custom text or modify **AGENTS.md**.
+  merge custom text or modify **AGENTS.md**. It updates the baseline and preserves
+  history and unmanaged files. Local edits and missing history do not require
+  another flag or approval. **skill export** has the same metadata behavior.
+- **skill record --summary** appends optional free text to **.skill-state.xml**
+  without changing its baseline. **skill records --last 5** reads recent intent.
+- **skill diff** and **schema diff** compare local and embedded content without
+  Git or filesystem mutation. Use **--format xml** for structured output.
 - **schema status** is read-only and compares known copies under
   **.dogdouspec/_schema** with embedded authoritative schemas.
 - **schema sync --expected-version** uses the workspace writer lock, startup
@@ -688,8 +699,62 @@ the optional readable XSD copies and rejects managed documents whose
 - Schema synchronization never changes the **schema_version** or content of
   **spec.xml**, **tasks.xml**, **knowledge.xml**, or **backlog.xml**.
 
-The calling agent preserves intentional local changes, runs project-specific
-tests, reviews the complete diff, and creates any authorized Git checkpoint.
+The calling agent chooses how to preserve intentional changes and which tests
+the changed inputs and repository rules require. Guidance-only updates outside
+the build can use validation, status and diff review with a recorded rationale
+when useful. DogdouSpec's own Skill and XSD files are embedded product inputs;
+its normal build/tests still apply. Create Git checkpoints only when authorized.
+
+### 8.4. Customization and Upgrade Examples
+
+Users and agents edit the Skill Markdown directly. After editing, a useful
+optional record explains why and what changed:
+
+~~~powershell
+dogdouspec skill record --summary "Added the repository's independent review convention to references/authority.md."
+dogdouspec skill status --format human
+~~~
+
+The state file contains **baseline** (CLI version, UTC sync time and per-file
+SHA-256 digests) and **history** (free-text records with IDs, timestamps and CLI
+versions). Commit this single XML file with the Skill. Content comparison only
+normalizes CRLF to LF; it does not ignore other whitespace. A new **workspace
+init** records its baseline; existing or mixed Skill installations are not
+silently certified. Historical records do not imply current customization.
+
+For an uncustomized older installation, status reports **outdated** files and
+**automatic_upgrade="ready"**. A typical upgrade is:
+
+~~~powershell
+dogdouspec skill diff
+dogdouspec skill sync --force
+dogdouspec skill status
+~~~
+
+For a customized installation with new embedded content, status reports local
+changes and **automatic_upgrade="review-needed"**. A typical workflow is:
+
+~~~powershell
+dogdouspec skill diff --file references/authority.md
+dogdouspec skill records --last 5
+# Keep old content for comparison if useful, then choose whether to synchronize.
+dogdouspec skill sync --force
+# Edit the new Markdown to reapply the intended convention, when desired.
+dogdouspec skill record --summary "Adopted the new guidance and reapplied our independent review convention."
+dogdouspec skill status
+~~~
+
+The new official content is the baseline; reapplied customization remains visible
+as a local change, with **automatic_upgrade="not-needed"** when no newer embedded
+changes exist. It is not necessary to remove intended customization to obtain a
+zero status exit code. If the convention is no longer needed, the caller can
+adopt the new files unchanged and optionally record that decision instead.
+
+An installation without a usable baseline reports unknown provenance; a differing
+installation reports **automatic_upgrade="unknown"**. The caller can still use
+**sync --force** to adopt the new files and establish a baseline. No customization
+record, adoption acknowledgement or automatic merge is required. Summaries guide
+human/agent reconciliation; the CLI does not execute or interpret them.
 
 ---
 ## 9. Rollback & Recovery
@@ -773,7 +838,8 @@ If initial installation must be rolled back prior to committing:
 
 ### 9.2. Transaction Crash Recovery Semantics
 
-- **Read commands** (`validate`, `query`, `search`, `workspace discover`, `iteration list`, `skill guide`, `skill status`, `schema show`, `schema status`, `template show`) are non-mutating readers and do **not** acquire the workspace lock or invoke `StartupRecovery`.
+- **Read commands** (`validate`, `query`, `search`, `workspace discover`, `iteration list`, `skill guide`, `skill status`, `skill diff`, `skill records`, `schema show`, `schema status`, `schema diff`, `template show`) are non-mutating readers and do **not** acquire the workspace lock or invoke `StartupRecovery`.
+- Skill `sync`, `export` and `record` serialize writers at the Skill-directory scope and preserve its XML history. They do not acquire a workspace transaction lock or trigger workspace recovery.
 - `StartupRecovery` is invoked automatically by supported mutating commands that acquire the project writer lock, including `schema sync`, `iteration create`, `append`, `task update`, `transaction apply`, and `iteration confirm`.
 - **Do not issue a dummy write** to force recovery. If an interrupted transaction left markers in `.dogdouspec/_tmp/`, execute the next intended mutating CLI command directly, or preserve the directory state and report findings to the human owner for technical diagnosis.
 

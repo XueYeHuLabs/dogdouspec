@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <StartupObject>DogdouSpec.Cli.CliEntryPoint</StartupObject>
     <RootNamespace>DogdouSpec.Cli</RootNamespace>
     <AssemblyName>dogdouspec</AssemblyName>
     <PublishAot>true</PublishAot>

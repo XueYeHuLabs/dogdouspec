@@ -15,11 +15,16 @@ public static class Program
 DogdouSpec CLI - iteration-first XML/XPath project workspace engine
 
 AI AGENT SETUP & WORKFLOW:
-  1. Read current binary guidance         : dogdouspec skill guide --all
-  2. Initialize workspace & skills        : dogdouspec workspace init
-  3. Inspect repository upgrade status    : dogdouspec skill status --format xml
+  1. Initialize a new workspace & skills  : dogdouspec workspace init
+  2. Inspect existing Skill upgrade facts : dogdouspec skill status --format xml
+  3. Read focused upgrade guidance        : dogdouspec skill guide --file references/upgrade.md
   4. Select next ready task to implement  : dogdouspec task next --format xml
   5. View instant progress summary card   : dogdouspec summary --format markdown
+
+COLLABORATIVE SKILL UPGRADES:
+  Inspect differences with skill diff; explain customization with optional skill record --summary.
+  Read recent intent with skill records. Full guidance: dogdouspec skill guide --all
+  Upgrade advice is informational; skill sync --force remains the caller's overwrite choice.
 
 PERSISTENCE & GOVERNANCE:
   Semantic agent results belong in tasks.xml records, not external report folders.

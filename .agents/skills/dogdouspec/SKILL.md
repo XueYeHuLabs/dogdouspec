@@ -14,6 +14,7 @@ DogdouSpec is an iteration-first specification and task management system design
 `workspace init` has already performed the following mechanical steps:
 - Created `.dogdouspec/` with authoritative schemas, backlog, and knowledge documents.
 - Written this skill to `.agents/skills/dogdouspec/` (SKILL.md + references/).
+- Recorded `.skill-state.xml` for a new Skill installation, with a sync baseline and optional history; existing or mixed installations retain their provenance.
 - Added `/.dogdouspec/_tmp/` to `.gitignore`.
 
 The following steps require **agent + owner judgment** — DogdouSpec does not automate them.
@@ -37,7 +38,7 @@ Tailor the section to your project's build commands (e.g., replace `.\build.cmd`
 | Path | Commit? | Note |
 |---|:---:|---|
 | `.dogdouspec/` | **Yes** | Authoritative state (backlog, knowledge, iterations, schemas) |
-| `.agents/skills/dogdouspec/` | **Yes** | Skill instructions for agents |
+| `.agents/skills/dogdouspec/` | **Yes** | Skill instructions and repository-specific `.skill-state.xml` baseline/history |
 | `AGENTS.md` | **Yes** | Project agent guidelines |
 | `.gitignore` | **Yes** | Now includes `/.dogdouspec/_tmp/` |
 | `.dogdouspec/_tmp/` | **No** | Runtime-only; already in `.gitignore` |
@@ -46,12 +47,14 @@ DogdouSpec never stages, commits, or pushes. Create the Git checkpoint explicitl
 
 ### Upgrading DogdouSpec
 
-After installing a new global binary or staging a vendored candidate, read the
-new binary's complete Guide before changing the repository:
+After installing a new global binary or staging a vendored candidate, inspect
+the status and read the new binary's focused upgrade guide:
 
 ```powershell
 dogdouspec --version
-dogdouspec skill guide --all
+dogdouspec skill status --format xml
+dogdouspec schema status --format xml
+dogdouspec skill guide --file references/upgrade.md
 ```
 
 Follow [the authoritative upgrade contract](references/upgrade.md). Inspect the
@@ -59,7 +62,16 @@ workspace, Skill, schema copies, repository rules, and Git state before calling
 any synchronization command. The CLI performs explicit mechanical operations;
 the calling agent reconciles `AGENTS.md`, local guidance, scripts, CI, and other
 repository-specific content. `skill sync` and `schema sync` never perform those
-judgment-based edits.
+judgment-based edits. Upgrade conditions are advisory: `skill sync --force`
+remains the caller's overwrite choice, with no mandatory customization log.
+
+Users and agents customize Skill Markdown directly. Consider recording why and
+what changed with `skill record --summary "..."`; read recent intent with
+`skill records --last 5`, and inspect local-to-new content with `skill diff`.
+The portable `.skill-state.xml` stores the last sync baseline and optional
+history together. `record` never resets that baseline; sync preserves history.
+Use `skill guide --all` only when the full guide is useful, or `skill export
+--output-dir <new-directory>` to read the embedded files without console encoding.
 
 ---
 
@@ -264,4 +276,4 @@ The Git status check is advisory and does not change DogdouSpec transaction succ
 - **[XPath Query & Projection Reference](references/xpath.md)**: Query optimization and `ds:filter` projections.
 - **[Mutation Operations Reference](references/mutations.md)**: Detailed semantics for all CLI mutation operations.
 - **[Authority & Lifecycle Reference](references/authority.md)**: Iteration readiness, owner gates, and replanning.
-- **[Upgrade Contract](references/upgrade.md)**: Guide-first binary and repository upgrade responsibilities, commands, verification, and recovery.
+- **[Upgrade Contract](references/upgrade.md)**: Advisory upgrade discovery, optional customization history, focused guidance, verification, and recovery.
