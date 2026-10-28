@@ -257,6 +257,14 @@ When requirements, scope, constraints, or architecture need adjustment during an
 
 Backlog porcelain can generate omitted item ID, operation ID and UTC timestamp; actor defaults to `DOGDOUSPEC_ACTOR` or `agent`. Receipts return `<backlog-identity>` with exact replay parameters. Preserve them for retries; an omitted operation ID creates a new operation. With an explicit operation ID, omitted time is derived only from its `yyyyMMddTHHmmssZ` prefix; otherwise supply `--occurred-at`. `kind` is an open token, not a fixed enum. Research items should preserve the question and owner review condition; recording a suggestion does not approve its product design.
 
+Use `backlog record --id <ID> --summary "..."` to explain partial progress or add a
+follow-up without changing status, including after completion/cancellation.
+Read recent history with `backlog records --id <ID> --last 5 --format xml`.
+`schedule`, `complete` and `cancel` accept optional `--summary` and existing
+`--check-*` evidence fields; `--resolving-task` supplies an optional task link.
+Notes and evidence are collaboration aids, not prerequisites or automatic closure
+decisions. Reuse returned operation identity to retry without duplicating a note.
+
 ### 6. Post-Mutation Re-query & Validation
 
 Always re-validate the workspace and re-query after writing:

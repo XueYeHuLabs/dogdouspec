@@ -301,6 +301,13 @@ source iteration or Task, impact, and a target iteration or review condition.
 An optional resolving Task is recorded as backlog evidence only; it does not
 rewrite Task origin authority.
 
+Use `backlog record --id <ID> --summary "..."` for partial progress or follow-up
+notes, including after closure, and `backlog records --id <ID> --last 5` to read
+recent history. Lifecycle commands accept optional summaries and `--check-*`
+evidence. These append to existing records without changing schemas; notes,
+checks and task links do not introduce prerequisites or decide closure for the
+caller. Reuse the returned operation identity when retrying a write.
+
 Knowledge is optional and belongs in `knowledge.xml` only for a stable,
 reusable fact that is likely to affect later Tasks or Iterations and has a
 stated source. Command transcripts, one-off attempts, and Task-local status do

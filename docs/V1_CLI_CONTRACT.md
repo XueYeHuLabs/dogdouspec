@@ -92,7 +92,7 @@ dogdouspec task scope
 dogdouspec requirement propose --stdin|--file
 dogdouspec change propose --stdin|--file
 dogdouspec change apply --stdin|--file
-dogdouspec backlog add|list|schedule|complete|cancel
+dogdouspec backlog add|list|record|records|schedule|complete|cancel
 dogdouspec transaction apply --stdin|--file
 ```
 
@@ -210,11 +210,11 @@ replays preserve original identity and timestamp.
 
 ### 2.2 Backlog lifecycle helpers
 
-`backlog add`, `schedule`, `complete`, and `cancel` are bounded mutating helpers;
-`backlog list` is read-only. Every mutation requires the exact positive
+`backlog add`, `record`, `schedule`, `complete`, and `cancel` are bounded mutating helpers;
+`backlog list` and `records` are read-only. Every mutation requires the exact positive
 `backlog.xml` revision plus stable `--id`, `--operation-id`, `--actor`, and
 `--occurred-at` values at the core boundary. Porcelain may generate omitted
-identity fields: add's item ID and operation ID are unique, actor defaults to
+identity fields and resolve the current revision when omitted: add's item ID and operation ID are unique, actor defaults to
 `DOGDOUSPEC_ACTOR` or `agent`, and time is UTC now. Transitions require the target
 item ID. With an explicit operation ID and omitted time, a valid
 `yyyyMMddTHHmmssZ` prefix supplies deterministic time; otherwise pass time
@@ -229,6 +229,8 @@ or stale unrelated revision fails closed.
 ```powershell
 .\dogdouspec.cmd backlog add --id <ITEM_ID> --operation-id <OP_ID> --actor <ACTOR> --occurred-at <ISO_TIME> --kind defect --severity p1 --summary <TEXT> --statement <TEXT> --rationale <TEXT> --impact <TEXT> --source-iteration <ITERATION_ID> --source-task <TASK_ID> --review-condition <TEXT> --expected-revision <REV> --format xml
 .\dogdouspec.cmd backlog list --status open --kind defect --severity p1 --format xml
+.\dogdouspec.cmd backlog record --id <ITEM_ID> --summary "Partial progress; remaining work is documented here." --format xml
+.\dogdouspec.cmd backlog records --id <ITEM_ID> --last 5 --format xml
 .\dogdouspec.cmd backlog schedule --id <ITEM_ID> --operation-id <OP_ID> --actor <ACTOR> --occurred-at <ISO_TIME> --resolving-task <TASK_ID> --expected-revision <REV> --format xml
 .\dogdouspec.cmd backlog complete --id <ITEM_ID> --operation-id <OP_ID> --actor <ACTOR> --occurred-at <ISO_TIME> --resolving-task <TASK_ID> --expected-revision <REV> --format xml
 .\dogdouspec.cmd backlog cancel --id <ITEM_ID> --operation-id <OP_ID> --actor <ACTOR> --occurred-at <ISO_TIME> --expected-revision <REV> --format xml
@@ -238,10 +240,37 @@ Every item requires a source iteration or Task, non-empty impact, and exactly
 one target iteration or review condition. Defect items additionally require a
 `kind=defect` index term and severity `p0` through `p3`. Scheduling permits only
 `open -> scheduled`; completion and cancellation permit `open|scheduled` to a
-terminal state. Terminal items are immutable. `--resolving-task` writes a
+terminal state. Closed lifecycle status cannot be changed, while informational
+follow-up records may still be appended. `--resolving-task` on a transition writes a
 `resolved-by` reference on the backlog receipt as traceable evidence; it never
 changes Task origin or any `tasks.xml` document. Actor separation is recorded
 provenance, not authenticated identity.
+
+`record` requires a non-empty free-text `--summary`, leaves status unchanged and
+appends an informational discussion to the existing `<records>` container.
+`schedule`, `complete` and `cancel` accept an optional `--summary`; omitting it
+retains the previous generic lifecycle summary and legacy request fingerprint.
+An explicitly supplied summary or check participates in retry identity, including
+exact CR/LF text. The returned operation identity lets callers replay a note
+without appending it twice. Notes on historical events do not move `updated_at`
+backwards. No percentages, new lifecycle states or separate history ledger exist.
+
+Notes/transitions may also supply `--check-command`, `--check-result`,
+`--check-exit-code`, `--check-kind` and `--check-summary`, using the existing
+`<checks>` structure. Any check requires `--check-result passed|failed|skipped`;
+an exit code additionally requires a command. The default kind is `command` and
+the default check summary is the user summary or a generic check description.
+Notes use `related-to` for optional `--resolving-task` references. Transition
+task references retain `resolved-by`. Evidence is reported metadata: a failed
+check is not a new prohibition on caller-selected completion or cancellation.
+Summary, checks and task links remain optional for closure.
+
+`records --id <ID> [--last 5]` returns `<backlog-records>` with item ID/status,
+document revision, `total_records`, selected `count` and `omitted_records`, plus
+the selected existing records in append order. The count includes lifecycle
+receipts, and includes follow-up notes on closed items. `--last` must be positive.
+`--format human` includes summaries, checks and task links. The query does not
+write, acquire the workspace writer lock or invoke startup recovery.
 
 ## 3. Result and diagnostic envelope
 

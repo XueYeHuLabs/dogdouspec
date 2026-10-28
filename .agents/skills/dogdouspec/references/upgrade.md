@@ -107,6 +107,11 @@ Use `task next`, `task records`, `task record --check-*`, `query/search --xpath-
 `query --warn-empty`, `transaction apply --dry-run` and `iteration create --file`
 where useful. Preserve raw request contracts and owner/review boundaries.
 
+Backlog progress can now use `backlog record --id <ID> --summary "..."` and
+`backlog records --id <ID> --last 5`. Lifecycle commands accept optional summaries
+and `--check-*` evidence. Existing no-summary invocations/replays remain supported;
+no XML migration or new closure prerequisite is introduced.
+
 ## Verification and Recovery
 
 Recheck `validate`, `skill status`, `schema status` and the repository diff.

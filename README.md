@@ -236,12 +236,25 @@ All commands run directly through `dogdouspec <command> [options]`:
 - **Plumbing & Governance Operations**:
   - `task update` (Raw XML state machine update), `task review` (Review gate submission), `task add`, `task revise`, `task split`
   - `requirement propose`, `change propose`, `change apply`
-  - `backlog add`, `backlog list`, `backlog schedule`, `backlog complete`, `backlog cancel`
+  - `backlog add`, `backlog list`, `backlog record`, `backlog records`, `backlog schedule`, `backlog complete`, `backlog cancel`
   - `append`, `transaction apply`
 
   `task revise --add-scope` preserves repositories/exclusions and deduplicates includes; `--add-dependency` resolves document or cross-iteration project scope. `transaction apply --dry-run` validates without publishing and labels its preview. `task quick --dry-run --format xml` returns a labeled canonical task-add request for inspection/replay. Finish can leave earlier transitions committed if a later step fails; its partial receipt and nonzero exit identify that state, and review gates still apply.
 
   Backlog add can generate omitted item ID, operation ID and time, with actor from `DOGDOUSPEC_ACTOR` or `agent`. Its receipt returns exact replay parameters in `backlog-identity`; reuse those for retries. An explicit operation ID without `--occurred-at` must have a valid UTC timestamp prefix. Kinds are open tokens. Keep product proposals as research backlog with an owner review condition until a design is chosen.
+
+  Record partial progress without changing status, or explain a lifecycle transition:
+  ```powershell
+  dogdouspec backlog record --id <ITEM_ID> --summary "Research is complete; compatibility verification remains."
+  dogdouspec backlog records --id <ITEM_ID> --last 5 --format xml
+  dogdouspec backlog complete --id <ITEM_ID> --summary "Implemented and verified." --resolving-task <TASK_ID>
+  dogdouspec backlog cancel --id <ITEM_ID> --summary "An existing feature already covers this need."
+  ```
+  `record` also accepts follow-up notes on completed/cancelled items. Summaries,
+  task links and `--check-command/--check-result/--check-exit-code/--check-kind/--check-summary`
+  are optional for transitions; a check without an exit code may omit the command.
+  Reported checks do not decide closure. Existing invocations and replay identities
+  remain valid. `records` reads recent entries in append order without writing.
 
 ### 6. Diagnostics & Reporting
 - **Iteration Summary** (instant progress card and task breakdown with progression assessment)

@@ -18,6 +18,8 @@ public static class BacklogCommand
         var command = new Command("backlog", "Manage deferred project obligations");
         command.Add(BuildAddCommand());
         command.Add(BuildListCommand());
+        command.Add(BuildTransitionCommand("record", "Append a progress or follow-up note without changing backlog status", BacklogLifecycle.Record, requiresSummary: true));
+        command.Add(BuildRecordsCommand());
         command.Add(BuildTransitionCommand("schedule", "Schedule an open backlog item", BacklogLifecycle.Schedule));
         command.Add(BuildTransitionCommand("complete", "Complete an open or scheduled backlog item", BacklogLifecycle.Complete));
         command.Add(BuildTransitionCommand("cancel", "Cancel an open or scheduled backlog item", BacklogLifecycle.Cancel));
@@ -124,7 +126,8 @@ public static class BacklogCommand
         string name,
         string description,
         Func<string, int, BacklogTransitionInput, bool,
-            (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics)> transition)
+            (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics)> transition,
+        bool requiresSummary = false)
     {
         var command = new Command(name, description + " (mutating unless --dry-run)");
         var id = RequiredString("--id", "Backlog item ID");
@@ -132,6 +135,17 @@ public static class BacklogCommand
         var actor = OptionalString("--actor", "Actor attribution (default DOGDOUSPEC_ACTOR or agent; not authenticated identity)");
         var occurredAt = OptionalString("--occurred-at", "Timestamp (default operation UTC prefix, or now for a generated operation)");
         var resolvingTask = OptionalString("--resolving-task", "Task ID recorded as resolution evidence");
+        if (requiresSummary) resolvingTask.Description = "Optional task linked by this note";
+        var summary = OptionalString("--summary", requiresSummary
+            ? "Progress or follow-up explanation"
+            : "Optional scheduling, completion or cancellation explanation");
+        summary.Required = requiresSummary;
+        var checkCommand = OptionalString("--check-command", "Reported check command; requires --check-result");
+        var checkResult = OptionalString("--check-result", "Reported check result (informational; does not decide closure)");
+        checkResult.AcceptOnlyFromAmong("passed", "failed", "skipped");
+        var checkExit = new Option<int?>("--check-exit-code") { Description = "Reported exit code; requires --check-command" };
+        var checkKind = OptionalString("--check-kind", "Check kind (default: command)");
+        var checkSummary = OptionalString("--check-summary", "Check explanation (default: record summary or a generic check description)");
         var expectedRevision = RequiredRevision();
         var dryRun = new Option<bool>("--dry-run")
         {
@@ -144,6 +158,7 @@ public static class BacklogCommand
         command.Add(actor);
         command.Add(occurredAt);
         command.Add(resolvingTask);
+        foreach (var option in new Option[] { summary, checkCommand, checkResult, checkExit, checkKind, checkSummary }) command.Add(option);
         command.Add(expectedRevision);
         command.Add(dryRun);
         command.Add(workspaceRoot);
@@ -152,6 +167,12 @@ public static class BacklogCommand
         {
             var commandName = "backlog " + name;
             var outputFormat = WorkspaceCommand.ResolveFormat(parseResult.GetValue(format));
+            var hasCheck = parseResult.GetValue(checkCommand) != null || parseResult.GetValue(checkResult) != null ||
+                parseResult.GetValue(checkExit).HasValue || parseResult.GetValue(checkKind) != null || parseResult.GetValue(checkSummary) != null;
+            if (hasCheck && (parseResult.GetValue(checkResult) == null ||
+                (parseResult.GetValue(checkExit).HasValue && parseResult.GetValue(checkCommand) == null)))
+                return WriteError(commandName, outputFormat, Diagnostic.Error(DiagnosticCodes.InvalidArgument,
+                    "A structured check requires --check-result; --check-exit-code also requires --check-command."));
             var (identity, identityError) = ResolveIdentity(parseResult.GetValue(id), parseResult.GetValue(operationId), parseResult.GetValue(actor), parseResult.GetValue(occurredAt));
             if (identity == null || identityError != null) return WriteError(commandName, outputFormat, identityError!);
             var (found, root, discoveryError) = WorkspaceDiscovery.FindWorkspaceRoot(
@@ -169,9 +190,33 @@ public static class BacklogCommand
             var isDryRun = parseResult.GetValue(dryRun);
             var input = new BacklogTransitionInput(
                 identity.Id, identity.OperationId, identity.Actor,
-                identity.OccurredAt, parseResult.GetValue(resolvingTask));
+                identity.OccurredAt, parseResult.GetValue(resolvingTask), parseResult.GetValue(summary),
+                hasCheck ? [new BacklogCheck(parseResult.GetValue(checkKind) ?? "command", parseResult.GetValue(checkResult)!,
+                    parseResult.GetValue(checkSummary) ?? parseResult.GetValue(summary) ?? "Reported backlog check.",
+                    parseResult.GetValue(checkCommand), parseResult.GetValue(checkExit))] : null);
             var (success, envelope, diagnostics) = transition(root, resolvedRev, input, isDryRun);
             return WriteMutationResult(commandName, outputFormat, success, envelope, diagnostics, identity);
+        });
+        return command;
+    }
+
+    private static Command BuildRecordsCommand()
+    {
+        var command = new Command("records", "Read recent backlog history, explanations, checks and task links without modifying files");
+        var id = RequiredString("--id", "Backlog item ID");
+        var last = new Option<int>("--last") { DefaultValueFactory = _ => 5, Description = "Number of recent records in append order (default: 5)" };
+        var workspace = WorkspaceRoot();
+        var format = FormatOption();
+        foreach (var option in new Option[] { id, last, workspace, format }) command.Add(option);
+        command.SetAction(parse =>
+        {
+            var outputFormat = WorkspaceCommand.ResolveFormat(parse.GetValue(format));
+            var (found, root, error) = WorkspaceDiscovery.FindWorkspaceRoot(parse.GetValue(workspace), Environment.CurrentDirectory);
+            if (!found || error != null) return WriteError("backlog records", outputFormat, error!);
+            var (success, result, diagnostics) = BacklogLifecycle.Records(root, parse.GetValue(id)!, parse.GetValue(last));
+            if (!success || result == null || diagnostics.Count > 0) return WriteDiagnostics("backlog records", outputFormat, diagnostics);
+            Console.Out.Write(result.Format(outputFormat));
+            return 0;
         });
         return command;
     }

@@ -643,7 +643,8 @@ point; raw Task queries and `task show` do not include iteration constraints.
 Also reconcile local command examples with bounded history (`task records`),
 structured check authoring (`task record --check-*`), `query/search --xpath-file`,
 opt-in `query --warn-empty`, `transaction apply --dry-run`, backlog identity
-defaults/replay receipts, and `iteration create --file` (template
+defaults/replay receipts, optional progress/closure explanations (`backlog record`,
+`backlog records`, transition `--summary`/`--check-*`), and `iteration create --file` (template
 `iteration.create`). Help and templates are embedded in the chosen binary;
 fresh initialization installs its current Skill, while an existing installation
 needs the reviewed Skill sync above. These entries add no managed XML schema
@@ -838,7 +839,7 @@ If initial installation must be rolled back prior to committing:
 
 ### 9.2. Transaction Crash Recovery Semantics
 
-- **Read commands** (`validate`, `query`, `search`, `workspace discover`, `iteration list`, `skill guide`, `skill status`, `skill diff`, `skill records`, `schema show`, `schema status`, `schema diff`, `template show`) are non-mutating readers and do **not** acquire the workspace lock or invoke `StartupRecovery`.
+- **Read commands** (`validate`, `query`, `search`, `workspace discover`, `iteration list`, `backlog list`, `backlog records`, `skill guide`, `skill status`, `skill diff`, `skill records`, `schema show`, `schema status`, `schema diff`, `template show`) are non-mutating readers and do **not** acquire the workspace lock or invoke `StartupRecovery`.
 - Skill `sync`, `export` and `record` serialize writers at the Skill-directory scope and preserve its XML history. They do not acquire a workspace transaction lock or trigger workspace recovery.
 - `StartupRecovery` is invoked automatically by supported mutating commands that acquire the project writer lock, including `schema sync`, `iteration create`, `append`, `task update`, `transaction apply`, and `iteration confirm`.
 - **Do not issue a dummy write** to force recovery. If an interrupted transaction left markers in `.dogdouspec/_tmp/`, execute the next intended mutating CLI command directly, or preserve the directory state and report findings to the human owner for technical diagnosis.

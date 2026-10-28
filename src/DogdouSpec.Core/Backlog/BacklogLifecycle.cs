@@ -34,7 +34,11 @@ public sealed record BacklogTransitionInput(
     string OperationId,
     string Actor,
     DateTimeOffset OccurredAt,
-    string? ResolvingTask);
+    string? ResolvingTask,
+    string? Summary = null,
+    IReadOnlyList<BacklogCheck>? Checks = null);
+
+public sealed record BacklogCheck(string Kind, string Result, string Summary, string? Command = null, int? ExitCode = null);
 
 public static class BacklogLifecycle
 {
@@ -203,6 +207,32 @@ public static class BacklogLifecycle
         string workspaceRoot, int expectedRevision, BacklogTransitionInput input, bool dryRun = false) =>
         Transition(workspaceRoot, expectedRevision, input, "cancel", "cancelled", dryRun);
 
+    public static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Record(
+        string workspaceRoot, int expectedRevision, BacklogTransitionInput input, bool dryRun = false) =>
+        Transition(workspaceRoot, expectedRevision, input, "record", null, dryRun);
+
+    public static (bool Success, BacklogRecordsResult? Result, IReadOnlyList<Diagnostic> Diagnostics) Records(
+        string workspaceRoot, string itemId, int last = 5)
+    {
+        if (!ProjectSemanticIndex.IsValidTimeFirstId(itemId) || last < 1)
+        {
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.InvalidArgument,
+                "A valid backlog --id and a positive --last are required.") });
+        }
+        var (loaded, backlog, revision, diagnostics) = LoadBacklog(workspaceRoot);
+        if (!loaded || backlog == null) return (false, null, diagnostics);
+        var item = backlog.Root?.Element("items")?.Elements("item")
+            .SingleOrDefault(element => (string?)element.Attribute("id") == itemId);
+        if (item == null)
+        {
+            return (false, null, new[] { Diagnostic.Error(DiagnosticCodes.DanglingReference,
+                $"Backlog item '{itemId}' does not exist.", BacklogDocument) });
+        }
+        var records = item.Element("records")?.Elements("record").ToList() ?? [];
+        return (true, new BacklogRecordsResult(itemId, (string?)item.Attribute("status") ?? string.Empty,
+            revision, records.Count, records.TakeLast(last).Select(record => new XElement(record)).ToList()), Array.Empty<Diagnostic>());
+    }
+
     public static (bool Success, BacklogListResult? Result, IReadOnlyList<Diagnostic> Diagnostics) List(
         string workspaceRoot, string? status = null, string? kind = null, string? severity = null)
     {
@@ -244,12 +274,38 @@ public static class BacklogLifecycle
     }
 
     private static (bool Success, MutationEnvelope? Envelope, IReadOnlyList<Diagnostic> Diagnostics) Transition(
-        string workspaceRoot, int expectedRevision, BacklogTransitionInput input, string action, string newStatus, bool dryRun = false)
+        string workspaceRoot, int expectedRevision, BacklogTransitionInput input, string action, string? newStatus, bool dryRun = false)
     {
         var inputDiagnostics = ValidateCommon(expectedRevision, input.Id, input.OperationId, input.Actor);
         if (inputDiagnostics.Count > 0)
         {
             return (false, null, inputDiagnostics);
+        }
+        if ((action == "record" && string.IsNullOrWhiteSpace(input.Summary)) ||
+            (input.Summary != null && string.IsNullOrWhiteSpace(input.Summary)))
+        {
+            return Failure(DiagnosticCodes.InvalidArgument, "--summary must be non-empty when supplied; backlog record requires it.");
+        }
+        if (input.Checks?.Any(check => string.IsNullOrWhiteSpace(check.Kind) || string.IsNullOrWhiteSpace(check.Summary) ||
+            check.Result is not ("passed" or "failed" or "skipped") ||
+            (check.ExitCode.HasValue && string.IsNullOrWhiteSpace(check.Command))) == true)
+        {
+            return Failure(DiagnosticCodes.InvalidArgument,
+                "Checks require kind, summary and a passed, failed or skipped result; an exit code also requires a command.");
+        }
+        try
+        {
+            if (input.Summary != null) XmlConvert.VerifyXmlChars(input.Summary);
+            foreach (var check in input.Checks ?? [])
+            {
+                XmlConvert.VerifyXmlChars(check.Kind);
+                XmlConvert.VerifyXmlChars(check.Summary);
+                if (check.Command != null) XmlConvert.VerifyXmlChars(check.Command);
+            }
+        }
+        catch (XmlException ex)
+        {
+            return Failure(DiagnosticCodes.InvalidArgument, $"Backlog record text contains unsupported XML characters: {ex.Message}");
         }
         var (loaded, backlog, actualRevision, loadDiagnostics) = LoadBacklog(workspaceRoot);
         if (!loaded || backlog == null)
@@ -271,7 +327,9 @@ public static class BacklogLifecycle
             new XAttribute("actor", input.Actor),
             new XAttribute("occurred_at", FormatTime(input.OccurredAt)),
             new XAttribute("action", action),
-            string.IsNullOrWhiteSpace(input.ResolvingTask) ? null : new XAttribute("resolving_task", input.ResolvingTask)));
+            string.IsNullOrWhiteSpace(input.ResolvingTask) ? null : new XAttribute("resolving_task", input.ResolvingTask),
+            input.Summary == null ? null : new XElement("summary", input.Summary),
+            ChecksElement(input.Checks)), preserveText: input.Summary != null || input.Checks?.Count > 0);
         var replay = CheckReplay(backlog, input.Id, input.OperationId, action, requestFingerprint, expectedRevision, actualRevision);
         if (replay.Handled)
         {
@@ -291,7 +349,7 @@ public static class BacklogLifecycle
             return Failure(DiagnosticCodes.DanglingReference, $"Backlog item '{input.Id}' does not exist.");
         }
         var oldStatus = (string?)item.Attribute("status") ?? string.Empty;
-        if (oldStatus is "completed" or "cancelled")
+        if (action != "record" && oldStatus is ("completed" or "cancelled"))
         {
             return Failure(DiagnosticCodes.TaskImmutable, $"Backlog item '{input.Id}' is terminal with status '{oldStatus}'.");
         }
@@ -310,8 +368,10 @@ public static class BacklogLifecycle
         }
 
         var at = FormatTime(input.OccurredAt);
-        item.SetAttributeValue("status", newStatus);
-        item.SetAttributeValue("updated_at", at);
+        if (newStatus != null) item.SetAttributeValue("status", newStatus);
+        if (action != "record" || !DateTimeOffset.TryParse((string?)item.Attribute("updated_at"), CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal, out var previousUpdate) || input.OccurredAt >= previousUpdate)
+            item.SetAttributeValue("updated_at", at);
         var records = item.Element("records");
         if (records == null)
         {
@@ -319,8 +379,8 @@ public static class BacklogLifecycle
             item.Add(records);
         }
         records.Add(Receipt(input.OperationId, input.Actor, at, action, requestFingerprint,
-            "resolution", action is "complete" or "cancel" ? "resolved" : "informational",
-            $"Backlog item {action} transition applied through the public lifecycle helper.", input.ResolvingTask));
+            action == "record" ? "discussion" : "resolution", action is "complete" or "cancel" ? "resolved" : "informational",
+            input.Summary ?? $"Backlog item {action} transition applied through the public lifecycle helper.", input.ResolvingTask, input.Checks));
         return Commit(workspaceRoot, "backlog " + action, backlog, actualRevision, dryRun);
     }
 
@@ -464,7 +524,7 @@ public static class BacklogLifecycle
     }
 
     private static XElement Receipt(string operationId, string actor, string at, string action, string fingerprint,
-        string kind, string status, string summary, string? resolvingTask) =>
+        string kind, string status, string summary, string? resolvingTask, IReadOnlyList<BacklogCheck>? checks = null) =>
         new("record",
             new XAttribute("id", operationId + "-receipt"),
             new XAttribute("kind", kind),
@@ -477,16 +537,26 @@ public static class BacklogLifecycle
                 new XElement("term", new XAttribute("key", "action"), new XAttribute("value", action)),
                 new XElement("term", new XAttribute("key", "request-sha256"), new XAttribute("value", fingerprint))),
             new XElement("summary", summary),
+            ChecksElement(checks),
             string.IsNullOrWhiteSpace(resolvingTask)
                 ? null
-                : new XElement("sources", ProjectRef(resolvingTask, "resolved-by")));
+                : new XElement("sources", ProjectRef(resolvingTask, action == "record" ? "related-to" : "resolved-by")));
+
+    private static XElement? ChecksElement(IReadOnlyList<BacklogCheck>? checks) => checks?.Count > 0
+        ? new XElement("checks", checks.Select(check => new XElement("check", new XAttribute("kind", check.Kind),
+            new XAttribute("result", check.Result), check.Command == null ? null : new XAttribute("command", check.Command),
+            check.ExitCode.HasValue ? new XAttribute("exit_code", check.ExitCode.Value) : null,
+            new XElement("summary", check.Summary))))
+        : null;
 
     private static XElement ProjectRef(string target, string relation) =>
         new("ref", new XAttribute("scope", "project"), new XAttribute("target", target), new XAttribute("relation", relation));
 
-    private static string Fingerprint(XElement element)
+    private static string Fingerprint(XElement element, bool preserveText = false)
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(element.ToString(SaveOptions.DisableFormatting)));
+        // Legacy requests retain their original fingerprints; new prose must distinguish CR/LF exactly.
+        var bytes = SHA256.HashData(preserveText ? ManagedDocumentSerializer.SerializeToBytes(element) :
+            Encoding.UTF8.GetBytes(element.ToString(SaveOptions.DisableFormatting)));
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20261028-tasks-backlog-notes" iteration="20261028-backlog-notes" schema_version="1.0" revision="12">
+  <index>
+    <summary>Tasks for iteration 20261028-backlog-notes.</summary>
+    <term key="iteration" value="20261028-backlog-notes" />
+  </index>
+  <task id="20261028T081946Z-task-add-backlog-progress-records-and" status="done" created_at="2026-10-28T08:19:46Z" updated_at="2026-10-28T08:42:39Z" agent="codex" started_at="2026-10-28T08:20:39Z" completed_at="2026-10-28T08:42:39Z">
+    <index>
+      <summary>Add backlog progress records and optional closure evidence</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Add backlog progress records and optional closure evidence</title>
+    <objective>Progress and closure commands have tested XML/human output, replay and dry-run behavior, legacy compatibility, no mandatory closure evidence, current documentation and passing build.cmd.</objective>
+    <rationale>Implement the backlog notes gap approved by the owner, using existing records without changing schemas.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Backlog" />
+        <include path="src/DogdouSpec.Cli/Commands/BacklogCommand.cs" />
+        <include path="tests" />
+        <include path="docs" />
+        <include path="README.md" />
+        <include path=".agents/skills/dogdouspec" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261028-req-backlog-notes" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261028T081946Z-task-add-backlog-progress-records-and-done" status="passed">Progress and closure commands have tested XML/human output, replay and dry-run behavior, legacy compatibility, no mandatory closure evidence, current documentation and passing build.cmd.</criterion>
+    </acceptance>
+    <context>
+      <summary>Implement the backlog notes gap approved by the owner, using existing records without changing schemas.</summary>
+    </context>
+    <records>
+      <record id="20261028T081946Z-quick-add-backlog-progress-records-and-receipt" kind="discussion" status="informational" created_at="2026-10-28T08:19:46Z" actor="quick-task" operation_id="20261028T081946Z-quick-add-backlog-progress-records-and">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="b96f1333262d177ccd3bf9ddf9d83793e941e8dc8eebe7919d3507f340526c43" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261028T082039Z-record-start-a8c330aa7a1e4397b6e6df8fc3fd2a5a" kind="start" status="informational" created_at="2026-10-28T08:20:39Z" actor="agent" operation_id="20261028T082039Z-taskstart-2ec995cbc0a04b12bcc1f43c464e8450">
+        <summary>Read effective context; baseline build passed 1001 tests with zero warnings/errors. Implement optional notes/checks and legacy-compatible transitions using existing schemas.</summary>
+      </record>
+      <record id="20261028T084214Z-record-verification-927b02c740b5422d89a1f5955e727bd5" kind="verification" status="informational" created_at="2026-10-28T08:42:14Z" actor="agent" operation_id="20261028T084214Z-taskrecord-fae1ff84f32343f6bc9c0e7e8adc20ad">
+        <summary>Implemented backlog record/records and optional schedule/complete/cancel summaries and checks without schema changes or new closure prerequisites. Notes support open, scheduled and closed items; records expose XML/human history. Preserved old retry fingerprints and exact prose/check retry identity. Self-review and regression verification found no outstanding issues.</summary>
+        <context>Updated Core backlog lifecycle/result, CLI options, Core and CLI tests, README, CLI contract, workflow/install documentation, and embedded/repository Skill with a refreshed baseline and optional history note.</context>
+        <outcome>Full build passes 1013 tests (Core 676, CLI 337), zero warnings/errors. Focused coverage includes dry-run, no-write history, replay/conflicts, old fingerprint compatibility, CR/LF and Unicode, optional evidence and failed-check closure. Skill is 5/5 pristine, schemas 6/6 matching, workspace validation and git diff --check pass. No external review was requested for this bounded addition. Git checkpoint and product acceptance remain pending.</outcome>
+        <checks>
+          <check kind="command" result="passed" command=".\build.cmd" exit_code="0">
+            <summary>Core 676/676 and CLI 337/337 passed; zero warnings and errors.</summary>
+          </check>
+        </checks>
+      </record>
+      <record id="20261028T084226Z-record-verify-a02287430ea74aefb418cd2377d3c5e7" kind="verification" status="informational" created_at="2026-10-28T08:42:26Z" actor="agent" operation_id="20261028T084226Z-taskverify-85d9ea1962714a85978bc434b34f4794">
+        <summary>Implementation and self-review complete; 1013 regression tests passed. CLI help, XML/human history, repository Skill and documentation are synchronized.</summary>
+        <covers>
+          <ref scope="document" target="20261028T081946Z-task-add-backlog-progress-records-and-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261028T084239Z-record-complete-990c858f374c4b868be1b83587ba18b7" kind="completion" status="informational" created_at="2026-10-28T08:42:39Z" actor="agent" operation_id="20261028T084239Z-taskcomplete-a383e37a0c194761bc92be3c548f9bb4">
+        <summary>Completed backlog progress/history and optional closure explanations/evidence with backward-compatible invocation and retries, current repository guidance and 1013 passing regression tests. Notes/checks/task links remain optional collaboration aids; caller-selected closure is preserved. Changes remain local pending a requested Git checkpoint.</summary>
+        <covers>
+          <ref scope="document" target="20261028T081946Z-task-add-backlog-progress-records-and-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261028T084609Z-task-review-and-fix-backlog-progress" status="done" created_at="2026-10-28T08:46:09Z" updated_at="2026-10-28T08:53:15Z" agent="codex" started_at="2026-10-28T08:46:51Z" completed_at="2026-10-28T08:53:15Z">
+    <index>
+      <summary>Review and fix backlog progress and closure helpers</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Review and fix backlog progress and closure helpers</title>
+    <objective>Gemini 4 Argon High independently approves the final backlog diff after any fixes, with appropriate regression tests and current repository guidance.</objective>
+    <rationale>Owner requested an agy.exe Gemini 4 Argon High review/fix loop for the implemented backlog gap.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Backlog" />
+        <include path="src/DogdouSpec.Cli/Commands/BacklogCommand.cs" />
+        <include path="tests" />
+        <include path="docs" />
+        <include path="README.md" />
+        <include path=".agents/skills/dogdouspec" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261028-req-backlog-notes" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261028T084609Z-task-review-and-fix-backlog-progress-done" status="passed">Gemini 4 Argon High independently approves the final backlog diff after any fixes, with appropriate regression tests and current repository guidance.</criterion>
+    </acceptance>
+    <context>
+      <summary>Owner requested an agy.exe Gemini 4 Argon High review/fix loop for the implemented backlog gap.</summary>
+    </context>
+    <review required="true">
+      <submission id="20261028T085301Z-sub-0ad8832189fd43a584c0bfb348720410" disposition="approved" actor="gemini-4-argon-high" reviewed_at="2026-10-28T08:53:01Z" record="20261028T085301Z-sub-0ad8832189fd43a584c0bfb348720410-record" />
+    </review>
+    <records>
+      <record id="20261028T084609Z-quick-review-and-fix-backlog-progress-receipt" kind="discussion" status="informational" created_at="2026-10-28T08:46:09Z" actor="quick-task" operation_id="20261028T084609Z-quick-review-and-fix-backlog-progress">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="692f6faa3bd470bb3882592d3ae2643225d6b9cb80c0bb5e53962d28aefbf312" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261028T084651Z-record-start-48c12a79176d4fa5b2bae2442bce948c" kind="start" status="informational" created_at="2026-10-28T08:46:51Z" actor="agent" operation_id="20261028T084651Z-taskstart-16d6c1436a3a40ed88aad4cce0e16b77">
+        <summary>Read effective constraints and begin owner-requested independent Gemini review/fix loop. Current unchanged baseline build passed 1013 tests with zero warnings/errors.</summary>
+      </record>
+      <record id="20261028T085226Z-record-verification-74a021e190a14c1a98629568733669aa" kind="verification" status="informational" created_at="2026-10-28T08:52:26Z" actor="agent" operation_id="20261028T085226Z-taskrecord-25bb0c5828f94bdd9895177f7af4c9f1">
+        <summary>Independent read-only agy.exe review using gemini-4-argon-high with high effort returned APPROVED and zero findings in round 1. No code fixes or further review rounds were needed.</summary>
+        <context>Reviewer examined all uncommitted backlog lifecycle, CLI, Core/CLI tests, README, CLI/workflow/install documentation and embedded repository Skill changes, including the new BacklogRecordsResult.cs. The unrelated docs/UPGRADE_FLOW_ISSUES.md was excluded.</context>
+        <outcome>Reviewer verified status-preserving notes including terminal follow-ups, unchanged legacy 1.0.5 fingerprints/replay, exact CR/LF identity for new prose/checks, existing XML checks/sources and optional closure evidence, read-only history, dry-run recovery behavior, and clean whitespace checks. No source or guidance changes were needed; existing full regression evidence remains applicable: Core 676, CLI 337, zero warnings/errors. Product acceptance and Git checkpoint remain pending.</outcome>
+        <checks>
+          <check kind="command" result="passed" command="agy.exe --model gemini-4-argon-high --effort high --mode plan --output-format json --print &lt;readonly-review-prompt&gt;" exit_code="0">
+            <summary>Independent reviewer returned APPROVED with an empty findings array.</summary>
+          </check>
+        </checks>
+      </record>
+      <record id="20261028T085248Z-record-verify-a2669e2eeee34b9cb4d634b8b2621d48" kind="verification" status="informational" created_at="2026-10-28T08:52:48Z" actor="agent" operation_id="20261028T085248Z-taskverify-4cb1daf76c8a4419bf6a8a087201e95c">
+        <summary>Gemini 4 Argon High independently approved the entire backlog diff with zero findings. No source changes were needed, so the existing 1013 passing tests remain applicable.</summary>
+        <covers>
+          <ref scope="document" target="20261028T084609Z-task-review-and-fix-backlog-progress-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261028T085301Z-sub-0ad8832189fd43a584c0bfb348720410-record" kind="decision" status="informational" created_at="2026-10-28T08:53:01Z" actor="gemini-4-argon-high" operation_id="20261028T085301Z-taskrev-bbdbbd5486974a3a899df913eb44b28a">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="b07f748044847e56504f1d109f1a6c0e2b7df7050353af130377e294eaac0d6a" />
+        </index>
+        <summary>Recorded the actual independent agy.exe Gemini 4 Argon High round-1 verdict: APPROVED, findings []. Reviewed code/tests/docs/Skill and the new history formatter; no fixes requested. Actor attribution preserves reviewer provenance and is not authenticated identity.</summary>
+      </record>
+      <record id="20261028T085315Z-record-complete-276e9c98a8444f228511c5b5b661bfe6" kind="completion" status="informational" created_at="2026-10-28T08:53:15Z" actor="agent" operation_id="20261028T085315Z-taskcomplete-d511169d5777446da158e76bd79468e8">
+        <summary>Completed the owner-requested agy.exe Gemini 4 Argon High review/fix loop. Round 1 approved the final backlog implementation with zero findings; no source fixes were required. Independent approval is recorded. Existing full regression passes 1013 tests, zero warnings/errors. Product acceptance and Git checkpoint remain pending.</summary>
+        <covers>
+          <ref scope="document" target="20261028T084609Z-task-review-and-fix-backlog-progress-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+</tasks>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20261028-backlog-notes" schema_version="1.0" revision="1" kind="feature" status="active" created_at="2026-10-28T08:19:46Z" updated_at="2026-10-28T08:19:46Z">
+  <index>
+    <summary>Implement the owner-approved backlog progress and closure conveniences.</summary>
+  </index>
+  <product>
+    <objective>Let users and agents explain backlog progress and closure through existing XML records while retaining caller-controlled lifecycle decisions.</objective>
+    <deliverables>
+      <deliverable id="20261028-deliv-backlog-notes">
+        <index>
+          <summary>Backlog record/history and optional transition explanations.</summary>
+        </index>
+        <description>Public progress recording and history reads, optional closure summaries, existing checks and resolving-task links, replay-compatible commands, tests and synchronized guidance.</description>
+      </deliverable>
+    </deliverables>
+    <scope>
+      <included>
+        <item>Backlog Core/CLI, tests, current documentation and repository Skill.</item>
+      </included>
+      <excluded>
+        <item>New schema shapes, mandatory evidence or summaries for closure, automatic acceptance decisions, unrelated backlog research, commits and pushes.</item>
+      </excluded>
+    </scope>
+    <requirements>
+      <requirement id="20261028-req-backlog-notes" status="approved">
+        <index>
+          <summary>Fill the backlog progress and closure explanation gap approved by the owner.</summary>
+        </index>
+        <statement>Add backlog record/records and optional summary/check inputs for lifecycle transitions, reusing existing records/checks/sources and preserving legacy invocation and replay behavior.</statement>
+        <rationale>The owner requested implementation after reviewing the collaboration-oriented command proposal.</rationale>
+      </requirement>
+    </requirements>
+    <acceptance>
+      <criterion id="20261028-crit-backlog-notes" decision="pending">Progress notes and history work across lifecycle states, optional closure summaries/checks round-trip, retries do not duplicate entries, legacy calls remain valid, and build/tests pass.</criterion>
+    </acceptance>
+  </product>
+  <constraints>
+    <constraint id="20261028-constraint-backlog-collaboration" kind="policy">History, summaries, evidence and resolving-task links are optional conveniences for closure; recorded check results do not decide lifecycle transitions.</constraint>
+    <constraint id="20261028-constraint-backlog-compatibility" kind="compatibility">Reuse current XML schemas and preserve fingerprints for legacy transitions without the new optional fields.</constraint>
+  </constraints>
+  <confirmations>
+    <confirmation id="20261028T000000Z-confirm-backlog-notes-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="2026-10-28T08:19:46Z">
+      <summary>Initial iteration activation.</summary>
+      <requirements>
+        <requirement target="20261028-req-backlog-notes" decision="approved" />
+      </requirements>
+    </confirmation>
+  </confirmations>
+</iteration>

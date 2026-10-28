@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<backlog id="20260823-backlog" schema_version="1.0" revision="8">
+<backlog id="20260823-backlog" schema_version="1.0" revision="10">
   <index>
     <summary>Project obligations not owned by an active Iteration.</summary>
     <term key="scope" value="project" />
@@ -120,7 +120,7 @@
         </record>
       </records>
     </item>
-    <item id="20261027-backlog-backlog-notes" status="open" created_at="2026-10-27T08:06:43Z" updated_at="2026-10-27T08:06:43Z">
+    <item id="20261027-backlog-backlog-notes" status="completed" created_at="2026-10-27T08:06:43Z" updated_at="2026-10-28T08:43:00Z">
       <index>
         <summary>Research backlog progress annotations and closure evidence</summary>
         <term key="kind" value="research" />
@@ -140,6 +140,33 @@
             <term key="request-sha256" value="5a7efeaf519dcbd4b30803a416b6c596b4701f33cd2658a179faf7f202f1f95d" />
           </index>
           <summary>Backlog item created through the public lifecycle helper.</summary>
+        </record>
+        <record id="20261028T083643Z-backlog-d26eece0c482411ab42ffa5b7d95e954-receipt" kind="discussion" status="informational" created_at="2026-10-28T08:36:43Z" actor="agent" operation_id="20261028T083643Z-backlog-d26eece0c482411ab42ffa5b7d95e954">
+          <index>
+            <summary>Backlog record receipt.</summary>
+            <term key="action" value="record" />
+            <term key="request-sha256" value="0805adbc5f9df27bb4cb9cec8e3410d447081f4ee31925a7ca4414af32e1d769" />
+          </index>
+          <summary>Implemented progress notes/history and optional transition summaries/checks using the existing XML model. Focused Core and CLI tests pass; full regression and repository guidance synchronization are being verified.</summary>
+          <sources>
+            <ref scope="project" target="20261028T081946Z-task-add-backlog-progress-records-and" relation="related-to" />
+          </sources>
+        </record>
+        <record id="20261028T084300Z-backlog-0dd820883bdc4165906540fe1d628e10-receipt" kind="resolution" status="resolved" created_at="2026-10-28T08:43:00Z" actor="agent" operation_id="20261028T084300Z-backlog-0dd820883bdc4165906540fe1d628e10">
+          <index>
+            <summary>Backlog complete receipt.</summary>
+            <term key="action" value="complete" />
+            <term key="request-sha256" value="34c0d23599e23063bc35a650b0065f9025798a25dea9d1f23d166b10d8119fda" />
+          </index>
+          <summary>Implemented backlog record/records and optional lifecycle summaries/checks using existing XML. Preserved legacy invocation and replay behavior; progress notes and closure evidence remain optional, and check results do not decide closure. Updated CLI contract, README, workflow/install guidance and repository Skill.</summary>
+          <checks>
+            <check kind="command" result="passed" command=".\build.cmd" exit_code="0">
+              <summary>Full regression passed: Core 676, CLI 337; zero warnings and errors. Workspace validates, Skill 5/5 pristine, schemas 6/6 matching, git diff --check passes.</summary>
+            </check>
+          </checks>
+          <sources>
+            <ref scope="project" target="20261028T081946Z-task-add-backlog-progress-records-and" relation="resolved-by" />
+          </sources>
         </record>
       </records>
     </item>
