@@ -114,6 +114,13 @@ no XML migration or new closure prerequisite is introduced.
 
 ## Verification and Recovery
 
+Review discovery adds `task review status` and `task review records --last 5`.
+Use `task review record --task <ID> --summary "..."` for actual review notes,
+with optional actor/result. Task context exposes compact review facts and a status
+command. These helpers reuse current XML; existing formal submissions and error
+codes remain compatible, with clearer next-command guidance. Recorded results
+are optional collaboration metadata and do not decide lifecycle or approval.
+
 Recheck `validate`, `skill status`, `schema status` and the repository diff.
 For Git repositories, `git diff --check` and `git status --short -- .dogdouspec
 .agents/skills/dogdouspec AGENTS.md` help review the result. Git is not required

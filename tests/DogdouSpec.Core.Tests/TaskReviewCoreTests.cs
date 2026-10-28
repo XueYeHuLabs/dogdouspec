@@ -37,7 +37,7 @@ public sealed class TaskReviewCoreTests
     [TestInitialize]
     public void Initialize()
     {
-        _workspace = Path.Combine(Path.GetTempPath(), "dogdouspec-review-core-" + Guid.NewGuid().ToString("N"));
+        _workspace = Path.Combine(Path.GetTempPath(), "dogdouspec-review-core-" + Guid.NewGuid().ToString("N"), ".dogdouspec");
         CopyDirectory(Path.Combine(RepoRoot, "docs", "demos", "v1-core", ".dogdouspec"), _workspace);
         PrepareReviewTask();
     }
@@ -45,7 +45,7 @@ public sealed class TaskReviewCoreTests
     [TestCleanup]
     public void Cleanup()
     {
-        if (Directory.Exists(_workspace)) Directory.Delete(_workspace, recursive: true);
+        if (Directory.Exists(_workspace)) Directory.Delete(Path.GetDirectoryName(_workspace)!, recursive: true);
     }
 
     [TestMethod]
@@ -277,6 +277,106 @@ public sealed class TaskReviewCoreTests
             _workspace, IterationId, TaskId, CurrentRevision(), approvalWithImpact);
         Assert.IsFalse(impactSuccess);
         Assert.IsTrue(impactDiagnostics.Any(d => d.Code == DiagnosticCodes.InvalidArgument), Join(impactDiagnostics));
+    }
+
+    [TestMethod]
+    public void ReviewNotes_PreserveTextAndRetryIdentity_WithoutFormalApprovalOrLifecycleChanges()
+    {
+        var before = LoadTask();
+        var revision = CurrentRevision();
+        var input = new TaskReviewNoteInput(TaskId, "审查通过 <XML> & 内容。\r\n补充\r结论", IterationId,
+            "approved", Implementer, revision, "20260825T100100Z-review-note");
+        var preview = TaskReviewNote.Record(_workspace, input, dryRun: true);
+        Assert.IsTrue(preview.Success, Join(preview.Diagnostics));
+        Assert.AreEqual(revision, CurrentRevision());
+        var recorded = TaskReviewNote.Record(_workspace, input);
+        Assert.IsTrue(recorded.Success, Join(recorded.Diagnostics));
+        Assert.IsTrue(TaskReviewNote.Record(_workspace, input).Result!.Envelope.AlreadyApplied);
+        var changed = TaskReviewNote.Record(_workspace, input with { Summary = input.Summary.Replace("\r", "", StringComparison.Ordinal) });
+        Assert.IsFalse(changed.Success);
+        Assert.IsTrue(changed.Diagnostics.Any(d => d.Code == DiagnosticCodes.IdempotencyConflict));
+        var current = LoadTask();
+        Assert.AreEqual("verification", (string?)current.Attribute("status"));
+        Assert.IsTrue(XNode.DeepEquals(before.Element("review"), current.Element("review")));
+        Assert.IsTrue(XNode.DeepEquals(before.Element("acceptance"), current.Element("acceptance")));
+        Assert.IsFalse(TaskReviewGate.Evaluate(current).Satisfied);
+        var history = TaskReviewHistory.Records(_workspace, TaskId, IterationId);
+        Assert.IsTrue(history.Success, Join(history.Diagnostics));
+        Assert.AreEqual(input.Summary, history.Result!.Element("review")!.Element("record")!.Element("summary")!.Value);
+        var status = TaskReviewHistory.Status(_workspace, TaskId, IterationId).Result!;
+        Assert.AreEqual("approved", (string?)status.Element("latest-record")!.Attribute("result"));
+        Assert.AreEqual("false", (string?)status.Element("submission")!.Attribute("present"));
+
+        var changeNote = TaskReviewNote.Record(_workspace, input with { OperationId = "20260825T100130Z-review-change-note", ExpectedRevision = null, Result = "changes-requested" });
+        Assert.IsTrue(changeNote.Success, Join(changeNote.Diagnostics));
+        Assert.AreEqual("verification", (string?)LoadTask().Attribute("status"));
+        Assert.IsFalse(LoadTask().Element("records")!.Elements("record").Any(r => (string?)r.Attribute("kind") == "finding" && (string?)r.Attribute("status") == "active"));
+        Assert.IsTrue(TaskReviewer.Submit(_workspace, IterationId, TaskId, CurrentRevision(), ApprovalRequest("20260825T100200Z-formal-after-note", "reviewer")).Success);
+        var recent = TaskReviewHistory.Records(_workspace, TaskId, IterationId, last: 1).Result!;
+        Assert.AreEqual("3", (string?)recent.Attribute("total_records"));
+        Assert.AreEqual("2", (string?)recent.Attribute("omitted_records"));
+        Assert.AreEqual("submission", (string?)recent.Element("review")!.Attribute("source"));
+    }
+
+    [TestMethod]
+    public void ReviewNotes_TerminalFollowUpsPreserveMetadata_AndDoNotInferResultsFromProse()
+    {
+        Assert.IsTrue(TaskReviewer.Submit(_workspace, IterationId, TaskId, CurrentRevision(), ApprovalRequest("20260825T100200Z-terminal-formal-review", "reviewer")).Success);
+        var completed = TaskUpdater.Update(_workspace, IterationId, TaskId, CurrentRevision(), CompletionRequest("20260825T103000Z-terminal-reviewed-task"));
+        Assert.IsTrue(completed.Success, Join(completed.Diagnostics));
+        var attributes = LoadTask().Attributes().Select(a => a.ToString()).ToArray();
+        var note = TaskReviewNote.Record(_workspace, new TaskReviewNoteInput(TaskId, "APPROVED in prose only.", IterationId));
+        Assert.IsTrue(note.Success, Join(note.Diagnostics));
+        CollectionAssert.AreEqual(attributes, LoadTask().Attributes().Select(a => a.ToString()).ToArray());
+        var status = TaskReviewHistory.Status(_workspace, TaskId, IterationId).Result!;
+        Assert.IsNull(status.Element("latest-record")!.Attribute("result"));
+        Assert.AreEqual("approved", (string?)status.Element("latest-submission")!.Attribute("disposition"));
+        Assert.AreEqual("done", (string?)status.Attribute("task_status"));
+    }
+
+    [TestMethod]
+    public void ReviewReaders_PreservePendingRecovery_AndPreviewNeverWrites()
+    {
+        var before = File.ReadAllBytes(TasksPath());
+        var pending = Path.Combine(_workspace, "_tmp", "tx_pending_review_notes", "staged");
+        Directory.CreateDirectory(pending);
+        Assert.IsTrue(TaskReviewHistory.Status(_workspace, TaskId, IterationId).Success);
+        Assert.IsTrue(TaskReviewHistory.Records(_workspace, TaskId, IterationId).Success);
+        var preview = TaskReviewNote.Record(_workspace, new TaskReviewNoteInput(TaskId, "Preview.", IterationId), dryRun: true);
+        Assert.IsFalse(preview.Success);
+        Assert.IsTrue(preview.Diagnostics.Any(d => d.Code == DiagnosticCodes.RecoveryFailed));
+        Assert.IsTrue(Directory.Exists(pending));
+        CollectionAssert.AreEqual(before, File.ReadAllBytes(TasksPath()));
+    }
+
+    [TestMethod]
+    public void ReviewContext_ExposesCompactFactsAndCommands_WithoutInferringAnApproval()
+    {
+        var summary = new string('a', 239) + "😀" + new string('b', 200);
+        var note = TaskReviewNote.Record(_workspace, new TaskReviewNoteInput(TaskId, summary, IterationId));
+        Assert.IsTrue(note.Success, Join(note.Diagnostics));
+        var context = TaskContextQuery.Query(_workspace, TaskId, IterationId, noHistory: true);
+        Assert.IsTrue(context.Success, Join(context.Diagnostics));
+        var xml = XDocument.Parse(context.Result!.ToXmlString()).Root!.Element("essential")!.Element("review-summary")!;
+        Assert.AreEqual("true", (string?)xml.Element("latest-record")!.Element("summary")!.Attribute("truncated"));
+        Assert.AreEqual(239, xml.Element("latest-record")!.Element("summary")!.Value.Length);
+        Assert.IsNull(xml.Element("latest-record")!.Attribute("result"));
+        StringAssert.Contains(context.Result.ToHumanString(), "task review status");
+        Assert.AreEqual("false", (string?)xml.Element("submission")!.Attribute("present"));
+    }
+
+    [TestMethod]
+    public void ReviewNoteAndQueryValidation_FailWithoutWriting()
+    {
+        var before = File.ReadAllBytes(TasksPath());
+        var input = new TaskReviewNoteInput(TaskId, "A valid note.", IterationId);
+        foreach (var invalid in new[] { input with { Summary = " " }, input with { Summary = "bad\0text" },
+            input with { Result = "unknown" }, input with { Actor = " " }, input with { OperationId = "invalid" },
+            input with { ExpectedRevision = 0 }, input with { OccurredAt = "invalid" }, input with { TaskId = "20260825-missing-task" } })
+            Assert.IsFalse(TaskReviewNote.Record(_workspace, invalid).Success);
+        Assert.IsFalse(TaskReviewHistory.Records(_workspace, TaskId, IterationId, last: 0).Success);
+        Assert.IsFalse(TaskReviewHistory.Status(_workspace, TaskId, IterationId, maxBytes: 1).Success);
+        CollectionAssert.AreEqual(before, File.ReadAllBytes(TasksPath()));
     }
 
     private void PrepareReviewTask()

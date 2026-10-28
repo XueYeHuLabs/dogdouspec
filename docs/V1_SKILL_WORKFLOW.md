@@ -191,6 +191,7 @@ dogdouspec task update `
 - **Resume**: transition `resume` (`blocked` -> `in-progress`), resolves blocking records.
 - **Verify**: transition `verify` (`in-progress` -> `verification`), updates criteria results to `passed`.
 - **Review, when required**: submit `task review` in `verification`. Approval actor must differ from Task `@agent`. `changes-requested` appends an active finding and moves the Task back to `in-progress`; resolve it, verify again, and obtain fresh approval.
+- **Record any actual review**: `task review record --task <ID> --summary "..."` saves an informational note with optional actor/result, including after task closure. Use `task review status` for configuration and recorded/submitted facts, or `task review records --last 5` for recent history. Notes preserve reported outcomes; callers choose subsequent actions. Explicit formal submissions retain their existing semantics.
 - **Complete**: transition `complete` (`verification` -> `done`), sets `completed_at`, appends completion record.
 - **Transfer / Supersede / Cancel**: transition `transfer`, `supersede`, or `cancel`.
 - **State-preserving record append / context update**: omit `transition`.

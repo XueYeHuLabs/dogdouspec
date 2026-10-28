@@ -445,6 +445,7 @@ public static class TaskContextQuery
             AcceptanceCriteria = acceptanceList,
             ActiveBlockers = activeBlockers,
             LatestStatusRecords = latestStatusRecords,
+            ReviewSummary = TaskReviewHistory.ContextSummary(taskElem, resolvedIterId, tasksRevision),
 
             ActionCategory = actionCategory,
             ReasonCode = reasonCode,
@@ -550,7 +551,7 @@ public static class TaskContextQuery
                         sections.Add(("core-metadata", metaBytes));
                     }
 
-                    foreach (var sectionName in new[] { "scope", "constraints", "origin-requirements", "acceptance", "blockers", "latest-status-records", "progression-facts" })
+                    foreach (var sectionName in new[] { "scope", "constraints", "origin-requirements", "acceptance", "blockers", "latest-status-records", "review-summary", "progression-facts" })
                     {
                         var el = essential.Element(sectionName);
                         if (el != null)

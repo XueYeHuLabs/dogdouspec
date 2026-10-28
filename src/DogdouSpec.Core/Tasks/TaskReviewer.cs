@@ -127,13 +127,17 @@ public static class TaskReviewer
         var review = task.Element("review");
         if (review == null || !bool.TryParse((string?)review.Attribute("required"), out var required) || !required)
         {
-            return Failure(DiagnosticCodes.TaskReviewRequired, $"Task '{taskId}' is not configured with review required=true.");
+            return Failure(DiagnosticCodes.TaskReviewRequired, $"Task '{taskId}' is not configured with review required=true. " +
+                $"To save this actual review as an informational note, use: {TaskReviewHistory.Command("record", taskId, iterationId)} --result {disposition} --summary \"...\". " +
+                $"Inspect review facts with: {TaskReviewHistory.Command("status", taskId, iterationId)}.");
         }
         var implementer = (string?)task.Attribute("agent");
         if (string.IsNullOrWhiteSpace(implementer))
         {
             return Failure(DiagnosticCodes.TaskReviewImplementerUnknown,
-                $"Review-required task '{taskId}' has no declared @agent implementer attribution.");
+                $"Review-required task '{taskId}' has no declared @agent implementer attribution. " +
+                $"Inspect: {TaskReviewHistory.Command("status", taskId, iterationId)}. " +
+                $"To save the reported review without a formal submission, use: {TaskReviewHistory.Command("record", taskId, iterationId)} --summary \"...\".");
         }
 
         var fingerprint = Fingerprint(root);
@@ -240,23 +244,31 @@ public static class TaskReviewer
         }
         if (!string.Equals((string?)spec.Root?.Attribute("status"), "active", StringComparison.Ordinal))
         {
-            return Failure(DiagnosticCodes.IterationReplanningExecutionFrozen, "Task review requires an active iteration.");
+            return Failure(DiagnosticCodes.IterationReplanningExecutionFrozen, "Task review requires an active iteration. " +
+                $"To save an informational review note, use: {TaskReviewHistory.Command("record", taskId, iterationId)} --summary \"...\".");
         }
         if (!string.Equals((string?)task.Attribute("status"), "verification", StringComparison.Ordinal))
         {
-            return Failure(DiagnosticCodes.TaskReviewStateInvalid, "New review submissions require task status verification.");
+            return Failure(DiagnosticCodes.TaskReviewStateInvalid, "New review submissions require task status verification. " +
+                $"Current status is '{(string?)task.Attribute("status")}'. " +
+                $"Inspect: {TaskReviewHistory.Command("status", taskId, iterationId)}. " +
+                $"For an informational review note, use: {TaskReviewHistory.Command("record", taskId, iterationId)} --summary \"...\". " +
+                $"For an in-progress task ready for verification, use: dogdouspec task verify --task {taskId} --iteration {iterationId}.");
         }
         if (disposition == "approved" && string.Equals(actor, implementer, StringComparison.Ordinal))
         {
             return Failure(DiagnosticCodes.TaskReviewActorConflict,
-                "Approval actor must differ from the task @agent implementer attribution. This is provenance separation, not authenticated identity proof.");
+                "Approval actor must differ from the task @agent implementer attribution. This is provenance separation, not authenticated identity proof. " +
+                $"The declared implementer is '{implementer}'. To save an informational review instead, use: {TaskReviewHistory.Command("record", taskId, iterationId)} --summary \"...\".");
         }
         if (disposition == "approved" && task.Element("records")?.Elements("record")
                 .Any(r => string.Equals((string?)r.Attribute("kind"), "finding", StringComparison.Ordinal) &&
                           string.Equals((string?)r.Attribute("status"), "active", StringComparison.Ordinal)) == true)
         {
             return Failure(DiagnosticCodes.TaskActiveFindingBlocksCompletion,
-                "Approval cannot be recorded while the task has active findings.");
+                "Approval cannot be recorded while the task has active findings. " +
+                $"Inspect: dogdouspec task blockers --task {taskId} --iteration {iterationId}. " +
+                $"To preserve this review outcome as a note, use: {TaskReviewHistory.Command("record", taskId, iterationId)} --summary \"...\".");
         }
 
         var record = new XElement("record",

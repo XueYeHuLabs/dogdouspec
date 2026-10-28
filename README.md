@@ -230,6 +230,16 @@ All commands run directly through `dogdouspec <command> [options]`:
   - `task context --task <TASK_ID> [--iteration <ID>] [--max-bytes <N>] [--no-history]` (Read bounded context with effective iteration and Task constraints)
   - `task records --task <TASK_ID> [--last 5] [--kind verification] [--fields id,created_at,summary,checks] [--max-summary N] [--max-bytes N]` (Bounded persisted history with explicit omission/truncation metadata)
   - `task record --task <TASK_ID> --kind verification --summary "..." --check-command "dotnet test" --check-result passed --check-exit-code 0` (Append structured evidence to existing checks without changing acceptance)
+  - `task review record --task <TASK_ID> --summary "..." [--actor <ACTOR>] [--result approved|changes-requested]` (Save an actual review as an informational note across task states)
+  - `task review status --task <TASK_ID>` and `task review records --task <TASK_ID> --last 5` (Review facts and bounded history, with XML/human output)
+
+  Review notes preserve the caller's explanation and optional declared result;
+  callers choose whether to change, block or finish work. Task context includes
+  compact review facts and a status command. `review status` distinguishes notes
+  from existing formal submissions and provides useful commands. Existing
+  `review approve/request-changes` remain formal submission actions for tasks
+  explicitly configured with review requirements; unsupported submissions explain
+  how to save a note. Notes use existing XML records, including after completion.
 
   Before starting or resuming a selected Task, read `task context --no-history`. Its essential constraints retain both `scope="iteration"` and `scope="task"`, including optional `kind`; both scopes apply. Raw Task queries and `task show` do not include iteration constraints. Re-read context after a constraint change, and resolve conflicts before execution.
 

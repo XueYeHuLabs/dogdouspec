@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tasks id="20261028-tasks-review-experience" iteration="20261028-review-experience" schema_version="1.0" revision="14">
+  <index>
+    <summary>Tasks for iteration 20261028-review-experience.</summary>
+    <term key="iteration" value="20261028-review-experience" />
+  </index>
+  <task id="20261028T091410Z-task-add-collaborative-task-review-re" status="done" created_at="2026-10-28T09:14:10Z" updated_at="2026-10-28T09:34:01Z" agent="codex" started_at="2026-10-28T09:17:05Z" completed_at="2026-10-28T09:34:01Z">
+    <index>
+      <summary>Add collaborative task review recording and discovery</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Add collaborative task review recording and discovery</title>
+    <objective>Review record/status/records and context/diagnostics behave as approved, preserve existing schemas and formal review semantics, pass focused and full tests, and synchronize current repository guidance.</objective>
+    <rationale>Implement the review experience plan approved by the owner, emphasizing optional factual records and useful command guidance.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks" />
+        <include path="src/DogdouSpec.Cli/Commands" />
+        <include path="tests" />
+        <include path="docs" />
+        <include path="README.md" />
+        <include path=".agents/skills/dogdouspec" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261028-req-review-experience" relation="implements" />
+    </origin>
+    <constraints />
+    <acceptance>
+      <criterion id="20261028T091410Z-task-add-collaborative-task-review-re-done" status="passed">Review record/status/records and context/diagnostics behave as approved, preserve existing schemas and formal review semantics, pass focused and full tests, and synchronize current repository guidance.</criterion>
+    </acceptance>
+    <context>
+      <summary>Implement the review experience plan approved by the owner, emphasizing optional factual records and useful command guidance.</summary>
+    </context>
+    <records>
+      <record id="20261028T091410Z-quick-add-collaborative-task-review-re-receipt" kind="discussion" status="informational" created_at="2026-10-28T09:14:10Z" actor="quick-task" operation_id="20261028T091410Z-quick-add-collaborative-task-review-re">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="966924bdafdd6ecafe51a9b51445bcf80ced4ff438b29c2ebd5b62c3b4e19f84" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261028T091705Z-record-start-b52d811eb355421c9e846e19bd896152" kind="start" status="informational" created_at="2026-10-28T09:17:05Z" actor="agent" operation_id="20261028T091705Z-taskstart-e7133efc2d52499390daf40854879a29">
+        <summary>Read effective context and constraints. Baseline build passed Core 676 and CLI 337 tests with zero warnings/errors. Implement approved review convenience commands with informational records and compatible formal submission guidance.</summary>
+      </record>
+      <record id="20261028T093250Z-reviewnote-0d71657c9a80469c9d8baf534ecc799c-record" kind="discussion" status="informational" created_at="2026-10-28T09:32:50Z" actor="codex" operation_id="20261028T093250Z-reviewnote-0d71657c9a80469c9d8baf534ecc799c">
+        <index>
+          <summary>Recorded review.</summary>
+          <term key="activity" value="review" />
+          <term key="review-summary-sha256" value="c120f42cc1b27a0e343d9d35f56d6d65fbbdf1a67028a434de61702f77d20025" />
+          <term key="review-result" value="approved" />
+        </index>
+        <summary>Implementation self-review: review notes/status/history, XML/human output, optional result semantics, all eight task states, CR/LF identity and compatible formal-review guidance are covered by regression tests. No outstanding issues found in this self-review; this record is informational and does not represent independent approval.</summary>
+      </record>
+      <record id="20261028T093336Z-record-verification-18ba7099d9e5414380b3b56afeafdc34" kind="verification" status="informational" created_at="2026-10-28T09:33:36Z" actor="agent" operation_id="20261028T093336Z-taskrecord-e757e5eacc884a74a15d602ebd9336df">
+        <summary>Implemented the owner-approved review experience: task review record/status/records, optional caller-declared results and actors, compact essential context and actionable diagnostics preserving existing error/exit codes. Informational notes never decide lifecycle, findings, criteria or formal approval; existing configured formal review flows remain compatible.</summary>
+        <context>Added Core review-note/history helpers and CLI convenience commands; updated context serialization, review guidance, Core/CLI tests, README, CLI contract, workflow/install documentation and embedded repository Skill. Refreshed the repository Skill baseline and optional history using the source-built CLI. No schema migration.</context>
+        <outcome>Full build passed 1029 tests (Core 681, CLI 348), zero warnings/errors. New tests cover all eight task states including terminal metadata preservation, same-actor informational notes, failed-result notes without automatic findings or transitions, formal submission distinction, exact text/replay conflicts, dry-run, pending-recovery read-only behavior, XML/human views, truncation/context budget and actionable diagnostics. Source-built CLI dogfood saved a self-review note and showed required=false with zero formal submissions. Skill 5/5 pristine and schemas 6/6 matching. Self-review found no outstanding issue; no independent external review was run for this feature. Product acceptance and Git checkpoint remain pending.</outcome>
+        <checks>
+          <check kind="command" result="passed" command=".\build.cmd" exit_code="0">
+            <summary>Core 681/681 and CLI 348/348 passed; zero warnings and errors.</summary>
+          </check>
+        </checks>
+      </record>
+      <record id="20261028T093400Z-record-verify-f0e31f165fc844379ca299cb6f0d0b10" kind="verification" status="informational" created_at="2026-10-28T09:34:00Z" actor="agent" operation_id="20261028T093400Z-taskverify-41b8b210f9894026aecbc4e00b41dcfd">
+        <summary>Implementation and self-review complete. All 1029 tests pass; source-built command dogfood, documentation/Skill synchronization, schema status and workspace validation are verified.</summary>
+        <covers>
+          <ref scope="document" target="20261028T091410Z-task-add-collaborative-task-review-re-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261028T093401Z-record-complete-699ea11123b64e2aa066cc990b325f9d" kind="completion" status="informational" created_at="2026-10-28T09:34:01Z" actor="agent" operation_id="20261028T093401Z-taskcomplete-e681e3ff76e74325958a899bb8565940">
+        <summary>Delivered review notes, factual status/history, compact context and useful command diagnostics using existing XML. Optional results remain caller-reported information; no new mandatory review policy or automatic lifecycle decisions were added. Full regression passed 1029 tests, documentation and repository Skill are synchronized. Product acceptance and Git checkpoint remain pending.</summary>
+        <covers>
+          <ref scope="document" target="20261028T091410Z-task-add-collaborative-task-review-re-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+  <task id="20261028T093707Z-task-review-and-fix-collaborative-rev" status="done" created_at="2026-10-28T09:37:07Z" updated_at="2026-10-28T09:47:24Z" agent="codex" started_at="2026-10-28T09:38:14Z" completed_at="2026-10-28T09:47:24Z">
+    <index>
+      <summary>Review and fix collaborative review experience</summary>
+      <term key="kind" value="quick" />
+    </index>
+    <title>Review and fix collaborative review experience</title>
+    <objective>Gemini 4 Argon High independently approves the final review-experience diff after verified fixes, with current tests and repository guidance.</objective>
+    <rationale>Owner requested agy.exe Gemini 4 Argon High review/fix loop for the implemented review experience.</rationale>
+    <scope>
+      <repository path=".">
+        <include path="src/DogdouSpec.Core/Tasks" />
+        <include path="src/DogdouSpec.Cli/Commands" />
+        <include path="tests" />
+        <include path="docs" />
+        <include path="README.md" />
+        <include path=".agents/skills/dogdouspec" />
+      </repository>
+    </scope>
+    <origin>
+      <ref scope="iteration" target="20261028-req-review-experience" relation="implements" />
+    </origin>
+    <dependencies>
+      <ref scope="document" target="20261028T091410Z-task-add-collaborative-task-review-re" relation="depends-on" />
+    </dependencies>
+    <constraints />
+    <acceptance>
+      <criterion id="20261028T093707Z-task-review-and-fix-collaborative-rev-done" status="passed">Gemini 4 Argon High independently approves the final review-experience diff after verified fixes, with current tests and repository guidance.</criterion>
+    </acceptance>
+    <context>
+      <summary>Owner requested agy.exe Gemini 4 Argon High review/fix loop for the implemented review experience.</summary>
+    </context>
+    <review required="true">
+      <submission id="20261028T094655Z-sub-daf5cee04b2a4aa587a0d1e40f8151eb" disposition="approved" actor="gemini-4-argon-high" reviewed_at="2026-10-28T09:46:55Z" record="20261028T094655Z-sub-daf5cee04b2a4aa587a0d1e40f8151eb-record" />
+    </review>
+    <records>
+      <record id="20261028T093707Z-quick-review-and-fix-collaborative-rev-receipt" kind="discussion" status="informational" created_at="2026-10-28T09:37:07Z" actor="quick-task" operation_id="20261028T093707Z-quick-review-and-fix-collaborative-rev">
+        <index>
+          <summary>Task addition receipt.</summary>
+          <term key="request-sha256" value="da4ccd75b21c132a663ebbf8d76250c0d33bb7da5d5c06b6e49bbe8dce5ee6d9" />
+        </index>
+        <summary>Task addition receipt.</summary>
+      </record>
+      <record id="20261028T093814Z-record-start-07ccd4ba1cf9488e95e6d02a211bc9f7" kind="start" status="informational" created_at="2026-10-28T09:38:14Z" actor="agent" operation_id="20261028T093814Z-taskstart-cadbf0cf454b495cb9859ebfe8b04fce">
+        <summary>Read effective context/constraints and begin independent Gemini review/fix loop. Current source baseline is unchanged since the full build passed 1029 tests, zero warnings/errors.</summary>
+      </record>
+      <record id="20261028T094616Z-reviewnote-3c9c8bd8a3a349b99e8cba7cfc56a521-record" kind="discussion" status="informational" created_at="2026-10-28T09:46:16Z" actor="gemini-4-argon-high" operation_id="20261028T094616Z-reviewnote-3c9c8bd8a3a349b99e8cba7cfc56a521">
+        <index>
+          <summary>Recorded review.</summary>
+          <term key="activity" value="review" />
+          <term key="review-summary-sha256" value="5ce1e50964bf120e9652ab063f62bd9cd98cd21dadea30ddf6c022e760353d4b" />
+          <term key="review-result" value="approved" />
+        </index>
+        <summary>Independent read-only agy.exe Gemini 4 Argon High review with high effort returned APPROVED and zero findings in round 1. Reviewed all current review-experience source/tests/docs/Skill changes including new files. Confirmed optional factual notes, distinct formal submission sources, all eight task states, exact text/replay behavior, read/preview boundaries, compact context and compatible diagnostics. No code fixes requested.</summary>
+      </record>
+      <record id="20261028T094637Z-record-verification-f9135ce577be4ec2bd3ca813763815e4" kind="verification" status="informational" created_at="2026-10-28T09:46:37Z" actor="agent" operation_id="20261028T094637Z-taskrecord-313e5ebe7a174b8ab4369b81bc1d6f1e">
+        <summary>Completed independent agy.exe review using gemini-4-argon-high with high effort: round 1 APPROVED, findings empty. No fixes or further review rounds were required.</summary>
+        <context>Reviewer inspected all uncommitted review-experience implementation, new source/test files, Core/CLI coverage, context/diagnostics and repository documentation/Skill. The unrelated docs/UPGRADE_FLOW_ISSUES.md was excluded. Raw provider output/logs remain transient outside the repository.</context>
+        <outcome>Verified informational results do not drive lifecycle or formal approval, note/submission sources remain distinct, terminal metadata is preserved, reads/previews do not write or trigger recovery, exact text/replay identity is retained, bounded context/history and existing formal-review behavior are compatible. Reviewer confirmed current Skill baseline digests and whitespace checks. Source remained unchanged; the existing full build evidence applies: Core 681 and CLI 348, total 1029 tests, zero warnings/errors. Product acceptance and Git checkpoint remain pending.</outcome>
+        <checks>
+          <check kind="command" result="passed" command="agy.exe --model gemini-4-argon-high --effort high --mode plan --output-format json --print &lt;readonly-review-prompt&gt;" exit_code="0">
+            <summary>Independent reviewer verdict APPROVED, findings [].</summary>
+          </check>
+        </checks>
+      </record>
+      <record id="20261028T094653Z-record-verify-3eef0a64de1f47bba83279375e9a0442" kind="verification" status="informational" created_at="2026-10-28T09:46:53Z" actor="agent" operation_id="20261028T094653Z-taskverify-5f0024ababce4e8890cc5a61e7be163c">
+        <summary>Independent Gemini 4 Argon High review approved the full review-experience diff with zero findings. No source fixes were needed; existing 1029-test regression and current guidance remain verified.</summary>
+        <covers>
+          <ref scope="document" target="20261028T093707Z-task-review-and-fix-collaborative-rev-done" relation="covers" />
+        </covers>
+      </record>
+      <record id="20261028T094655Z-sub-daf5cee04b2a4aa587a0d1e40f8151eb-record" kind="decision" status="informational" created_at="2026-10-28T09:46:55Z" actor="gemini-4-argon-high" operation_id="20261028T094655Z-taskrev-29c0c7b541eb45b996933d4b9b70fb2b">
+        <index>
+          <summary>Structured task review submission.</summary>
+          <term key="review-disposition" value="approved" />
+          <term key="request-sha256" value="5420f752ec259b701c5fcc6ab284f9ffc653c4715efc5481e366fbbdf98c786f" />
+        </index>
+        <summary>Recorded the actual independent agy.exe Gemini 4 Argon High round-1 verdict: APPROVED, zero findings. Full review-experience diff including source/tests/docs/Skill and new files was reviewed; no corrections requested. Actor attribution records reviewer provenance.</summary>
+      </record>
+      <record id="20261028T094724Z-record-complete-3b13e92169a04299a328050ec58f1960" kind="completion" status="informational" created_at="2026-10-28T09:47:24Z" actor="agent" operation_id="20261028T094724Z-taskcomplete-f3d0a515c60a466ca62351408a8cb6d7">
+        <summary>Completed the owner-requested agy.exe Gemini 4 Argon High review/fix loop. First independent round approved all review-experience changes with zero findings; no source changes or further rounds were needed. Actual review note, structured check and independent formal approval are recorded. Existing full regression passes 1029 tests with zero warnings/errors. Product acceptance and Git checkpoint remain pending.</summary>
+        <covers>
+          <ref scope="document" target="20261028T093707Z-task-review-and-fix-collaborative-rev-done" relation="covers" />
+        </covers>
+      </record>
+    </records>
+  </task>
+</tasks>

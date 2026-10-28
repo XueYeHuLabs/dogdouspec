@@ -842,6 +842,55 @@ identity. DogdouSpec does not prove who controls an actor string; repositories
 needing authenticated review must enforce that in their surrounding Git/CI or
 identity system.
 
+### 8.1.1 Review recording and discovery conveniences
+
+```powershell
+dogdouspec task review record --task <TASK_ID> --iteration <ITERATION_ID> --summary "Reviewed the implementation; one follow-up remains." --actor reviewer --result changes-requested --format xml
+dogdouspec task review status --task <TASK_ID> --iteration <ITERATION_ID> --format xml
+dogdouspec task review records --task <TASK_ID> --iteration <ITERATION_ID> --last 5 --format xml
+```
+
+`record` requires a non-empty summary. Actor defaults to `agent`; result is
+optional (`approved` or `changes-requested`). Omitted results are unspecified,
+including when the prose says approved. The helper appends an informational
+discussion record with `activity=review` and optional `review-result` index
+terms. A summary digest distinguishes exact CR/LF content during retries. Existing
+schemas are reused. Every task state accepts these notes; terminal-task metadata
+and formal submissions remain historical facts. A declared result is reported
+metadata: it does not transition a task, create an active finding, change criteria
+or configuration, or supply formal approval. Callers select subsequent actions.
+
+`--dry-run` previews without writing. `--expected-revision` is optional porcelain
+discovery; exact revision and replay rules remain those of `task update`.
+`--operation-id` and `--occurred-at` are optional. An explicit operation ID needs
+a UTC `yyyyMMddTHHmmssZ` prefix when time is omitted. Without an explicit operation,
+identity/time are generated automatically using the task timestamp policy.
+The mutation envelope includes `review-identity` with iteration/task, operation,
+record, actor and timestamp. Reuse the returned identity, payload and revision for
+retries. Dry-run also returns identity for applying the same intended append.
+
+`status` returns `task-review-status` with task state/revision, configured review
+requirement, note count/latest note, submission count/latest formal submission,
+and convenience commands. Latest summaries are bounded to 240 UTF-16 code units,
+without splitting surrogate pairs, with explicit truncation metadata. `records`
+returns `task-review-records` containing recent `review` entries in persisted
+record append order, each with `source=record|submission`, optional result, and
+the full original record. Formal entries are identified by their actual submission
+links; prose is never interpreted as approval. Counts include both sources;
+default `--last` is 5 (range 1..10000), with omission/truncation metadata.
+Both readers accept `--max-bytes` (default 32768, maximum 4194304) and fail without
+partial output if the selected XML exceeds the limit. XML uses canonical
+serialization preserving text values. Human output labels sources and results.
+Readers never acquire the workspace writer lock or invoke startup recovery.
+
+All three commands use existing iteration discovery: supply `--iteration` when
+the active iteration is ambiguous or when selecting an older iteration.
+Task context includes a compact essential `review-summary` and a status command,
+including with `--no-history`. Existing formal submission semantics, raw request
+shapes, diagnostic codes and exit codes remain compatible. Diagnostic messages
+now explain configuration/state/attribution/finding conditions and offer specific
+inspection or informational recording commands.
+
 ## 8.2 Task addition, revision, and splitting
 
 ```powershell

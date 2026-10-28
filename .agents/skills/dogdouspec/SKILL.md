@@ -219,6 +219,14 @@ Raw Task queries and `task show` describe only `tasks.xml`; they do not replace 
    dogdouspec task verify --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--covers "<CRITERION_ID>"] [--summary "..."] [--occurred-at <TIMESTAMP>] --format xml
    ```
 5. **Review Gate, When Required**: If the selected Task contains `<review required="true">`, submit `task review` while it is in `verification`.
+   For any actual review, optionally save its explanation with
+   `task review record --task "<TASK_ID>" --iteration "<ITERATION_ID>" --summary "..."`
+   and optional `--actor` / `--result approved|changes-requested`. This appends an
+   informational note, including on closed tasks. Use `task review status` for
+   factual configuration/results and commands, or `task review records --last 5`
+   for bounded history with record/submission sources. Include task/iteration
+   selection on these readers. Recorded results guide collaboration; callers
+   decide subsequent actions. Formal approvals remain explicit submissions.
    ```powershell
    # Porcelain review approval:
    dogdouspec task review approve --task "<TASK_ID>" [--iteration "<ITERATION_ID>"] [--actor reviewer] [--summary "..."] --format xml

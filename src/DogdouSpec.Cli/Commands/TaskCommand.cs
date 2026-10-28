@@ -1538,6 +1538,7 @@ public static class TaskCommand
 
         command.Add(BuildReviewApproveCommand());
         command.Add(BuildReviewRequestChangesCommand());
+        TaskReviewExperienceCommand.AddTo(command);
 
         var iteration = new Option<string?>("--iteration") { Description = "Iteration ID", Required = true };
         var task = new Option<string?>("--task") { Description = "Task ID", Required = true };

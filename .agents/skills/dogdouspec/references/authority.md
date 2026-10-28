@@ -16,6 +16,13 @@ DogdouSpec maintains a strict, unbypassable boundary between technical task auto
 
 ## Protected State Guards
 
+An actual review can be saved with `task review record --task <ID> --summary
+"..."`, optionally declaring actor/result. This is an informational discussion
+and supports terminal follow-ups. Use `task review status` and `records` to
+distinguish notes from explicit formal submissions. A note's result does not
+change task status, criteria, findings or formal approval. Callers choose their
+next action; actor strings are reported provenance.
+
 The core engine enforces protected state rules during all low-level mutations (`append`, `transaction apply`):
 - Attempting to set or change `iteration/@status` or `iteration/@completed_at` returns `OWNER_DECISION_REQUIRED` (exit code `5`).
 - Attempting to add non-proposed requirements, non-proposed design decisions, non-open research questions, or non-pending product criteria returns `OWNER_DECISION_REQUIRED`.

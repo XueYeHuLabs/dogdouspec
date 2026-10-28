@@ -59,6 +59,7 @@ public sealed class TaskContextResult
     public IReadOnlyList<(string Id, string Status, string Text)> AcceptanceCriteria { get; init; } = Array.Empty<(string, string, string)>();
     public IReadOnlyList<TaskBlockerItem> ActiveBlockers { get; init; } = Array.Empty<TaskBlockerItem>();
     public IReadOnlyList<XElement> LatestStatusRecords { get; init; } = Array.Empty<XElement>();
+    public XElement? ReviewSummary { get; init; }
 
     public string ActionCategory { get; init; } = string.Empty;
     public string ReasonCode { get; init; } = string.Empty;
@@ -85,7 +86,7 @@ public sealed class TaskContextResult
             IndentChars = "  ",
             OmitXmlDeclaration = false,
             Encoding = new UTF8Encoding(false),
-            NewLineHandling = NewLineHandling.Replace,
+            NewLineHandling = NewLineHandling.Entitize,
             NewLineChars = "\n"
         };
 
@@ -228,6 +229,8 @@ public sealed class TaskContextResult
                 writer.WriteEndElement(); // </latest-status-records>
             }
 
+            ReviewSummary?.WriteTo(writer);
+
             writer.WriteStartElement("progression-facts");
             writer.WriteElementString("action-category", ActionCategory);
             writer.WriteElementString("reason-code", ReasonCode);
@@ -327,6 +330,13 @@ public sealed class TaskContextResult
     public string ToHumanString()
     {
         var sb = new StringBuilder();
+        if (ReviewSummary != null)
+        {
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Review required: {(string?)ReviewSummary.Element("configuration")?.Attribute("required")}; recorded reviews: {(string?)ReviewSummary.Element("recorded-reviews")?.Attribute("count")}; formal submissions: {(string?)ReviewSummary.Element("submission")?.Attribute("count")}");
+            foreach (var latest in ReviewSummary.Elements().Where(e => e.Name.LocalName is "latest-record" or "latest-submission"))
+                sb.AppendLine(CultureInfo.InvariantCulture, $"{latest.Name}: {(string?)latest.Attribute("result") ?? (string?)latest.Attribute("disposition") ?? "unspecified"}; {(string?)latest.Attribute("actor")}; {latest.Element("summary")?.Value}");
+            foreach (var command in ReviewSummary.Element("commands")?.Elements("command") ?? []) sb.AppendLine(command.Value);
+        }
         sb.AppendLine(CultureInfo.InvariantCulture, $"Task Recovery Context: {TaskId} (Iteration: {IterationId})");
         var agentStr = string.IsNullOrWhiteSpace(Agent) ? string.Empty : $" | Agent: {Agent}";
         sb.AppendLine(CultureInfo.InvariantCulture, $"Status: {TaskStatus.ToUpperInvariant()}{agentStr}");

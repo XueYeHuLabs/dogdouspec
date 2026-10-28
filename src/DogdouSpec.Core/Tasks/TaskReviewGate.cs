@@ -26,7 +26,9 @@ public static class TaskReviewGate
         var latest = review!.Elements("submission").LastOrDefault();
         if (latest == null || !string.Equals((string?)latest.Attribute("disposition"), "approved", StringComparison.Ordinal))
         {
-            return new TaskReviewEvaluation(true, false, "Latest structured review submission is not approved.");
+            return new TaskReviewEvaluation(true, false, "Latest structured review submission is not approved. " +
+                $"Inspect review facts with: {TaskReviewHistory.Command("status", (string?)task.Attribute("id") ?? string.Empty, (string?)task.Parent?.Attribute("iteration"))}. " +
+                "An informational review record preserves the reported result; a required formal approval uses task review approve.");
         }
         var reviewer = (string?)latest.Attribute("actor");
         if (string.IsNullOrWhiteSpace(reviewer) || string.Equals(reviewer, implementer, StringComparison.Ordinal))

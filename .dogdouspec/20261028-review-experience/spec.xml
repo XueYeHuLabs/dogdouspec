@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<iteration id="20261028-review-experience" schema_version="1.0" revision="1" kind="feature" status="active" created_at="2026-10-28T09:13:43Z" updated_at="2026-10-28T09:13:43Z">
+  <index>
+    <summary>Implement the owner-approved collaboration-oriented review experience.</summary>
+  </index>
+  <product>
+    <objective>Help users and agents record actual reviews, inspect review facts and find useful next commands while retaining caller-controlled decisions.</objective>
+    <deliverables>
+      <deliverable id="20261028-deliv-review-experience">
+        <index>
+          <summary>Review record, status and bounded history with actionable diagnostics.</summary>
+        </index>
+        <description>Optional review result recording in existing task records, XML/human status/history, compact task context, compatible formal review guidance, tests and current repository Skill/documentation.</description>
+      </deliverable>
+    </deliverables>
+    <scope>
+      <included>
+        <item>Task review Core and CLI, context/read formatting, tests and current documentation/Skill.</item>
+      </included>
+      <excluded>
+        <item>New XML schemas, automatic lifecycle decisions from recorded results, new mandatory review requirements, unrelated backlog research and Git pushes.</item>
+      </excluded>
+    </scope>
+    <requirements>
+      <requirement id="20261028-req-review-experience" status="approved">
+        <index>
+          <summary>Implement the review experience plan approved by the owner.</summary>
+        </index>
+        <statement>Add task review record/status/records, optional declared results, factual context summaries and actionable diagnostics. Reuse informational discussion records and retain existing formal submission semantics and error/exit codes.</statement>
+        <rationale>The owner selected a convenience-oriented workflow and explicitly requested implementation after reviewing the concrete plan.</rationale>
+      </requirement>
+    </requirements>
+    <acceptance>
+      <criterion id="20261028-crit-review-experience" decision="pending">Review notes work across task states, results do not change lifecycle or formal approval, XML/human history/status and context are accurate, retries/dry-run behave correctly, existing formal review flows remain valid, and build/tests and documentation are current.</criterion>
+    </acceptance>
+  </product>
+  <constraints>
+    <constraint id="20261028-constraint-review-collaboration" kind="policy">Review notes/results and actor metadata are optional conveniences. Record results never automatically change task status, criteria, blockers, review configuration or formal approval. Users and agents choose subsequent actions.</constraint>
+    <constraint id="20261028-constraint-review-compatibility" kind="compatibility">Reuse current schemas and transaction/revision/replay rules. Preserve formal review semantics and existing diagnostic/exit codes while improving messages and command guidance.</constraint>
+  </constraints>
+  <confirmations>
+    <confirmation id="20261028T000000Z-confirm-review-experience-activation" action="activate" decision="accepted" actor="iteration-creator" decided_at="2026-10-28T09:13:43Z">
+      <summary>Initial iteration activation.</summary>
+      <requirements>
+        <requirement target="20261028-req-review-experience" decision="approved" />
+      </requirements>
+    </confirmation>
+  </confirmations>
+</iteration>

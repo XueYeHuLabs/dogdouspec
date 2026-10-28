@@ -647,7 +647,12 @@ defaults/replay receipts, optional progress/closure explanations (`backlog recor
 `backlog records`, transition `--summary`/`--check-*`), and `iteration create --file` (template
 `iteration.create`). Help and templates are embedded in the chosen binary;
 fresh initialization installs its current Skill, while an existing installation
-needs the reviewed Skill sync above. These entries add no managed XML schema
+needs the reviewed Skill sync above. Review convenience entries
+(`task review record/status/records`) also reuse existing XML: reconcile examples for optional actual-review notes,
+compact context facts and diagnostic suggestions, while preserving explicitly
+configured formal submission behavior. Recorded results do not decide lifecycle
+or approval. The current command help describes revision/replay and dry-run
+behavior. These conveniences add no managed XML schema
 migration. Preserve raw request contracts, exact revisions and owner/review
 gates. Describe `task finish` as sequential with explicit partial-progress
 receipts, since earlier transitions remain if a later step fails.
